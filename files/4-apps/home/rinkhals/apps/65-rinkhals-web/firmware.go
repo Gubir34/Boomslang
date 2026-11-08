@@ -336,13 +336,9 @@ func fetchRinkhalsCatalog() (*RinkhalsCatalog, error) {
 		// Pick the update-<group>.swu asset for this printer. Installers and
 		// tools zips are surfaced separately when we add the install flow.
 		if group != "" {
-			needle := "update-" + group + ".swu"
-			for _, a := range r.Assets {
-				if a.Name == needle {
-					entry.AssetURL = a.BrowserDownloadURL
-					entry.AssetSize = a.Size
-					break
-				}
+			if a := pickUpdateAsset(r.Assets, model, group); a != nil {
+				entry.AssetURL = a.BrowserDownloadURL
+				entry.AssetSize = a.Size
 			}
 		}
 		releases = append(releases, entry)
@@ -579,4 +575,22 @@ func handleFirmwareRefresh(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"status":  status,
 	})
+}
+
+// pickUpdateAsset finds the update package for this printer by exact name.
+// Releases now ship update-ks1m.swu as well; an S1 Max prefers it and falls
+// back to update-ks1.swu (same content and password) on older releases.
+func pickUpdateAsset(assets []ghReleaseAsset, model, group string) *ghReleaseAsset {
+	names := []string{"update-" + group + ".swu"}
+	if strings.EqualFold(strings.TrimSpace(model), "KS1M") {
+		names = append([]string{"update-ks1m.swu"}, names...)
+	}
+	for _, name := range names {
+		for i := range assets {
+			if assets[i].Name == name {
+				return &assets[i]
+			}
+		}
+	}
+	return nil
 }

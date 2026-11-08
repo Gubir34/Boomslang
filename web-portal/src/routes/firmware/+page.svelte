@@ -81,6 +81,11 @@
 		subtitle: string;
 	} | null>(null);
 
+	// The newest release the backend found a package for, to install in one click
+	let latestRelease = $derived(
+		rinkhals?.releases.find((r) => r.tag === $firmwareStatus.latest_rinkhals && r.asset_url && !r.current) ?? null
+	);
+
 	function openRinkhalsInstall(r: RinkhalsRelease) {
 		if (!r.asset_url) return;
 		modalInstall = {
@@ -275,6 +280,16 @@
 						<span class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand/10 text-brand text-[10px] font-semibold uppercase tracking-wider">
 							Update available
 						</span>
+						{#if latestRelease}
+							<button
+								class="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
+								disabled={!canInstall}
+								title={canInstall ? `Download and install Boomslang ${latestRelease.tag}` : ($printerState.reason || "Disabled while printer is busy")}
+								onclick={() => latestRelease && openRinkhalsInstall(latestRelease)}
+							>
+								Install now
+							</button>
+						{/if}
 					{:else}
 						<span class="ml-2 inline-flex items-center gap-1 text-emerald text-xs">
 							<CheckCircle2 size={12} /> Up to date

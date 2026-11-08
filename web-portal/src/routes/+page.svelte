@@ -123,7 +123,7 @@
 						title="Open the Firmware page"
 					>
 						<ArrowUpCircle size={14} />
-						<span class="font-medium">Firmware update available</span>
+						<span class="font-medium">{$firmwareStatus.rinkhals_update_available && $firmwareStatus.latest_rinkhals ? `Boomslang ${$firmwareStatus.latest_rinkhals} available` : "Firmware update available"}</span>
 					</a>
 				{/if}
 			</div>
@@ -139,7 +139,7 @@
 						title="Open the Firmware page"
 					>
 						<ArrowUpCircle size={14} />
-						<span class="font-medium">Firmware update available</span>
+						<span class="font-medium">{$firmwareStatus.rinkhals_update_available && $firmwareStatus.latest_rinkhals ? `Boomslang ${$firmwareStatus.latest_rinkhals} available` : "Firmware update available"}</span>
 					</a>
 				{/if}
 			</div>

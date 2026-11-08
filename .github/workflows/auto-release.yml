@@ -14,6 +14,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
 
     steps:
     - uses: actions/checkout@v7
@@ -38,18 +41,24 @@ jobs:
         context: .
         build-args: version=${{ github.ref_name }}
         outputs: type=local,dest=./build/dist
-        cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rinkhals:buildcache
-        cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rinkhals:buildcache,mode=max
+        cache-from: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache
+        cache-to: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache,mode=max,ignore-error=true
 
     - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref_name }}
+      # Published, not a draft: the printer's updater (touch UI and web portal)
+      # reads the public releases API, which never lists drafts. Tags with
+      # "_test" are published as pre-releases, which the updater only shows
+      # when test versions are enabled.
       run: |
+        PRERELEASE=
+        case "$tag" in *_test*|*beta*) PRERELEASE=--prerelease ;; esac
         gh release create "$tag" \
             --repo="$GITHUB_REPOSITORY" \
-            --title="${GITHUB_REPOSITORY#*/} ${tag}" \
+            --title="Boomslang ${tag}" \
             --generate-notes \
-            --draft \
+            $PRERELEASE \
             build/dist/*.swu \
             build/dist/*.zip

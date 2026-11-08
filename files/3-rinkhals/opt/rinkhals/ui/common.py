@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 import lvgl as lv
 import lvgl_rinkhals as lvr
 
+from release_assets import find_update_asset
+
 
 class JSONWithCommentsDecoder(json.JSONDecoder):
     def __init__(self, **kwgs):
@@ -294,7 +296,9 @@ class Rinkhals:
 
                     version = RinkhalsVersion()
                     version.version = tag
-                    version.test = 'test' in tag.lower() or 'beta' in tag.lower()
+                    version.test = bool(release.get('prerelease')) or 'test' in tag.lower() or 'beta' in tag.lower()
+                    if release.get('draft'):
+                        continue
                     version.changes = release.get('body', '')
                     
                     if not include_test and version.test:
@@ -314,12 +318,13 @@ class Rinkhals:
                         asset_url = None
                         asset_digest = None
 
-                        for asset in assets:
-                            asset_name = asset.get('name', '').lower()
-                            if 'update' in asset_name and printer_info.model_code.lower().replace('v2', '') in asset_name:
-                                asset_url = asset.get('browser_download_url', '')
-                                asset_digest = asset.get('digest', '')
-                                break
+                        # Match the exact package name. A substring test let a K3
+                        # pick update-k3m.swu (another password, so the install
+                        # failed) whenever GitHub listed it first.
+                        asset = find_update_asset(assets, printer_info.model_code)
+                        if asset:
+                            asset_url = asset.get('browser_download_url', '')
+                            asset_digest = asset.get('digest', '')
                         if not asset_url:
                             continue
 
@@ -1055,6 +1060,13 @@ class BaseApp:
                 self.screen_ota.button_rinkhals_refresh = lvr.button(panel_actions)
                 self.screen_ota.button_rinkhals_refresh.set_text('Refresh')
 
+                # Shown only when GitHub has a newer release for this printer:
+                # one tap opens the download / install dialog for it
+                self.screen_ota.button_rinkhals_update = lvr.button(panel_actions)
+                self.screen_ota.button_rinkhals_update.set_text('Update')
+                self.screen_ota.button_rinkhals_update.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+                self.screen_ota.button_rinkhals_update.add_flag(lv.OBJ_FLAG.HIDDEN)
+
         panel_firmware = lvr.panel(panel_ota)
         if panel_firmware:
             panel_firmware.set_width(lv.pct(100))
@@ -1367,11 +1379,24 @@ class BaseApp:
             if force or not self.cache_rinkhals_latest:
                 self.cache_rinkhals_latest = Rinkhals.get_latest_version()
 
+            latest = self.cache_rinkhals_latest
+            update_available = bool(latest and latest.url and
+                                    (not rinkhals_current or latest.version != rinkhals_current.version))
+
             lv.lock()
-            if self.cache_rinkhals_latest:
-                self.screen_ota.label_rinkhals_latest_value.set_text(self.cache_rinkhals_latest.version)
+            if latest:
+                self.screen_ota.label_rinkhals_latest_value.set_text(latest.version)
             else:
                 self.screen_ota.label_rinkhals_latest_value.set_text('?')
+            self.screen_ota.label_rinkhals_latest_value.set_style_text_color(
+                lvr.COLOR_PRIMARY if update_available else lvr.COLOR_DISABLED, lv.STATE.DEFAULT)
+            self.screen_ota.button_rinkhals_update.clear_event_cb()
+            if update_available:
+                self.screen_ota.button_rinkhals_update.add_event_cb(
+                    lambda e, v=latest: self.show_ota_rinkhals_modal(v), lv.EVENT_CODE.CLICKED, None)
+                self.screen_ota.button_rinkhals_update.remove_flag(lv.OBJ_FLAG.HIDDEN)
+            else:
+                self.screen_ota.button_rinkhals_update.add_flag(lv.OBJ_FLAG.HIDDEN)
             lv.unlock()
 
             lv.lock()
