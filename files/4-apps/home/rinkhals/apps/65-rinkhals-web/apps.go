@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,9 +15,10 @@ import (
 )
 
 // Locations that match tools.sh:
-//   BUILTIN_APP_PATH = $RINKHALS_ROOT/home/rinkhals/apps   (system apps shipped in the SWU)
-//   USER_APP_PATH    = $RINKHALS_HOME/apps                 (user overrides + per-app .config files)
-//   TEMPORARY_APP_PATH = /tmp/rinkhals/apps                (session-only overrides)
+//
+//	BUILTIN_APP_PATH = $RINKHALS_ROOT/home/rinkhals/apps   (system apps shipped in the SWU)
+//	USER_APP_PATH    = $RINKHALS_HOME/apps                 (user overrides + per-app .config files)
+//	TEMPORARY_APP_PATH = /tmp/rinkhals/apps                (session-only overrides)
 //
 // RINKHALS_ROOT is the SWU mount; we resolve it from the live symlink so we
 // pick up version upgrades without restarting rinkhals-web.
@@ -185,47 +187,74 @@ type appState = struct {
 // Anything that changes an app calls invalidateAppStates().
 const appStatesCacheTTL = 3 * time.Second
 
+// appStatesQueryTimeout bounds one shell query: a single app whose
+// `app.sh status` hangs must not freeze the dashboard and every other page
+// that asks for app states.
+const appStatesQueryTimeout = 20 * time.Second
+
+type appStateEntry struct {
+	state appState
+	at    time.Time
+}
+
 var (
-	appStatesQueryMu  sync.Mutex
-	appStatesCacheMu  sync.Mutex
-	appStatesCache    map[string]appState
-	appStatesCacheKey string
-	appStatesCachedAt time.Time
+	appStatesQueryMu sync.Mutex // one shell query at a time
+	appStatesCacheMu sync.Mutex // guards the three fields below
+	appStatesCache   = map[string]appStateEntry{}
+	appStatesGen     int // bumped by every invalidation
 )
 
 func invalidateAppStates() {
 	appStatesCacheMu.Lock()
-	appStatesCache = nil
+	appStatesCache = map[string]appStateEntry{}
+	appStatesGen++
 	appStatesCacheMu.Unlock()
 }
 
-func cachedAppStates(key string) (map[string]appState, bool) {
+// cachedAppStates answers from the cache only when every requested app has a
+// fresh entry, so pages asking for different subsets (3 services, all apps,
+// one app) share the same results.
+func cachedAppStates(ids []string) (map[string]appState, bool) {
 	appStatesCacheMu.Lock()
 	defer appStatesCacheMu.Unlock()
-	if appStatesCache != nil && appStatesCacheKey == key && time.Since(appStatesCachedAt) < appStatesCacheTTL {
-		return appStatesCache, true
+	out := make(map[string]appState, len(ids))
+	for _, id := range ids {
+		e, ok := appStatesCache[id]
+		if !ok || time.Since(e.at) >= appStatesCacheTTL {
+			return nil, false
+		}
+		out[id] = e.state
 	}
-	return nil, false
+	return out, true
 }
 
 func queryAppStates(ids []string) map[string]appState {
-	key := strings.Join(ids, "\x00")
-	if cached, ok := cachedAppStates(key); ok {
+	if cached, ok := cachedAppStates(ids); ok {
 		return cached
 	}
 
 	appStatesQueryMu.Lock()
 	defer appStatesQueryMu.Unlock()
-	if cached, ok := cachedAppStates(key); ok {
+	if cached, ok := cachedAppStates(ids); ok {
 		return cached
 	}
 
+	appStatesCacheMu.Lock()
+	gen := appStatesGen
+	appStatesCacheMu.Unlock()
+
 	result := runAppStatesQueryFn(ids)
 
+	// Store the answer only if nothing changed an app while the query ran
+	// (an app started or stopped meanwhile would make it stale) and the
+	// query actually answered (a timeout returns nothing).
 	appStatesCacheMu.Lock()
-	appStatesCache = result
-	appStatesCacheKey = key
-	appStatesCachedAt = time.Now()
+	if gen == appStatesGen && (len(result) > 0 || len(ids) == 0) {
+		now := time.Now()
+		for _, id := range ids {
+			appStatesCache[id] = appStateEntry{state: result[id], at: now}
+		}
+	}
 	appStatesCacheMu.Unlock()
 	return result
 }
@@ -255,7 +284,13 @@ func runAppStatesQuery(ids []string) map[string]struct {
 			id, id, id)
 	}
 
-	out, err := exec.Command("sh", "-c", b.String()).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), appStatesQueryTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "sh", "-c", b.String())
+	// A status script that leaves a child holding stdout open must not keep
+	// us waiting after the shell is killed
+	cmd.WaitDelay = 2 * time.Second
+	out, err := cmd.Output()
 	if err != nil {
 		return result
 	}

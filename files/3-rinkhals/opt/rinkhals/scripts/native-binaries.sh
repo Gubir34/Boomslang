@@ -20,6 +20,11 @@
 #   complete stock binary.
 # - Anything unexpected leaves the files untouched and skips the patch.
 #
+# native_restore only swaps back what native_patch swapped out in this boot
+# (a marker in $NATIVE_STATE_DIR, a RAM disk that is empty after every
+# boot). A leftover <target>.original that nobody verified is never moved
+# into place.
+#
 # Usage, from the directory holding the binaries:
 #   native_patch <target> <patch script>    # before starting <target>
 #   native_restore <target>                 # once <target> is running
@@ -30,6 +35,12 @@ native_log() {
     else
         echo "$@"
     fi
+}
+
+NATIVE_STATE_DIR=${NATIVE_STATE_DIR:-/tmp/rinkhals}
+
+native_marker() {
+    echo "$NATIVE_STATE_DIR/native-$(basename "$1").swapped"
 }
 
 native_md5() {
@@ -72,6 +83,7 @@ native_recover() {
 native_patch() {
     TARGET=$1
     TARGET_PATCH=$2
+    rm -f "$(native_marker "$TARGET")" 2> /dev/null
 
     STOCK_MD5=$(native_patch_md5 "$TARGET_PATCH" Before)
     PATCHED_MD5=$(native_patch_md5 "$TARGET_PATCH" After)
@@ -103,12 +115,15 @@ native_patch() {
     mv -f "$TARGET" "$TARGET.original"
     mv -f "$TARGET.new" "$TARGET"
     sync
+    mkdir -p "$NATIVE_STATE_DIR" && : > "$(native_marker "$TARGET")"
     return 0
 }
 
 native_restore() {
     TARGET=$1
 
+    # Only undo our own swap from this boot
+    [ -f "$(native_marker "$TARGET")" ] || return 0
     [ -f "$TARGET.original" ] || return 0
 
     rm -f "$TARGET.patch" 2> /dev/null
@@ -116,5 +131,6 @@ native_restore() {
         mv -f "$TARGET" "$TARGET.patch"
     fi
     mv -f "$TARGET.original" "$TARGET"
+    rm -f "$(native_marker "$TARGET")" 2> /dev/null
     sync
 }

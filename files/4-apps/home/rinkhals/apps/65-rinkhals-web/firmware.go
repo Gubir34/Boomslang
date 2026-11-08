@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -103,10 +105,10 @@ type RinkhalsCatalog struct {
 // build mutexes serialise the network fetches so concurrent reads don't all
 // trigger an upstream round-trip when the cache expires.
 var (
-	firmwareStatusDataMu    sync.Mutex
-	firmwareStatusBuildMu   sync.Mutex
-	firmwareStatusCached    *FirmwareStatus
-	firmwareStatusCachedAt  time.Time
+	firmwareStatusDataMu   sync.Mutex
+	firmwareStatusBuildMu  sync.Mutex
+	firmwareStatusCached   *FirmwareStatus
+	firmwareStatusCachedAt time.Time
 
 	firmwareAnycubicDataMu   sync.Mutex
 	firmwareAnycubicBuildMu  sync.Mutex
@@ -419,7 +421,7 @@ func buildFirmwareStatus(force bool) (*FirmwareStatus, error) {
 				status.LatestRinkhals = r.Tag
 				status.RinkhalsUpdateAvailable = r.Tag != "" &&
 					status.CurrentRinkhals != "" &&
-					compareVersionsDesc(r.Tag, status.CurrentRinkhals)
+					releaseTagNewer(r.Tag, status.CurrentRinkhals)
 				break
 			}
 		}
@@ -593,4 +595,24 @@ func pickUpdateAsset(assets []ghReleaseAsset, model, group string) *ghReleaseAss
 		}
 	}
 	return nil
+}
+
+var releaseTagPattern = regexp.MustCompile(`^(\d{8})_(\d+)`)
+
+// releaseTagNewer reports whether latest is a strictly later release than
+// current. Tags look like 20261108_04 or 20261108_04_test; the channel suffix
+// is ignored and anything that is not a dated tag (a dev build, a commit id)
+// never gets an update offered. The touch UI uses the same rule
+// (release_assets.is_newer_release).
+func releaseTagNewer(latest, current string) bool {
+	a, b := releaseTagPattern.FindStringSubmatch(latest), releaseTagPattern.FindStringSubmatch(current)
+	if a == nil || b == nil {
+		return false
+	}
+	if a[1] != b[1] {
+		return a[1] > b[1]
+	}
+	an, _ := strconv.Atoi(a[2])
+	bn, _ := strconv.Atoi(b[2])
+	return an > bn
 }

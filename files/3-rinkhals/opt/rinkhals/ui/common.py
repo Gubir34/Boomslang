@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import lvgl as lv
 import lvgl_rinkhals as lvr
 
-from release_assets import find_update_asset
+from release_assets import find_update_asset, is_newer_release
 
 
 class JSONWithCommentsDecoder(json.JSONDecoder):
@@ -1380,8 +1380,10 @@ class BaseApp:
                 self.cache_rinkhals_latest = Rinkhals.get_latest_version()
 
             latest = self.cache_rinkhals_latest
-            update_available = bool(latest and latest.url and
-                                    (not rinkhals_current or latest.version != rinkhals_current.version))
+            # Strictly newer only: a printer on a newer test build must not be
+            # offered the older stable release as an "update"
+            update_available = bool(latest and latest.url and rinkhals_current and
+                                    is_newer_release(latest.version, rinkhals_current.version))
 
             lv.lock()
             if latest:

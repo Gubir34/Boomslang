@@ -52,13 +52,14 @@ class NativeBinariesTests(unittest.TestCase):
         return subprocess.run(
             ['sh', '-c', f'. "{SCRIPT}"; {command}'],
             cwd=self.dir, capture_output=True, text=True, timeout=30,
+            env={**os.environ, 'NATIVE_STATE_DIR': str(self.dir / 'state')},
         )
 
     def files(self):
         return {
             p.name: p.read_bytes()
             for p in self.dir.iterdir()
-            if p.name.startswith('gkapi') and p != self.patch
+            if p.is_file() and p.name.startswith('gkapi') and p != self.patch
         }
 
     def write(self, name, data):
@@ -112,8 +113,17 @@ class NativeBinariesTests(unittest.TestCase):
         result = self.run_sh(f'native_patch gkapi {self.patch}')
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.files(), before)
-        self.run_sh('native_restore gkapi')  # must not make things worse
-        self.assertEqual(self.files()['gkapi'], b'not stock either')
+        # Nothing was swapped this boot, so restore must not move the
+        # unverified .original over the current binary (it used to)
+        self.run_sh('native_restore gkapi')
+        self.assertEqual(self.files(), before)
+
+    def test_restore_never_swaps_in_an_unverified_original(self):
+        self.write('gkapi', STOCK)
+        self.write('gkapi.original', b'truncated or from another firmware')
+        before = self.files()
+        self.run_sh('native_restore gkapi')
+        self.assertEqual(self.files(), before)
 
     def test_failed_patch_leaves_stock_in_place(self):
         self.write('gkapi', STOCK)

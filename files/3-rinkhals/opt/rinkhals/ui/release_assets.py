@@ -35,3 +35,21 @@ def find_update_asset(assets, model_code):
             return by_name[name]
     return None
 
+
+def release_tag_key(tag):
+    """(date, number) from a tag like 20261108_04 or 20261108_04_test, else None."""
+    import re
+    m = re.match(r'^(\d{8})_(\d+)', tag or '')
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def is_newer_release(latest, current):
+    """True only when latest is a strictly later release than current.
+
+    The channel suffix is ignored (20261108_04 and 20261108_04_test are the
+    same release), and a version that is not a dated tag (a dev build, a git
+    commit) never gets an update offered, so nobody is downgraded by a
+    highlighted Update button.
+    """
+    a, b = release_tag_key(latest), release_tag_key(current)
+    return bool(a and b and a > b)

@@ -68,19 +68,25 @@ func (h *staticHandler) resolve(urlPath string) string {
 
 func (h *staticHandler) load(name string) *staticFile {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	if f, ok := h.cache[name]; ok {
+	f, ok := h.cache[name]
+	h.mu.Unlock()
+	if ok {
 		return f
 	}
 
+	// Read and compress without holding the lock: the first page load after a
+	// start asks for a dozen bundles at once, and compressing them one after
+	// another on a single core delayed even the small files. Two requests for
+	// the same new file may both compress it; the result is identical.
 	data, err := fs.ReadFile(h.files, name)
 	if err != nil {
-		h.cache[name] = nil
+		// Misses are not cached: a client probing random paths must not grow
+		// memory on a printer with very little of it
 		return nil
 	}
 
 	sum := sha1.Sum(data)
-	f := &staticFile{
+	f = &staticFile{
 		data:  data,
 		etag:  `"` + hex.EncodeToString(sum[:8]) + `"`,
 		ctype: mime.TypeByExtension(path.Ext(name)),
@@ -97,7 +103,14 @@ func (h *staticHandler) load(name string) *staticFile {
 			f.gzipped = b.Bytes()
 		}
 	}
-	h.cache[name] = f
+
+	h.mu.Lock()
+	if existing, ok := h.cache[name]; ok {
+		f = existing
+	} else {
+		h.cache[name] = f
+	}
+	h.mu.Unlock()
 	return f
 }
 
@@ -164,4 +177,3 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write(body)
 	}
 }
-

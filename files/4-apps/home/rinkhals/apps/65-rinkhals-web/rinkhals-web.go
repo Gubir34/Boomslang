@@ -22,14 +22,18 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
+// The keys are not only labels: they become Home Assistant discovery ids
+// (<device>_Rinkhals_UI_cpu_usage) and state keys (processes.Rinkhals_UI), so
+// renaming them would orphan every existing sensor and its history. They keep
+// their original "Rinkhals" spelling on purpose.
 var processCommands = map[string]string{
 	"gklib":          "gklib",
 	"gkapi":          "gkapi",
 	"K3SysUi":        "K3SysUi",
 	"Moonraker":      "moonraker.py",
-	"Boomslang UI":   "rinkhals-ui.py",
+	"Rinkhals UI":    "rinkhals-ui.py",
 	"mjpg-streamer":  "mjpg_streamer",
-	"Boomslang web":  "rinkhals-web",
+	"Rinkhals web":   "rinkhals-web",
 	"lighttp":        "lighttpd",
 	"OctoApp":        "octoapp",
 	"OctoEverywhere": "octoeverywhere",

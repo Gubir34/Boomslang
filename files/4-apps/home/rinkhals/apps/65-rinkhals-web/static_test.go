@@ -112,3 +112,16 @@ func TestBinaryFilesAreNotGzipped(t *testing.T) {
 		t.Fatalf("png: encoding %q type %q", rec.Header().Get("Content-Encoding"), rec.Header().Get("Content-Type"))
 	}
 }
+
+func TestMissingFilesAreNotCached(t *testing.T) {
+	h := newStaticHandler(testStaticFS())
+	for i := 0; i < 50; i++ {
+		get(h, "/missing-"+strings.Repeat("x", i)+".js", nil)
+	}
+	h.mu.Lock()
+	n := len(h.cache)
+	h.mu.Unlock()
+	if n != 0 {
+		t.Fatalf("expected no cache entries for missing files, got %d", n)
+	}
+}

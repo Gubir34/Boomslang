@@ -40,5 +40,21 @@ class FindUpdateAssetTests(unittest.TestCase):
         self.assertIsNone(release_assets.find_update_asset(None, 'KS1'))
 
 
+class IsNewerReleaseTests(unittest.TestCase):
+    def test_strictly_newer_only(self):
+        newer = release_assets.is_newer_release
+        self.assertTrue(newer('20261109_01', '20261108_04_test'))
+        self.assertTrue(newer('20261108_02', '20261108_01'))     # two releases on one day
+        self.assertFalse(newer('20261108_01', '20261108_01'))
+        self.assertFalse(newer('20261101_01', '20261108_04_test'))  # no downgrade offered
+        self.assertFalse(newer('20261108_01', '20261108_01_test'))  # same release, other channel
+
+    def test_unparseable_versions_never_offer_an_update(self):
+        newer = release_assets.is_newer_release
+        for current in ('dev', 'a1b2c3d', '', None):
+            self.assertFalse(newer('20261108_01', current))
+        self.assertFalse(newer(None, '20261108_01'))
+
+
 if __name__ == '__main__':
     unittest.main()
