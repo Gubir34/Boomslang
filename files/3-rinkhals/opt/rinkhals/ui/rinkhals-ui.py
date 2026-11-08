@@ -9,6 +9,7 @@ import lvgl as lv
 import lvgl_rinkhals as lvr
 
 from common import *
+import reader
 
 
 cache_items = {}
@@ -289,12 +290,6 @@ class RinkhalsUiApp(BaseApp):
                     return
                 self.show_qr_dialog(f'http://{ip}:{port}', f'{name}\nhttp://{ip}:{port}')
 
-            def show_info():
-                ip = printer_ip() or 'not connected'
-                self.show_text_dialog(
-                    f'Boomslang {RINKHALS_VERSION}\n{KOBRA_MODEL}\nFirmware {KOBRA_VERSION}\n\nAddress: {ip}\n'
-                    f'Web portal: port 8090\nMainsail: port 4409')
-
             def confirm(text, action):
                 self.show_text_dialog(text, action='Yes', callback=action)
 
@@ -306,7 +301,7 @@ class RinkhalsUiApp(BaseApp):
             row = tile_row()
             tile(row, '\ue00b', 'Web portal', lambda: show_link(8090, 'Boomslang web portal'))
             tile(row, '\ue894', 'Mainsail', lambda: show_link(4409, 'Mainsail'))
-            tile(row, '\ue88e', 'Info', show_info)
+            tile(row, '\ue80b', 'Browser', self.browser_show)
 
             row = tile_row()
             tile(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
@@ -533,6 +528,11 @@ class RinkhalsUiApp(BaseApp):
                 button_reboot.set_text('Reboot printer')
                 button_reboot.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto reboot your printer?', action='Yes', callback=lambda: self.reboot_printer()), lv.EVENT_CODE.CLICKED, None)
                 
+                button_info = lvr.button(panel_buttons)
+                button_info.set_width(lv.pct(100))
+                button_info.set_text('Info')
+                button_info.add_event_cb(lambda e: self.show_info_dialog(), lv.EVENT_CODE.CLICKED, None)
+
                 button_restart = lvr.button(panel_buttons)
                 button_restart.set_width(lv.pct(100))
                 button_restart.set_text('Restart Boomslang')
@@ -557,6 +557,8 @@ class RinkhalsUiApp(BaseApp):
             self.layout_ota_firmware()
         with lvr.lock():
             self.layout_app_store()
+        with lvr.lock():
+            self.layout_browser()
 
         with lvr.lock():
             self.modal_selection = lvr.modal(self.root_modal)
@@ -1236,6 +1238,193 @@ class RinkhalsUiApp(BaseApp):
     def clear(self):
         if not USING_SIMULATOR:
             system(f'dd if=/dev/zero of=/dev/fb0 bs={self.screen_info.width * 4} count={self.screen_info.height}')
+
+    # Info dialog (home screen and Settings)
+    def show_info_dialog(self):
+        ip = printer_ip() or 'not connected'
+        self.show_text_dialog(
+            f'Boomslang {RINKHALS_VERSION}\n{KOBRA_MODEL}\nFirmware {KOBRA_VERSION}\n\nAddress: {ip}\n'
+            f'Web portal: port 8090\nMainsail: port 4409')
+
+    # Web browser (reader mode: text, headings and links, no JavaScript)
+    BROWSER_BOOKMARKS = [
+        ('Wikipedia', 'https://en.m.wikipedia.org/wiki/Main_Page'),
+        ('Hacker News', 'https://news.ycombinator.com'),
+        ('Klipper documentation', 'https://www.klipper3d.org/'),
+        ('Boomslang on GitHub', 'https://github.com/Gubir34/Boomslang'),
+        ('Printables search', 'https://html.duckduckgo.com/html/?q=printables+3d+models'),
+    ]
+    BROWSER_BLOCKS_PER_STEP = 20     # widgets created per lock hold, so the screen keeps responding
+    BROWSER_MAX_LINK_BUTTONS = 100   # each button costs memory on a printer with little of it
+
+    screen_browser = None
+    browser_history = None
+    browser_url = None
+    browser_gen = 0   # bumped by every navigation; a slow page that is no longer wanted is dropped
+
+    def layout_browser(self):
+        self.browser_history = []
+        self.screen_browser = lvr.panel(self.root_screen, tag='screen_browser')
+        if self.screen_browser:
+            self.screen_browser.add_flag(lv.OBJ_FLAG.HIDDEN)
+            self.screen_browser.set_size(lv.pct(100), lv.pct(100))
+            self.screen_browser.set_style_pad_all(0, lv.STATE.DEFAULT)
+            self.screen_browser.set_style_pad_top(lvr.get_title_bar_height(), lv.STATE.DEFAULT)
+
+            title_bar = lvr.title_bar(self.screen_browser)
+            title_bar.set_y(-lvr.get_title_bar_height())
+
+            self.screen_browser.label_title = lvr.title(title_bar)
+            self.screen_browser.label_title.set_text('Browser')
+            self.screen_browser.label_title.center()
+
+            icon_back = lvr.button_icon(title_bar)
+            icon_back.set_align(lv.ALIGN.LEFT_MID)
+            icon_back.set_text('\ue314')
+            icon_back.add_event_cb(lambda e: self.browser_back(), lv.EVENT_CODE.CLICKED, None)
+
+            icon_go = lvr.button_icon(title_bar)
+            icon_go.set_align(lv.ALIGN.RIGHT_MID)
+            icon_go.set_text('\ue8b6')
+            icon_go.add_event_cb(lambda e: self.browser_ask_address(), lv.EVENT_CODE.CLICKED, None)
+
+            self.screen_browser.panel_content = None
+
+    def browser_show(self):
+        self.show_screen(self.screen_browser)
+        if not self.screen_browser.panel_content:
+            self.browser_start_page()
+
+    def browser_new_content(self):
+        if self.screen_browser.panel_content:
+            self.screen_browser.panel_content.delete()
+        panel = lvr.panel(self.screen_browser, flex_flow=lv.FLEX_FLOW.COLUMN)
+        panel.set_size(lv.pct(100), lv.pct(100))
+        self.screen_browser.panel_content = panel
+        return panel
+
+    def browser_ask_address(self):
+        self.show_input_text_dialog('Address or search', self.browser_url or '', False,
+                                    lambda text: self.browser_open(text))
+
+    def browser_back(self):
+        self.browser_gen += 1
+        if self.browser_history:
+            self.browser_open(self.browser_history.pop(), push=False)
+        elif self.browser_url:
+            self.browser_url = None
+            self.browser_start_page()
+        else:
+            self.show_screen(self.screen_main)
+
+    def browser_label(self, parent, text, kind='p'):
+        if kind == 'h1':
+            label = lvr.title(parent)
+        else:
+            label = lvr.label(parent)
+            if kind in ('h2', 'h3'):
+                label.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+            elif kind in ('quote', 'pre'):
+                label.set_style_text_color(lvr.COLOR_SUBTITLE, lv.STATE.DEFAULT)
+        label.set_width(lv.pct(100))
+        label.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+        label.set_text(('\u2022 ' + text) if kind == 'li' else text)
+        return label
+
+    def browser_link(self, parent, text, url):
+        button = lvr.button(parent)
+        button.set_width(lv.pct(100))
+        button.set_text(ellipsis(text, 40))
+        button.set_style_pad_left(lv.dpx(15), lv.STATE.DEFAULT)
+        button.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
+        button.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        if url:
+            button.add_event_cb(lambda e, u=url: self.browser_open(u), lv.EVENT_CODE.CLICKED, None)
+        return button
+
+    def browser_start_page(self):
+        self.browser_gen += 1
+        self.screen_browser.label_title.set_text('Browser')
+        panel = self.browser_new_content()
+        self.browser_label(panel, 'Tap the magnifier at the top right to type a web address, or words to search for. '
+                                  'Pages are shown as text with links; there is no JavaScript, so some sites will not work.', 'quote')
+        self.browser_link(panel, 'Open an address or search...', None).add_event_cb(
+            lambda e: self.browser_ask_address(), lv.EVENT_CODE.CLICKED, None)
+        for name, url in self.BROWSER_BOOKMARKS:
+            self.browser_link(panel, name, url)
+
+    def browser_open(self, target, push=True):
+        if not target:
+            return
+        try:
+            url = reader.normalize_url(target)
+        except reader.BrowserError as e:
+            self.show_text_dialog(str(e))
+            return
+        self.browser_gen += 1
+        gen = self.browser_gen
+        self.screen_browser.label_title.set_text('Loading...')
+        panel = self.browser_new_content()
+        self.browser_label(panel, ellipsis(url, 90), 'quote')
+
+        def load():
+            page, error = None, None
+            try:
+                page = reader.fetch(url)
+            except reader.BrowserError as e:
+                error = str(e)
+            except Exception as e:
+                logging.exception('Browser failed')
+                error = f'Unexpected error: {type(e).__name__}'
+            if gen != self.browser_gen:
+                return  # the user went somewhere else while it loaded
+            self.browser_render(page, error, url, push, gen)
+        run_async(load)
+
+    def browser_render(self, page, error, url, push, gen):
+        with lvr.lock():
+            panel = self.browser_new_content()
+            if error:
+                self.screen_browser.label_title.set_text('Cannot open page')
+                self.browser_label(panel, error, 'p')
+                self.browser_label(panel, ellipsis(url, 90), 'quote')
+                self.browser_link(panel, 'Try again', None).add_event_cb(
+                    lambda e, u=url: self.browser_open(u, push=False), lv.EVENT_CODE.CLICKED, None)
+                return
+            if push and self.browser_url:
+                self.browser_history.append(self.browser_url)
+                del self.browser_history[:-30]
+            self.browser_url = page.url
+            self.screen_browser.label_title.set_text(ellipsis(page.title, 24))
+
+        links_left = self.BROWSER_MAX_LINK_BUTTONS
+        hidden_links = 0
+        step = self.BROWSER_BLOCKS_PER_STEP
+        for i in range(0, len(page.blocks), step):
+            if gen != self.browser_gen:
+                return
+            with lvr.lock():
+                for block in page.blocks[i:i + step]:
+                    if block['text']:
+                        self.browser_label(panel, block['text'], block['kind'])
+                    for text, link in block['links']:
+                        if links_left > 0:
+                            self.browser_link(panel, text, link)
+                            links_left -= 1
+                        else:
+                            hidden_links += 1
+        with lvr.lock():
+            if gen != self.browser_gen:
+                return
+            notes = []
+            if page.truncated:
+                notes.append('The page is long: only the first part is shown.')
+            if hidden_links:
+                notes.append(f'{hidden_links} more links are not shown.')
+            if not page.blocks:
+                notes.append('This page has no readable text. It probably needs JavaScript.')
+            for note in notes:
+                self.browser_label(panel, note, 'quote')
 
     # App Store
     APP_STORE_REPO = 'Gubir34/Boomslang.Apps'
