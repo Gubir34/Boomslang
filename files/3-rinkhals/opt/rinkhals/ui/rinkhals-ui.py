@@ -1207,7 +1207,7 @@ class RinkhalsUiApp(BaseApp):
             system(f'dd if=/dev/zero of=/dev/fb0 bs={self.screen_info.width * 4} count={self.screen_info.height}')
 
     # App Store
-    APP_STORE_REPO = 'rinkhals-community/Rinkhals.Apps'
+    APP_STORE_REPO = 'Gubir34/Boomslang.Apps'
     APP_STORE_BRANCH = 'master'
 
     screen_store = None

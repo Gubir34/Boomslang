@@ -554,7 +554,7 @@
 				<p class="text-ink-muted text-sm mt-2 h-5">
 					{tab === "installed"
 						? "Enable, start and configure the apps installed on this printer."
-						: "Discover and install community apps from Rinkhals.Apps."}
+						: "Discover and install apps from the Boomslang app store."}
 				</p>
 			</div>
 
@@ -654,7 +654,7 @@
 					<span>Fetched {relativeTime(catalog.fetched_at)}</span>
 				{/if}
 				<a
-					href="https://github.com/rinkhals-community/Rinkhals.Apps"
+					href="https://github.com/Gubir34/Boomslang.Apps"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="inline-flex items-center gap-1 text-brand hover:underline ml-auto"
@@ -835,7 +835,7 @@
 		{/if}
 
 		{#if catalogLoading && !catalog}
-			<div class="text-ink-faint animate-pulse">Loading catalog from Rinkhals.Apps...</div>
+			<div class="text-ink-faint animate-pulse">Loading the Boomslang app store...</div>
 		{:else if !catalog || visibleCatalog.length === 0}
 			<div class="text-ink-faint italic">No catalog entries match.</div>
 		{:else}

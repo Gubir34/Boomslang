@@ -14,17 +14,18 @@ import (
 	"time"
 )
 
-// The community app catalog lives at https://github.com/rinkhals-community/Rinkhals.Apps.
+// The app catalog lives at https://github.com/Gubir34/Boomslang.Apps, a fork of
+// rinkhals-community/Rinkhals.Apps with Boomslang's own apps and descriptions.
 // We hit two GitHub endpoints (Contents API + latest release) and then raw.githubusercontent.com
 // for individual app.json files - the raw host isn't rate-limited, which keeps us well
 // under the 60 unauthenticated API requests/hour ceiling.
 const (
-	catalogOwner          = "rinkhals-community"
-	catalogRepo           = "Rinkhals.Apps"
+	catalogOwner          = "Gubir34"
+	catalogRepo           = "Boomslang.Apps"
 	catalogBranch         = "master"
-	catalogContentsAPI    = "https://api.github.com/repos/rinkhals-community/Rinkhals.Apps/contents/apps"
-	catalogLatestRelease  = "https://api.github.com/repos/rinkhals-community/Rinkhals.Apps/releases/latest"
-	catalogRawBase        = "https://raw.githubusercontent.com/rinkhals-community/Rinkhals.Apps"
+	catalogContentsAPI    = "https://api.github.com/repos/Gubir34/Boomslang.Apps/contents/apps"
+	catalogLatestRelease  = "https://api.github.com/repos/Gubir34/Boomslang.Apps/releases/latest"
+	catalogRawBase        = "https://raw.githubusercontent.com/Gubir34/Boomslang.Apps"
 	catalogCacheTTL       = 10 * time.Minute
 	catalogHTTPTimeout    = 15 * time.Second
 	// Download to persistent eMMC, not /tmp: /tmp is tmpfs (RAM) and a large app

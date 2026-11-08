@@ -18,7 +18,7 @@ By using Boomslang, you will keep all stock Anycubic features (print screen, Any
 - Prints from Orca will show the print screen
 - SSH access for customization (user: **root**, password: **rockchip**)
 - OTA Boomslang updates
-- [Apps system](https://github.com/rinkhals-community/Rinkhals.Apps) (OctoEverywhere, Cloudflare, Tailscale, ...)
+- [Apps system](https://github.com/Gubir34/Boomslang.Apps) (print notifications, automatic backup, timelapse viewer, system monitor, OctoEverywhere, Tailscale, ...)
 
 Latest version will likely support the two latest firmwares from Anycubic, unless specified. For older firmware please check older releases or our [firmware archive](https://rinkhals.firmwareforge.org).
 Here are the supported GoKlipper / K3-family printers and firmwares with the latest Boomslang release:
@@ -119,14 +119,14 @@ You can find more information in [the documentation](https://rinkhals-community.
 > Having said that, running your printer with Moonraker, 1\~2 apps and 1\~2 connected clients should work fine.
 
 An apps system is provided in Boomslang. It allows for the users to easily add some features to their printer. Some default ones ship with every release (Moonraker, Mainsail, Fluidd, mjpg-streamer, Remote display via VNC, Hostname/mDNS, the opt-in Firmware Collector, and the Boomslang monitor for MQTT) and additional community apps are available on separate repos like:
-- https://github.com/rinkhals-community/Rinkhals.Apps (Tailscale, Cloudflare Tunnel, OctoApp, OctoEverywhere, NFS mount, stunnel, and more)
+- https://github.com/Gubir34/Boomslang.Apps, the Boomslang app store (Print notifications, Automatic backup, Timelapse viewer, System monitor, Boomslang Hop, Quick links, Tailscale, Cloudflare Tunnel, OctoApp, OctoEverywhere, NFS mount, stunnel, and more)
 - https://github.com/basvd/Rinkhals.WebUI (a web interface for Boomslang)
 
 The default apps are listed in detail under [Features and built-in apps](https://rinkhals-community.github.io/Rinkhals/about/#features-and-built-in-apps) in the documentation. Instructions on how to install or develop apps live in the Rinkhals.Apps repository.
 
 ### App Store
 
-The Boomslang Touch UI includes a built-in **App Store** that lets you browse, install and remove community apps without leaving the printer screen. Apps are sourced directly from [rinkhals-community/Rinkhals.Apps](https://github.com/rinkhals-community/Rinkhals.Apps) on GitHub.
+The Boomslang Touch UI includes a built-in **App Store** that lets you browse, install and remove community apps without leaving the printer screen. Apps are sourced directly from [Gubir34/Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) on GitHub.
 
 <p align="center">
     <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-app-store.png">
