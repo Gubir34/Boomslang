@@ -11,7 +11,7 @@ def get_title_bar_height(): return lv.dpx(65)
 def get_large_button_height(): return lv.dpx(130)
 
 # Colors and gradients
-COLOR_PRIMARY = lv.color_make(0, 128, 255)
+COLOR_PRIMARY = lv.color_make(79, 181, 72) # Boomslang green (#4fb548), same as the logo
 COLOR_BACKGROUND = lv.palette_darken(lv.PALETTE.GREY, 4)
 COLOR_TEXT = lv.color_white()
 COLOR_SECONDARY = lv.color_make(96, 96, 96)

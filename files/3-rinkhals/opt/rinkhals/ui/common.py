@@ -853,10 +853,22 @@ class BaseApp:
             #lv.screen_load(original_root)
     def run(self):
         def loop():
+            # Tell LVGL how much time really passed. A fixed 16 ms per loop
+            # made animations and timers run several times too slow whenever
+            # rendering took longer than that, which it does on the printer.
+            # Then sleep until LVGL's next timer is due instead of a fixed
+            # frame, so an idle screen doesn't keep the single core busy.
+            last = time.monotonic()
             while True:
-                lv.tick_inc(16)
-                lv.timer_handler()
-                time.sleep(0.016)
+                now = time.monotonic()
+                elapsed = int((now - last) * 1000)
+                if elapsed > 0:
+                    lv.tick_inc(elapsed)
+                    last += elapsed / 1000
+                next_ms = lv.timer_handler()
+                if not isinstance(next_ms, int) or next_ms < 0 or next_ms > 30:
+                    next_ms = 30
+                time.sleep(max(next_ms, 5) / 1000)
 
         if USING_SIMULATOR:
             loop()
@@ -1759,9 +1771,14 @@ class BaseApp:
             shutil.rmtree(version.path, ignore_errors=True)
             logging.info(f'Removed Boomslang {version.version} from {version.path}')
 
-            self.hide_modal()
-            self.show_screen(self.screen_ota_rinkhals)
-            self.layout_ota_rinkhals(force=True)
+            # This runs on a background thread: take LVGL's lock like every
+            # other UI update here. show_screen() refreshes the version list
+            # (installed versions are read live). The layout_ota_rinkhals(force=True)
+            # that followed took no such argument and raised a TypeError after
+            # every uninstall.
+            with lvr.lock():
+                self.hide_modal()
+                self.show_screen(self.screen_ota_rinkhals)
 
         self.modal_ota_rinkhals.panel_progress.add_flag(lv.OBJ_FLAG.HIDDEN)
         self.modal_ota_rinkhals.button_action.set_text('Download')
@@ -1970,7 +1987,11 @@ class BaseApp:
             password = 'U2FsdGVkX1+lG6cHmshPLI/LaQr9cZCjA8HZt6Y8qmbB7riY'
         elif self.printer_info.model_code == 'K3M':
             password = '4DKXtEGStWHpPgZm8Xna9qluzAI8VJzpOsEIgd8brTLiXs8fLSu3vRx8o7fMf4h6'
-            
+        else:
+            # Used to fall through to a NameError on an unknown model
+            logging.error(f'Unknown model {self.printer_info.model_code}, cannot extract the update')
+            return False
+
         if system('rm -rf /useremain/update_swu') != 0:
             return False
         if system(f'unzip -P {password} /useremain/update.swu -d /useremain') != 0:

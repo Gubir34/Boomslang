@@ -2,6 +2,7 @@ import os
 import time
 import sys
 import json
+import re
 import logging
 
 import lvgl as lv
@@ -94,8 +95,20 @@ if USING_SIMULATOR:
 
     def are_apps_enabled(): return { a: is_app_enabled(a) for a in list_apps().split(' ') }
 else:
-    environment = shell(f'. /useremain/rinkhals/.current/tools.sh && python -c "import os, json; print(json.dumps(dict(os.environ)))"')
-    environment = json.loads(environment)
+    # K3SysUi starts this UI and was itself started by start.sh after it
+    # sourced tools.sh, so the variables are normally inherited. Starting a
+    # shell and a second Python interpreter just to print them cost seconds
+    # on every open; only do that when something is missing.
+    ENVIRONMENT_KEYS = ('RINKHALS_ROOT', 'RINKHALS_HOME', 'RINKHALS_VERSION', 'KOBRA_MODEL_ID',
+                        'KOBRA_MODEL', 'KOBRA_MODEL_CODE', 'KOBRA_VERSION', 'KOBRA_DEVICE_ID')
+    environment = dict(os.environ)
+    if not all(environment.get(key) for key in ENVIRONMENT_KEYS if key != 'KOBRA_DEVICE_ID'):
+        output = shell('. /useremain/rinkhals/.current/tools.sh && env')
+        for line in output.splitlines():
+            key, _, value = line.partition('=')
+            if key in ENVIRONMENT_KEYS:
+                environment[key] = value
+    environment.setdefault('KOBRA_DEVICE_ID', '')
 
     RINKHALS_ROOT = environment['RINKHALS_ROOT']
     RINKHALS_HOME = environment['RINKHALS_HOME']
@@ -111,26 +124,27 @@ else:
             return shell(f'. /useremain/rinkhals/.current/tools.sh && {function_name} ' + ' '.join([ str(a) for a in args ]))
         return tool_function
 
-    list_apps = load_tool_function('list_apps')
-    get_app_root = load_tool_function('get_app_root')
+    # Read-only helpers run in Python (see app_tools.py), the rest in tools.sh
+    from app_tools import AppTools
+    app_tools = AppTools(RINKHALS_ROOT, RINKHALS_HOME,
+                         shell_fallback=lambda function, *args: load_tool_function(function)(*args))
+
+    list_apps = app_tools.list_apps
+    get_app_root = app_tools.get_app_root
     get_app_status = load_tool_function('get_app_status')
     get_app_pids = load_tool_function('get_app_pids')
-    is_app_enabled = load_tool_function('is_app_enabled')
+    is_app_enabled = app_tools.is_app_enabled
     enable_app = load_tool_function('enable_app')
     disable_app = load_tool_function('disable_app')
     start_app = load_tool_function('start_app')
     stop_app = load_tool_function('stop_app')
-    get_app_property = load_tool_function('get_app_property')
+    get_app_property = app_tools.get_app_property
     set_app_property = load_tool_function('set_app_property')
     set_temporary_app_property = load_tool_function('set_temporary_app_property')
     remove_app_property = load_tool_function('remove_app_property')
     clear_app_properties = load_tool_function('clear_app_properties')
 
-    def are_apps_enabled():
-        result = shell('. /useremain/rinkhals/.current/tools.sh && for a in $(list_apps); do echo "$a $(is_app_enabled $a)"; done')
-        apps = result.splitlines()
-        apps = [ a.split(' ') for a in apps ]
-        return { a[0]: a[1] for a in apps }
+    are_apps_enabled = app_tools.are_apps_enabled
         
 # Detect LAN mode
 REMOTE_MODE = 'cloud'
@@ -149,10 +163,10 @@ class RinkhalsUiApp(BaseApp):
         logging.debug(f'Home: {RINKHALS_HOME}')
 
     def monitor_k3sysui(self):
-        pid = shell("ps | grep K3SysUi | grep -v grep | awk '{print $1}'")
-        if not pid:
+        pids = shell("ps | grep K3SysUi | grep -v grep | awk '{print $1}'").split()
+        if not pids or not pids[0].isdigit():
             return
-        pid = int(pid)
+        pid = int(pids[0])
 
         logging.info(f'Monitoring K3SysUi (PID: {pid})')
 
@@ -572,12 +586,24 @@ class RinkhalsUiApp(BaseApp):
 
         self.app_checkboxes = {}
 
+        def app_display_name(app):
+            # Show "Fluidd" rather than the folder name "26-fluidd"
+            try:
+                with open(f'{get_app_root(app)}/app.json', 'r') as f:
+                    name = json.loads(f.read(), cls = JSONWithCommentsDecoder).get('name')
+                if name:
+                    return str(name)
+            except Exception:
+                pass
+            return re.sub(r'^[0-9]+-', '', app)
+
         def refresh_apps():
-            apps = list_apps().split(' ')
+            apps = [ a for a in list_apps().split(' ') if a ]
             apps_enabled = are_apps_enabled()
+            names = { app: app_display_name(app) for app in apps }
 
             for app in apps:
-                enabled = apps_enabled[app] == '1'
+                enabled = apps_enabled.get(app) == '1'
 
                 lv.lock()
                 panel_app = lvr.panel(self.screen_apps.panel_apps)
@@ -586,7 +612,7 @@ class RinkhalsUiApp(BaseApp):
 
                 button_app = lvr.button(panel_app)
                 button_app.set_width(lv.pct(100))
-                button_app.set_text(app)
+                button_app.set_text(ellipsis(names[app], 26))
                 button_app.set_style_pad_left(lv.dpx(15), lv.STATE.DEFAULT)
                 button_app.set_style_pad_right(lv.dpx(4), lv.STATE.DEFAULT)
                 button_app.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
