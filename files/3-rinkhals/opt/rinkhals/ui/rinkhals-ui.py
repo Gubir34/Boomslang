@@ -153,6 +153,19 @@ if os.path.isfile('/useremain/dev/remote_ctrl_mode'):
         REMOTE_MODE = f.read().strip()
 
 
+def printer_ip():
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(('10.255.255.255', 1))
+        ip = sock.getsockname()[0]
+        return None if ip.startswith('127.') or ip == '0.0.0.0' else ip
+    except Exception:
+        return None
+    finally:
+        sock.close()
+
+
 class RinkhalsUiApp(BaseApp):
     app_update_loop_key = 0
 
@@ -249,38 +262,56 @@ class RinkhalsUiApp(BaseApp):
             self.screen_main.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
             self.screen_main.set_style_pad_row(lvr.get_global_margin(), lv.STATE.DEFAULT)
 
-            # Top row: Manage apps | App Store
-            panel_row1 = lvr.panel(self.screen_main, flex_flow=lv.FLEX_FLOW.ROW)
-            panel_row1.set_width(lv.pct(100))
-            panel_row1.set_style_pad_column(lvr.get_global_margin(), lv.STATE.DEFAULT)
-            panel_row1.set_style_pad_all(0, lv.STATE.DEFAULT)
+            # Icon tiles, three per row like the stock Anycubic screens: icon on
+            # top, short label below. Icons are Material Icons code points.
+            def tile(parent, icon, label, callback, color=None):
+                button = lvr.button(parent)
+                button.set_flex_grow(1)
+                button.set_height(lv.dpx(88))
+                button.set_icon(icon)
+                button.set_text(label)
+                if color:
+                    button.set_style_text_color(color, lv.STATE.DEFAULT)
+                button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
+                return button
 
-            button_apps = lvr.button(panel_row1)
-            button_apps.set_flex_grow(1)
-            button_apps.set_text('Manage apps')
-            button_apps.add_event_cb(lambda e: self.show_screen(self.screen_apps), lv.EVENT_CODE.CLICKED, None)
+            def tile_row():
+                row = lvr.panel(self.screen_main, flex_flow=lv.FLEX_FLOW.ROW)
+                row.set_width(lv.pct(100))
+                row.set_style_pad_column(lvr.get_global_margin(), lv.STATE.DEFAULT)
+                row.set_style_pad_all(0, lv.STATE.DEFAULT)
+                return row
 
-            button_store = lvr.button(panel_row1)
-            button_store.set_flex_grow(1)
-            button_store.set_text('App Store')
-            button_store.add_event_cb(lambda e: self.show_screen(self.screen_store), lv.EVENT_CODE.CLICKED, None)
+            def show_link(port, name):
+                ip = printer_ip()
+                if not ip:
+                    self.show_text_dialog('The printer has no network\naddress right now.')
+                    return
+                self.show_qr_dialog(f'http://{ip}:{port}', f'{name}\nhttp://{ip}:{port}')
 
-            # Bottom row: Updates | Settings
-            panel_row2 = lvr.panel(self.screen_main, flex_flow=lv.FLEX_FLOW.ROW)
-            panel_row2.set_width(lv.pct(100))
-            panel_row2.set_style_pad_column(lvr.get_global_margin(), lv.STATE.DEFAULT)
-            panel_row2.set_style_pad_all(0, lv.STATE.DEFAULT)
+            def show_info():
+                ip = printer_ip() or 'not connected'
+                self.show_text_dialog(
+                    f'Boomslang {RINKHALS_VERSION}\n{KOBRA_MODEL}\nFirmware {KOBRA_VERSION}\n\nAddress: {ip}\n'
+                    f'Web portal: port 8090\nMainsail: port 4409')
 
-            button_ota = lvr.button(panel_row2)
-            button_ota.set_flex_grow(1)
-            button_ota.set_text('Updates')
-            button_ota.add_event_cb(lambda e: self.show_screen(self.screen_ota), lv.EVENT_CODE.CLICKED, None)
+            def confirm(text, action):
+                self.show_text_dialog(text, action='Yes', callback=action)
 
-            button_settings = lvr.button(panel_row2)
-            button_settings.set_flex_grow(1)
-            button_settings.set_text('Settings')
-            button_settings.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
-            button_settings.add_event_cb(lambda e: self.show_screen(self.screen_advanced), lv.EVENT_CODE.CLICKED, None)
+            row = tile_row()
+            tile(row, '\ue5c3', 'Apps', lambda: self.show_screen(self.screen_apps))
+            tile(row, '\ue8d1', 'App Store', lambda: self.show_screen(self.screen_store))
+            tile(row, '\ue62a', 'Updates', lambda: self.show_screen(self.screen_ota))
+
+            row = tile_row()
+            tile(row, '\ue00b', 'Web portal', lambda: show_link(8090, 'Boomslang web portal'))
+            tile(row, '\ue894', 'Mainsail', lambda: show_link(4409, 'Mainsail'))
+            tile(row, '\ue88e', 'Info', show_info)
+
+            row = tile_row()
+            tile(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
+            tile(row, '\ue8ac', 'Reboot', lambda: confirm('Are you sure you want\nto reboot your printer?', self.reboot_printer))
+            tile(row, '\ue8b8', 'Settings', lambda: self.show_screen(self.screen_advanced), lvr.COLOR_DANGER)
 
         # fireworks_shown = get_app_property('rinkhals_ui', 'fireworks_shown')
         # if not fireworks_shown or fireworks_shown.lower() != 'true':
