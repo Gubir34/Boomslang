@@ -1,4 +1,4 @@
-Rinkhals
+Boomslang, a fork of Rinkhals
 Copyright (c) 2025 Julien Batonnet
 Copyright (c) 2026 Rinkhals Community contributors
 
@@ -11,9 +11,16 @@ licenses, including but not limited to:
   Google Material Design Icons
   https://github.com/google/material-design-icons/blob/master/LICENSE
 
-- */icon.png
+- docs/docs/assets/rinkhals-ui/*, docs/docs/assets/rinkhals-installer/*
+  These screenshots show the original Rinkhals icon:
   "Cobra" icon by Freepik via Flaticon
   https://www.flaticon.com/free-icon/cobra_375098
+
+- branding/*, icon.png, */assets/icon.png, */assets/icon.bmp,
+  */assets/logo.png, */favicon.svg, ui/assets/snake-grid.webp,
+  ui/assets/snake-error.webp
+  The Boomslang mascot and installer sprites are original artwork made for
+  Boomslang and are covered by the MIT License in LICENSE.
 
 Additional dependencies pulled in at build time (Buildroot, busybox,
 Python packages, etc.) retain their respective upstream licenses.
