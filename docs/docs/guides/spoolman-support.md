@@ -30,6 +30,16 @@ http://<printer-ip>/server/spoolman/status
 
 `spoolman_connected: true` means you are ready.
 
+!!! warning "Do not copy Moonraker's Spoolman macros"
+    Moonraker's documentation and the Spoolman wiki suggest adding `SET_ACTIVE_SPOOL` and
+    `CLEAR_ACTIVE_SPOOL` macros to `printer.cfg`. Those are written for regular Klipper and do not
+    work here: Anycubic's firmware renders macros with a different template engine (pongo2), which
+    has no `action_call_remote_method` or `action_respond_info`, and no `|int` filter (it is
+    `|integer`). On a Kobra S1 Max, adding them to `printer.custom.cfg` crashed the firmware at boot
+    with error 11407, and Boomslang then turned itself off for the next boot (#221). If that happened
+    to you, remove the macros and reset the configuration from the Boomslang touch UI or web portal.
+    You don't need them: use one of the two ways below.
+
 ## Per ACE gate
 
 Once `[spoolman]` is configured, the spool picker appears in Mainsail and Fluidd — Boomslang
