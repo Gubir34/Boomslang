@@ -1493,7 +1493,17 @@ class Kobra:
         if self.KOBRA_MODEL_CODE in self.HOT_Z_REHOME_MODELS:
             script.append('G28 Z')
 
-        script += ['BED_MESH_CALIBRATE', 'TURN_OFF_HEATERS', 'M106 S0', 'SAVE_CONFIG']
+        script.append('BED_MESH_CALIBRATE')
+
+        # Park off the bed once probing is done, like the touchscreen calibration
+        # does, instead of leaving the head over the last probe point (#205).
+        # TO_THROW_POSITION is the purge chute the S1 already heats over at the
+        # start of this script. The S1 Max doesn't get here yet, see
+        # LEGACY_CALIBRATE_MODELS.
+        if s1_family and 'TO_THROW_POSITION' in commands:
+            script.append('TO_THROW_POSITION')
+
+        script += ['TURN_OFF_HEATERS', 'M106 S0', 'SAVE_CONFIG']
         return script
 
     def patch_bed_mesh(self):

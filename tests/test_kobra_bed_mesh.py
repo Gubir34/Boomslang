@@ -91,6 +91,23 @@ class BedMeshCalibrateScriptTests(unittest.TestCase):
         self.assertLess(script.index("WIPE_STOP"), cooldown)
         self.assertGreater(script.index("WIPE_EXIT"), cooldown)
 
+    def test_s1_parks_off_the_bed_after_probing(self):
+        """#205: the head stayed over the last probe point after a calibration
+        from Mainsail. The S1 now parks over the purge chute before cooling."""
+        script = self.script("KS1", KS1_2727)
+        probe = script.index("BED_MESH_CALIBRATE")
+        self.assertEqual(script[probe + 1], "TO_THROW_POSITION")
+        self.assertLess(probe + 1, script.index("TURN_OFF_HEATERS"))
+
+    def test_park_is_only_sent_where_the_printer_has_it(self):
+        for model, commands in CASES:
+            if model in self.module.Kobra.LEGACY_CALIBRATE_MODELS or model == "KS1":
+                continue
+            with self.subTest(model=model):
+                script = self.script(model, commands)
+                probe = script.index("BED_MESH_CALIBRATE")
+                self.assertEqual(script[probe + 1], "TURN_OFF_HEATERS")
+
     def test_s1_max_keeps_the_script_from_before_190(self):
         """On an S1 Max (fw 2.7.1.4) the new sequence never finished: gcode/script
         stayed pending for minutes and the mesh wasn't saved. Until a new
