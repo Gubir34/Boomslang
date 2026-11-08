@@ -1,6 +1,10 @@
 name: Auto release on tag
 
 on:
+  # Forks don't run push-triggered workflows until enabled in the Actions
+  # tab; a release can also be started by hand on a tag:
+  #   gh workflow run auto-release.yml --ref <tag>
+  workflow_dispatch:
   push:
     tags:
       # Release tags only (YYYYMMDD_NN, optionally _test). A bare '*' meant any
