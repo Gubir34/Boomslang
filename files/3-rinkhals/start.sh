@@ -275,20 +275,18 @@ export LD_LIBRARY_PATH=/userdata/app/gk:$LD_LIBRARY_PATH
 #TARGETS="gklib gkapi gkcam K3SysUi"
 TARGETS="gkapi K3SysUi"
 
+# Little dance to patch binaries
+# We should be able to delete the file after starting it, Linux will keep the inode alive until the process exits (https://stackoverflow.com/a/196910)
+# But those binaries checks for their location, so moving does the trick instead
+# Then directly restore the original file to keep everything tidy
+# native_patch/native_restore keep a verified stock copy at every step, so a power loss cannot destroy it (issue #198)
+. /opt/rinkhals/scripts/native-binaries.sh
+
 for TARGET in $TARGETS; do
     TARGET_PATCH=/opt/rinkhals/patches/${TARGET}.${KOBRA_MODEL_CODE}_${KOBRA_VERSION}.sh
 
     if [ -f $TARGET_PATCH ]; then
-        # Little dance to patch binaries
-        # We should be able to delete the file after starting it, Linux will keep the inode alive until the process exits (https://stackoverflow.com/a/196910)
-        # But those binaries checks for their location, so moving does the trick instead
-        # Then directly restore the original file to keep everything tidy
-
-        rm -rf $TARGET.original 2> /dev/null
-        mv $TARGET $TARGET.original
-        cp $TARGET.original $TARGET
-        $TARGET_PATCH $TARGET &> /dev/null
-        chmod +x $TARGET
+        native_patch $TARGET $TARGET_PATCH
     fi
 done
 
@@ -311,11 +309,7 @@ fi
 ./gkcam >> $RINKHALS_LOGS/gkcam.log 2>&1 &
 
 for TARGET in $TARGETS; do
-    if [ -f $TARGET.original ]; then
-        rm -rf $TARGET.patch 2> /dev/null
-        mv $TARGET $TARGET.patch
-        mv $TARGET.original $TARGET
-    fi
+    native_restore $TARGET
 done
 
 wait_for_socket /tmp/unix_uds1 30000 "/!\ Timeout waiting for gklib to start"
