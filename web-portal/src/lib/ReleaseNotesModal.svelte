@@ -114,7 +114,7 @@
 		margin: 0.2em 0;
 	}
 	:global(.release-notes-prose a) {
-		color: var(--color-brand, #3b82f6);
+		color: var(--color-brand, #2f8a35);
 		text-decoration: underline;
 	}
 	:global(.release-notes-prose code) {

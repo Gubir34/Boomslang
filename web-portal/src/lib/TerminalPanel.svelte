@@ -58,8 +58,8 @@
 			theme: {
 				background: '#1a1a1a',
 				foreground: '#f5f5f5',
-				cursor: '#ff9a00',
-				selectionBackground: '#005aff55'
+				cursor: '#4fb548',
+				selectionBackground: '#2f8a3566'
 			},
 			fontFamily: '"Fira Code", "JetBrains Mono", monospace',
 			fontSize: 13

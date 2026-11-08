@@ -6,7 +6,7 @@
     let loadingAction = $state<string | null>(null);
     let logs = $state<string>('');
     let showConfirmDialog = $state<boolean>(false);
-    let actionToConfirm = $state<{id: string, name: string, description: string, icon: any} | null>(null);
+    let actionToConfirm = $state<Tool | null>(null);
 
     let isChangingPassword = $state(false);
     let authSaving = $state(false);
@@ -17,7 +17,9 @@
     let p_error = $state('');
     let p_success = $state('');
 
-    const tools = [
+    type Tool = { id: string; name: string; description: string; icon: any; danger: boolean; action?: () => void | Promise<void> };
+
+    const tools: Tool[] = [
         {
             id: 'debug-bundle',
             name: 'Generate debug bundle',
