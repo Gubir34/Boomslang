@@ -94,7 +94,7 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard - Rinkhals</title>
+	<title>Dashboard - Boomslang</title>
 </svelte:head>
 
 <div class="space-y-8 max-w-7xl mx-auto">

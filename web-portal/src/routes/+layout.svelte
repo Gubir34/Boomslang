@@ -32,7 +32,7 @@
 		{ href: "/logs", label: "System Logs", icon: ScrollText },
 		{ href: "/terminal", label: "Terminal", icon: Terminal },
 		{ href: "/editor", label: "Text Editor", icon: FileText },
-		{ href: "/management", label: "Manage Rinkhals", icon: Settings }
+		{ href: "/management", label: "Manage Boomslang", icon: Settings }
 	];
 
 	onMount(async () => {
@@ -84,10 +84,10 @@
 	<aside class="w-64 bg-surface border-r border-line-soft flex flex-col">
 		<div class="h-20 flex items-center px-5 border-b border-line-soft gap-3">
 			<div class="w-11 h-11 rounded-xl bg-canvas border border-line-soft flex items-center justify-center overflow-hidden shrink-0">
-				<img src="/assets/logo.png" alt="Rinkhals Logo" class="w-9 h-9 object-contain" />
+				<img src="/assets/logo.png" alt="Boomslang Logo" class="w-9 h-9 object-contain" />
 			</div>
 			<div class="leading-tight">
-				<h1 class="text-lg font-semibold text-ink tracking-tight">Rinkhals</h1>
+				<h1 class="text-lg font-semibold text-ink tracking-tight">Boomslang</h1>
 				<p class="text-[11px] uppercase tracking-wider text-ink-faint">Printer Console</p>
 			</div>
 		</div>
@@ -156,7 +156,7 @@
 			<ShieldAlert class="text-coral" size={22} /> Security warning
 		</h2>
 		<p class="text-ink-2 text-sm mb-5 pb-4 border-b border-line-soft">
-			Rinkhals Web is using the default credentials (<strong>admin</strong>/<strong>rinkhals</strong>). Because this app exposes a raw terminal, please set a new password before going further.
+			Boomslang Web is using the default credentials (<strong>admin</strong>/<strong>rinkhals</strong>). Because this app exposes a raw terminal, please set a new password before going further.
 		</p>
 
 		<form class="space-y-4" onsubmit={(e) => { e.preventDefault(); changePassword(); }}>

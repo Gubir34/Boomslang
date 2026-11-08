@@ -17,7 +17,7 @@
     //    stock Anycubic files and go stale once Rinkhals takes over.
     //  - Moonraker: the bind-mounted printer_data log it actively writes.
     const logFiles = [
-        { name: "Rinkhals", path: "/tmp/rinkhals/rinkhals.log" },
+        { name: "Boomslang", path: "/tmp/rinkhals/rinkhals.log" },
         { name: "Klipper (gklib)", path: "/tmp/gklib.log" },
         { name: "Moonraker", path: "/useremain/home/rinkhals/printer_data/logs/moonraker.log" },
         { name: "GKAPI", path: "/tmp/gkapi.log" }
@@ -68,7 +68,7 @@
 </script>
 
 <svelte:head>
-    <title>Log Viewer - Rinkhals</title>
+    <title>Log Viewer - Boomslang</title>
 </svelte:head>
 
 <div class="space-y-6 h-full flex flex-col max-w-7xl mx-auto w-full">

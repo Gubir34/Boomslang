@@ -15,7 +15,7 @@ func TestUpdateScriptArgsRecognisesTheRealRinkhalsInstaller(t *testing.T) {
 		t.Fatalf("reading files/update.sh: %v", err)
 	}
 	if got := updateScriptArgs(script); !reflect.DeepEqual(got, []string{"async"}) {
-		t.Fatalf("Rinkhals update.sh: got %v, want [async]", got)
+		t.Fatalf("Boomslang update.sh: got %v, want [async]", got)
 	}
 }
 

@@ -128,7 +128,7 @@
 </script>
 
 <svelte:head>
-    <title>File Browser - Rinkhals</title>
+    <title>File Browser - Boomslang</title>
 </svelte:head>
 
 <div class="space-y-6 max-w-7xl mx-auto">

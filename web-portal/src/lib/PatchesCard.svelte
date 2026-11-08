@@ -77,9 +77,9 @@
 			<Layers size={20} />
 		</div>
 		<div class="flex-1 min-w-0">
-			<h3 class="text-base font-semibold text-ink">Rinkhals patches</h3>
+			<h3 class="text-base font-semibold text-ink">Boomslang patches</h3>
 			<p class="text-ink-muted text-sm mt-1">
-				What Rinkhals modifies on top of the stock Anycubic firmware. Useful before swapping firmware versions: if a binary patch for the target version is missing, Rinkhals will boot stock until you install a matching release.
+				What Boomslang modifies on top of the stock Anycubic firmware. Useful before swapping firmware versions: if a binary patch for the target version is missing, Boomslang will boot stock until you install a matching release.
 			</p>
 		</div>
 	</div>
@@ -97,7 +97,7 @@
 			<div class="bg-coral/10 border border-coral/40 rounded-lg p-3 mb-4 text-sm flex items-start gap-2">
 				<AlertTriangle size={14} class="text-coral shrink-0 mt-0.5" />
 				<div class="text-ink-muted">
-					Rinkhals does not have binary patches for {data.model_code} firmware {data.firmware_version}. The Rinkhals services may not load correctly on this combination.
+					Boomslang does not have binary patches for {data.model_code} firmware {data.firmware_version}. The Boomslang services may not load correctly on this combination.
 				</div>
 			</div>
 		{/if}

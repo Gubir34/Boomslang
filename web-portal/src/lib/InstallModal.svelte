@@ -245,7 +245,7 @@
 				<div class="space-y-3 mb-4">
 					<div class="bg-surface border border-line-soft rounded-lg px-4 py-3">
 						<div class="text-xs uppercase tracking-wider text-ink-faint">Source</div>
-						<div class="text-ink mt-0.5">{source === "rinkhals" ? "Rinkhals release" : "Anycubic stock firmware"}</div>
+						<div class="text-ink mt-0.5">{source === "rinkhals" ? "Boomslang release" : "Anycubic stock firmware"}</div>
 					</div>
 					<div class="bg-surface border border-line-soft rounded-lg px-4 py-3">
 						<div class="text-xs uppercase tracking-wider text-ink-faint">Version</div>

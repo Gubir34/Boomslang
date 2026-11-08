@@ -282,7 +282,7 @@ class Rinkhals:
         
         try:
             import requests
-            response = requests.get(f'https://api.github.com/repos/rinkhals-community/Rinkhals/releases?per_page=20', timeout=5)
+            response = requests.get(f'https://api.github.com/repos/Gubir34/Boomslang/releases?per_page=20', timeout=5)
             if response.status_code == 200:
                 releases = response.json()
                 releases.sort(key=lambda r: r.get('published_at', ''), reverse=True)
@@ -601,8 +601,8 @@ class Diagnostic:
         if os.path.exists('/useremain/rinkhals/.disable-rinkhals'):
             yield Diagnostic(
                 type=DiagnosticType.WARNING,
-                short_text='Rinkhals disabled',
-                long_text='Rinkhals is disabled by the .disable-rinkhals file',
+                short_text='Boomslang disabled',
+                long_text='Boomslang is disabled by the .disable-rinkhals file',
                 fix_action=lambda: os.remove('/useremain/rinkhals/.disable-rinkhals')
             )
 
@@ -614,8 +614,8 @@ class Diagnostic:
                     if 'Rinkhals/begin' not in script_content:
                         yield Diagnostic(
                             type=DiagnosticType.WARNING,
-                            short_text='Rinkhals startup issue',
-                            long_text='Rinkhals launcher is missing',
+                            short_text='Boomslang startup issue',
+                            long_text='Boomslang launcher is missing',
                             fix_action=DiagnosticFixes.REINSTALL_RINKHALS_LAUNCHER
                         )
                     if '\r\n' in script_content:
@@ -630,8 +630,8 @@ class Diagnostic:
             if not os.path.exists('/useremain/rinkhals/start-rinkhals.sh'):
                 yield Diagnostic(
                     type=DiagnosticType.WARNING,
-                    short_text='Rinkhals startup issue',
-                    long_text='Rinkhals startup script is missing',
+                    short_text='Boomslang startup issue',
+                    long_text='Boomslang startup script is missing',
                     fix_action=DiagnosticFixes.REINSTALL_RINKHALS
                 )
 
@@ -705,7 +705,7 @@ class BaseApp:
         self.printer_info = PrinterInfo.get()
 
         if lv.helpers.is_windows():
-            display = lv.windows_create_display('Rinkhals', self.screen_info.width, self.screen_info.height, 100, False, True)
+            display = lv.windows_create_display('Boomslang', self.screen_info.width, self.screen_info.height, 100, False, True)
             touch = lv.windows_acquire_pointer_indev(display)
             touch.set_display(display)
 
@@ -1004,7 +1004,7 @@ class BaseApp:
                 panel_title.set_style_bg_opa(lv.OPA._10, lv.STATE.DEFAULT)
 
                 label_rinkhals = lvr.title(panel_title)
-                label_rinkhals.set_text('Rinkhals')
+                label_rinkhals.set_text('Boomslang')
 
             panel_current = lvr.panel(panel_rinkhals)
             if panel_current:
@@ -1110,7 +1110,7 @@ class BaseApp:
             title_bar.set_y(-lvr.get_title_bar_height())
             
             title = lvr.title(title_bar)
-            title.set_text('Manage Rinkhals')
+            title.set_text('Manage Boomslang')
             title.center()
 
             icon_back = lvr.button_icon(title_bar)
@@ -1576,7 +1576,7 @@ class BaseApp:
 
         run_async(lambda: refresh_available(False))
     def show_ota_rinkhals_modal(self, version: RinkhalsVersion):
-        self.modal_ota_rinkhals.label_title.set_text(f'Rinkhals {version.version}')
+        self.modal_ota_rinkhals.label_title.set_text(f'Boomslang {version.version}')
 
         changes = version.changes or ''
         changes = changes.replace('\r\n', '\n')

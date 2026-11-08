@@ -23,16 +23,16 @@ import (
 )
 
 var processCommands = map[string]string{
-	"gklib":            "gklib",
-	"gkapi":            "gkapi",
-	"K3SysUi":          "K3SysUi",
-	"Moonraker":        "moonraker.py",
-	"Rinkhals UI":      "rinkhals-ui.py",
-	"mjpg-streamer":    "mjpg_streamer",
-	"Rinkhals web": "rinkhals-web",
-	"lighttp":          "lighttpd",
-	"OctoApp":          "octoapp",
-	"OctoEverywhere":   "octoeverywhere",
+	"gklib":          "gklib",
+	"gkapi":          "gkapi",
+	"K3SysUi":        "K3SysUi",
+	"Moonraker":      "moonraker.py",
+	"Boomslang UI":   "rinkhals-ui.py",
+	"mjpg-streamer":  "mjpg_streamer",
+	"Boomslang web":  "rinkhals-web",
+	"lighttp":        "lighttpd",
+	"OctoApp":        "octoapp",
+	"OctoEverywhere": "octoeverywhere",
 }
 var processCache = map[string]*process.Process{}
 

@@ -50,10 +50,10 @@ class Tool:
 
 tools = [
     tool_debug_bundle := Tool('Generate a Debug Bundle', '', 'debug-bundle.sh', 'This tool will generate a debug bundle on the attached USB drive.\nIt will take 10 to 15 seconds. Do you want to proceed?', 'Yes'),
-    tool_reset_config := Tool('Reset Rinkhals configuration', '', 'config-reset.sh', 'This tool will reset all Rinkhals configuration. Your printer will be like the first time you installed Rinkhals.\nYour printer will then reboot. Do you want to proceed?', 'Yes', lvr.COLOR_DANGER),
+    tool_reset_config := Tool('Reset Boomslang configuration', '', 'config-reset.sh', 'This tool will reset all Boomslang configuration. Your printer will be like the first time you installed Boomslang.\nYour printer will then reboot. Do you want to proceed?', 'Yes', lvr.COLOR_DANGER),
     tool_backup_partitions := Tool('Backup partitions', '', 'backup-partitions.sh', 'This tool will backup your printer /userdata and /useremain partition on the attached USB drive.\nIt will take up to a minute. Do you want to proceed?', 'Yes'),
-    tool_clean_rinkhals := Tool('Clean old Rinkhals', '', 'clean-rinkhals.sh', 'This tool will remove old installed Rinkhals versions. 2 versions and the current one will be kept. Do you want to proceed?', 'Yes'),
-    tool_uninstall_rinkhals := Tool('Uninstall Rinkhals', '', 'rinkhals-uninstall.sh', 'This tool will completely uninstall Rinkhals from your printer. Do you want to proceed?', 'Yes', lvr.COLOR_DANGER),
+    tool_clean_rinkhals := Tool('Clean old Boomslang', '', 'clean-rinkhals.sh', 'This tool will remove old installed Boomslang versions. 2 versions and the current one will be kept. Do you want to proceed?', 'Yes'),
+    tool_uninstall_rinkhals := Tool('Uninstall Boomslang', '', 'rinkhals-uninstall.sh', 'This tool will completely uninstall Boomslang from your printer. Do you want to proceed?', 'Yes', lvr.COLOR_DANGER),
     #tool_factory_reset := Tool('Factory reset', '', 'factory-reset.sh', 'The tool will factory reset your printer', 'Yes', lvr.COLOR_DANGER),
 ]
 
@@ -73,7 +73,7 @@ class RinkhalsInstallApp(BaseApp):
             image_rinkhals.scale_to(lv.dpx(100))
 
             label_title = lvr.title(self.screen_welcome)
-            label_title.set_text('Rinkhals Installer')
+            label_title.set_text('Boomslang Installer')
 
             def show_main():
                 self.show_screen(self.screen_main)
@@ -142,7 +142,7 @@ class RinkhalsInstallApp(BaseApp):
                 rinkhals_icon.scale_to(lv.dpx(70))
 
                 label_rinkhals = lvr.title(self.screen_logo)
-                label_rinkhals.set_text('Rinkhals Installer')
+                label_rinkhals.set_text('Boomslang Installer')
                 label_rinkhals.set_style_pad_top(lv.dpx(20), lv.STATE.DEFAULT)
                 label_rinkhals.set_style_pad_bottom(lv.dpx(10), lv.STATE.DEFAULT)
                 
@@ -510,19 +510,19 @@ class RinkhalsInstallApp(BaseApp):
         fix_cb = None
 
         if diagnostic.fix_action == DiagnosticFixes.RESET_CONFIGURATION:
-            fix_text = 'Reset Rinkhals configuration to default. Your customizations will be backup up on the attached USB drive.'
+            fix_text = 'Reset Boomslang configuration to default. Your customizations will be backup up on the attached USB drive.'
             fix_action = 'Reset'
             def fix_cb(e):
                 self.hide_modal()
                 self.show_tool_modal(tool_reset_config)
         elif diagnostic.fix_action == DiagnosticFixes.REINSTALL_RINKHALS:
-            fix_text = 'Reinstall Rinkhals. Your customizations will be kept.'
+            fix_text = 'Reinstall Boomslang. Your customizations will be kept.'
             fix_action = 'Reinstall'
             def fix_cb(e):
                 self.hide_modal()
                 self.show_screen(self.screen_ota_rinkhals)
         elif diagnostic.fix_action == DiagnosticFixes.REINSTALL_RINKHALS_LAUNCHER:
-            fix_text = 'Patch Kobra startup to install Rinkhals launcher.'
+            fix_text = 'Patch Kobra startup to install Boomslang launcher.'
             fix_action = 'Patch'
             def fix_cb(e):
                 if os.path.exists('/useremain/rinkhals/.version'):
@@ -537,7 +537,7 @@ class RinkhalsInstallApp(BaseApp):
                 self.layout_main(force=True)
                 self.layout_diagnostics()
         elif diagnostic.fix_action == DiagnosticFixes.REINSTALL_FIRMWARE:
-            fix_text = 'Reinstall system firmware. Rinkhals will be re-enabled. Your customizations will be kept.'
+            fix_text = 'Reinstall system firmware. Boomslang will be re-enabled. Your customizations will be kept.'
             fix_action = 'Reinstall'
             def fix_cb(e):
                 self.hide_modal()

@@ -2,7 +2,7 @@
     "$version": "1",
 
     "name": "Firmware Collector (opt-in)",
-    "description": "Periodically asks Anycubic if new firmware is available for this printer model using the printer's own device certificate. If a new version is found, sends only the download URL and version metadata to the Rinkhals community archive (rinkhals.firmwareforge.org) so we can produce Rinkhals patches sooner. Does not transmit certificates, account info, or any personal data. Disabled by default.",
+    "description": "Periodically asks Anycubic if new firmware is available for this printer model using the printer's own device certificate. If a new version is found, sends only the download URL and version metadata to the Boomslang community archive (rinkhals.firmwareforge.org) so we can produce Boomslang patches sooner. Does not transmit certificates, account info, or any personal data. Disabled by default.",
     "version": "1.0",
 
     "properties": {

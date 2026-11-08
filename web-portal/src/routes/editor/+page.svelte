@@ -71,7 +71,7 @@
 </script>
 
 <svelte:head>
-    <title>Text Editor - Rinkhals</title>
+    <title>Text Editor - Boomslang</title>
 </svelte:head>
 
 <div class="space-y-6 h-full flex flex-col max-w-7xl mx-auto w-full">

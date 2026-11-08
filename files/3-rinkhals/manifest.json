@@ -20,7 +20,7 @@
         "K3M": "https://raw.githubusercontent.com/rinkhals-community/Rinkhals.Firmwares/refs/heads/main/manifests-anycubic/manifest-k3m.json",
         "KS1M": "https://raw.githubusercontent.com/rinkhals-community/Rinkhals.Firmwares/refs/heads/main/manifests-anycubic/manifest-ks1m.json"
     },
-    "rinkhals_repository": "rinkhals-community/Rinkhals",
+    "rinkhals_repository": "Gubir34/Boomslang",
     "trusted_app_repositories": [
         "https://raw.githubusercontent.com/rinkhals-community/Rinkhals.apps/refs/heads/master/manifest.json"
     ]

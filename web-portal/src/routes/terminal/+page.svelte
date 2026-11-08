@@ -6,5 +6,5 @@
 </script>
 
 <svelte:head>
-	<title>Terminal - Rinkhals</title>
+	<title>Terminal - Boomslang</title>
 </svelte:head>

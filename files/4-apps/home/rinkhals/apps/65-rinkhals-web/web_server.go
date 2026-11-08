@@ -419,7 +419,7 @@ func basicAuthMiddleware(next http.Handler) http.Handler {
 
 		user, pass, ok := r.BasicAuth()
 		if !ok || subtle.ConstantTimeCompare([]byte(user), []byte(expectedUser)) != 1 || subtle.ConstantTimeCompare([]byte(pass), []byte(expectedPass)) != 1 {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Rinkhals Terminal"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="Boomslang Terminal"`)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -497,7 +497,7 @@ func startWebServer() {
 
 	mux.Handle("/", http.FileServer(http.FS(uiFS)))
 
-	log.Println("Starting Rinkhals Web Portal on :8090")
+	log.Println("Starting Boomslang Web Portal on :8090")
 
 	handler := corsMiddleware(basicAuthMiddleware(mux))
 

@@ -184,7 +184,7 @@ func validateAssetURL(source, assetURL string) error {
 		if host != "github.com" && host != "objects.githubusercontent.com" {
 			return fmt.Errorf("rinkhals asset_url must come from github.com")
 		}
-		if host == "github.com" && !strings.HasPrefix(u.Path, "/rinkhals-community/Rinkhals/releases/download/") {
+		if host == "github.com" && !strings.HasPrefix(u.Path, "/Gubir34/Boomslang/releases/download/") {
 			return fmt.Errorf("rinkhals asset_url must point at this repo's release downloads")
 		}
 	case "anycubic":
@@ -235,10 +235,10 @@ func checkAnycubicCompatibility(targetVersion string) *compatibilityReport {
 	report.RinkhalsPatchesForTarget = false
 	report.Compatible = false
 	report.Warnings = append(report.Warnings, fmt.Sprintf(
-		"The currently-installed Rinkhals does not include patches for %s firmware %s. "+
-			"After this install completes, Rinkhals will not start on next boot - the printer "+
-			"will run stock Anycubic firmware until you install a Rinkhals release that ships "+
-			"patches for %s. Make sure you have a compatible Rinkhals release ready to install afterward.",
+		"The currently-installed Boomslang does not include patches for %s firmware %s. "+
+			"After this install completes, Boomslang will not start on next boot - the printer "+
+			"will run stock Anycubic firmware until you install a Boomslang release that ships "+
+			"patches for %s. Make sure you have a compatible Boomslang release ready to install afterward.",
 		model, targetVersion, targetVersion))
 	return report
 }
@@ -829,7 +829,7 @@ func ensureStartShPatch() error {
 	defer f.Close()
 	_, err = f.Write(patch)
 	if err == nil {
-		appendInstallLog("Re-appended Rinkhals loader to /userdata/app/gk/start.sh")
+		appendInstallLog("Re-appended Boomslang loader to /userdata/app/gk/start.sh")
 	}
 	return err
 }

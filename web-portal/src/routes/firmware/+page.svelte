@@ -87,7 +87,7 @@
 			source: "rinkhals",
 			version: r.tag,
 			assetUrl: r.asset_url,
-			title: r.current ? `Reinstall Rinkhals ${r.tag}` : `Install Rinkhals ${r.tag}`,
+			title: r.current ? `Reinstall Boomslang ${r.tag}` : `Install Boomslang ${r.tag}`,
 			subtitle: r.name || r.tag
 		};
 	}
@@ -126,7 +126,7 @@
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			rinkhals = await res.json();
 		} catch (e: any) {
-			errRinkhals = e.message || "Failed to load Rinkhals releases";
+			errRinkhals = e.message || "Failed to load Boomslang releases";
 		} finally {
 			loadingRinkhals = false;
 		}
@@ -195,7 +195,7 @@
 
 	function openRinkhalsNotes(r: RinkhalsRelease) {
 		modalRelease = {
-			title: r.name || `Rinkhals ${r.tag}`,
+			title: r.name || `Boomslang ${r.tag}`,
 			subtitle: formatISO(r.published_at),
 			body: r.body,
 			url: r.url
@@ -222,7 +222,7 @@
 			<Cpu size={28} class="text-brand" /> Firmware
 		</h1>
 		<p class="text-sm text-ink-muted mt-1">
-			Browse available Anycubic stock firmware and Rinkhals releases for this printer.
+			Browse available Anycubic stock firmware and Boomslang releases for this printer.
 			{#if $firmwareStatus.model_name}
 				Current device: <span class="text-ink">{$firmwareStatus.model_name}</span>.
 			{/if}
@@ -264,7 +264,7 @@
 			{/if}
 		</div>
 		<div>
-			<div class="text-xs uppercase tracking-wider text-ink-faint mb-1">Rinkhals (installed)</div>
+			<div class="text-xs uppercase tracking-wider text-ink-faint mb-1">Boomslang (installed)</div>
 			<div class="text-xl font-semibold text-ink">
 				{$firmwareStatus.current_rinkhals || "Unknown"}
 			</div>
@@ -312,7 +312,7 @@
 		onclick={() => (tab = "rinkhals")}
 		class="px-4 py-2 text-sm font-medium transition-colors {tab === 'rinkhals' ? 'bg-brand text-white' : 'text-ink-muted hover:bg-surface-warm'}"
 	>
-		Rinkhals releases
+		Boomslang releases
 	</button>
 	<button
 		type="button"
@@ -327,7 +327,7 @@
 	<section>
 		<div class="flex items-center justify-between mb-3">
 			<p class="text-xs text-ink-muted">
-				Source: <code class="text-[11px]">rinkhals-community/Rinkhals</code> releases
+				Source: <code class="text-[11px]">Gubir34/Boomslang</code> releases
 			</p>
 			<label class="inline-flex items-center gap-2 text-xs text-ink-muted cursor-pointer">
 				<input
@@ -342,10 +342,10 @@
 		</div>
 
 		{#if loadingRinkhals && !rinkhals}
-			<p class="text-sm text-ink-muted">Loading Rinkhals releases...</p>
+			<p class="text-sm text-ink-muted">Loading Boomslang releases...</p>
 		{:else if errRinkhals}
 			<div class="bg-coral/10 border border-coral/40 rounded-lg p-4 text-sm text-ink">
-				Could not load Rinkhals releases: {errRinkhals}
+				Could not load Boomslang releases: {errRinkhals}
 			</div>
 		{:else if rinkhals && rinkhals.releases.length === 0}
 			<p class="text-sm text-ink-muted italic">No releases match the current filter.</p>
@@ -388,7 +388,7 @@
 								type="button"
 								onclick={() => openRinkhalsInstall(r)}
 								disabled={!canInstall || !r.asset_url}
-								title={!canInstall ? ($printerState.reason || "Disabled while printer is busy") : (!r.asset_url ? "No update bundle available for this printer model" : (r.current ? "Reinstall this Rinkhals release" : "Install this Rinkhals release"))}
+								title={!canInstall ? ($printerState.reason || "Disabled while printer is busy") : (!r.asset_url ? "No update bundle available for this printer model" : (r.current ? "Reinstall this Boomslang release" : "Install this Boomslang release"))}
 								class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-brand text-white hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 							>
 								<Download size={12} /> {r.current ? "Reinstall" : "Install"}

@@ -537,7 +537,7 @@
 </script>
 
 <svelte:head>
-	<title>Apps - Rinkhals</title>
+	<title>Apps - Boomslang</title>
 </svelte:head>
 
 <div class="space-y-6 max-w-7xl mx-auto w-full">

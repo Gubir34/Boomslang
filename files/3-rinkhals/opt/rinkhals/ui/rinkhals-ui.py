@@ -86,7 +86,7 @@ if USING_SIMULATOR:
     def disable_app(app): pass
     def start_app(app, timeout): pass
     def stop_app(app): pass
-    def get_app_property(app, property): return 'https://github.com/rinkhals-community/Rinkhals' if property == 'link_output' else ''
+    def get_app_property(app, property): return 'https://github.com/Gubir34/Boomslang' if property == 'link_output' else ''
     def set_app_property(app, property, value): pass
     def set_temporary_app_property(app, property, value): pass
     def remove_app_property(app, property): pass
@@ -208,7 +208,7 @@ class RinkhalsUiApp(BaseApp):
             rinkhals_icon.scale_to(lv.dpx(90))
 
             label_rinkhals = lvr.title(self.screen_logo)
-            label_rinkhals.set_text('Rinkhals')
+            label_rinkhals.set_text('Boomslang')
             label_rinkhals.set_style_pad_top(lv.dpx(20), lv.STATE.DEFAULT)
             label_rinkhals.set_style_pad_bottom(lv.dpx(10), lv.STATE.DEFAULT)
             
@@ -490,7 +490,7 @@ class RinkhalsUiApp(BaseApp):
                 
                 button_restart = lvr.button(panel_buttons)
                 button_restart.set_width(lv.pct(100))
-                button_restart.set_text('Restart Rinkhals')
+                button_restart.set_text('Restart Boomslang')
                 button_restart.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto restart Rinkhals?', action='Yes', callback=lambda: self.restart_rinkhals()), lv.EVENT_CODE.CLICKED, None)
                 
                 button_stock = lvr.button(panel_buttons)
@@ -501,7 +501,7 @@ class RinkhalsUiApp(BaseApp):
                 button_disable = lvr.button(panel_buttons)
                 button_disable.set_width(lv.pct(100))
                 button_disable.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
-                button_disable.set_text('Disable Rinkhals')
+                button_disable.set_text('Disable Boomslang')
                 button_disable.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto disable Rinkhals?\n\nYou will need to reinstall\nRinkhals to start it again', action='Yes', action_color=lvr.COLOR_DANGER, callback=lambda: self.disable_rinkhals()), lv.EVENT_CODE.CLICKED, None)
 
         with lvr.lock():

@@ -50,9 +50,9 @@
             }
         },
         { id: 'backup-partitions', name: 'Backup partitions', description: 'Backup critical system partitions', icon: Server, danger: false },
-        { id: 'config-reset', name: 'Reset Rinkhals configuration', description: 'Reset configuration files to default (restarts services)', icon: RefreshCw, danger: true },
-        { id: 'clean-rinkhals', name: 'Clean old Rinkhals', description: 'Remove leftover files from previous Rinkhals installations', icon: Trash2, danger: true },
-        { id: 'uninstall-rinkhals', name: 'Uninstall Rinkhals', description: 'Completely remove Rinkhals and reboot into factory firmware', icon: ShieldAlert, danger: true }
+        { id: 'config-reset', name: 'Reset Boomslang configuration', description: 'Reset configuration files to default (restarts services)', icon: RefreshCw, danger: true },
+        { id: 'clean-rinkhals', name: 'Clean old Boomslang', description: 'Remove leftover files from previous Boomslang installations', icon: Trash2, danger: true },
+        { id: 'uninstall-rinkhals', name: 'Uninstall Boomslang', description: 'Completely remove Boomslang and reboot into factory firmware', icon: ShieldAlert, danger: true }
     ];
 
     async function executeTool(id: string) {
@@ -150,7 +150,7 @@
 </script>
 
 <svelte:head>
-    <title>Management - Rinkhals</title>
+    <title>Management - Boomslang</title>
 </svelte:head>
 
 <div class="space-y-6 h-full flex flex-col max-w-7xl mx-auto w-full">
@@ -201,7 +201,7 @@
                 {/if}
             </div>
             <div class="rounded-lg border border-line-soft bg-surface px-4 py-3">
-                <div class="text-xs uppercase tracking-wider text-ink-faint mb-1">Rinkhals</div>
+                <div class="text-xs uppercase tracking-wider text-ink-faint mb-1">Boomslang</div>
                 <div class="text-lg font-semibold text-ink">{$firmwareStatus.current_rinkhals || "Unknown"}</div>
                 {#if $firmwareStatus.latest_rinkhals}
                     <div class="mt-1 text-xs text-ink-muted flex items-center gap-1.5 flex-wrap">

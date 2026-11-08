@@ -457,19 +457,19 @@ def patch_K3SysUi(binaryPath, modelCode, version):
 
 
     ################
-    # Replace "Customer Support" with "Rinkhals"
+    # Replace "Customer Support" with "Boomslang"
 
     customerSupport = next(k3sysui.search(b'Customer Support\x00'), None)
     if customerSupport:
-        k3sysui.write(customerSupport, b'Rinkhals\x00')
+        k3sysui.write(customerSupport, b'Boomslang\x00')
 
     serviceSupport = next(k3sysui.search(b'Service Support\x00'), None)
     if serviceSupport:
-        k3sysui.write(serviceSupport, b'Rinkhals\x00')
+        k3sysui.write(serviceSupport, b'Boomslang\x00')
 
     support = next(k3sysui.search(b'Support\x00'), None)
     if support:
-        k3sysui.write(support, b'Rinkhal\x00') # Without final s so it's the same length :/
+        k3sysui.write(support, b'Boomsl\x00') # "Support\0" is only 8 bytes, so the name is shortened
 
 
     ################

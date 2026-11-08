@@ -148,7 +148,7 @@ func collectBinaryPatches(currentModel, currentFW string) []binaryPatch {
 var describedHooks = []scriptHook{
 	{
 		Name:        "Boot loader",
-		Description: "Appended to /userdata/app/gk/start.sh so the stock init script bootstraps Rinkhals on every boot.",
+		Description: "Appended to /userdata/app/gk/start.sh so the stock init script bootstraps Boomslang on every boot.",
 		Path:        "/userdata/app/gk/start.sh",
 	},
 	{

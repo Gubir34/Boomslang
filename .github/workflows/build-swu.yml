@@ -10,6 +10,9 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
     - uses: actions/checkout@v7
@@ -34,13 +37,13 @@ jobs:
         context: .
         build-args: version=${{ github.sha }}
         outputs: type=local,dest=./build/dist
-        cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rinkhals:buildcache
-        cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rinkhals:buildcache,mode=max
+        cache-from: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache
+        cache-to: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache,mode=max,ignore-error=true
 
     - name: Upload artifact for K2P, K3
       uses: actions/upload-artifact@v7
       with:
-        name: update-k2p-k3
+        name: boomslang-update-k2p-k3
         compression-level: 0
         path: |
           build/dist/*-k2p-k3.swu
@@ -49,7 +52,7 @@ jobs:
     - name: Upload artifact for KS1
       uses: actions/upload-artifact@v7
       with:
-        name: update-ks1
+        name: boomslang-update-ks1
         compression-level: 0
         path: |
           build/dist/*-ks1.swu
@@ -58,7 +61,7 @@ jobs:
     - name: Upload artifact for KS1M
       uses: actions/upload-artifact@v7
       with:
-        name: update-ks1m
+        name: boomslang-update-ks1m
         compression-level: 0
         path: |
           build/dist/*-ks1m.swu
@@ -67,7 +70,7 @@ jobs:
     - name: Upload artifact for K3M
       uses: actions/upload-artifact@v7
       with:
-        name: update-k3m
+        name: boomslang-update-k3m
         compression-level: 0
         path: |
           build/dist/*-k3m.swu

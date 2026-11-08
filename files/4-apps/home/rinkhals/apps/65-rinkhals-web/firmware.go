@@ -30,8 +30,8 @@ import (
 
 const (
 	firmwareManifestBase   = "https://raw.githubusercontent.com/rinkhals-community/Rinkhals.Firmwares/main/manifests-anycubic"
-	rinkhalsReleasesAPI    = "https://api.github.com/repos/rinkhals-community/Rinkhals/releases?per_page=10"
-	rinkhalsReleasesWebURL = "https://github.com/rinkhals-community/Rinkhals/releases/tag/"
+	rinkhalsReleasesAPI    = "https://api.github.com/repos/Gubir34/Boomslang/releases?per_page=10"
+	rinkhalsReleasesWebURL = "https://github.com/Gubir34/Boomslang/releases/tag/"
 
 	firmwareAnycubicTTL = 6 * time.Hour
 	firmwareRinkhalsTTL = 30 * time.Minute
@@ -429,7 +429,7 @@ func buildFirmwareStatus(force bool) (*FirmwareStatus, error) {
 		}
 	} else if err != nil {
 		if status.Notice == "" {
-			status.Notice = "Could not reach the Rinkhals releases feed"
+			status.Notice = "Could not reach the Boomslang releases feed"
 		}
 	}
 
