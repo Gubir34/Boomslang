@@ -21,7 +21,7 @@ mkdir -p $MOONRAKER_DIRECTORY/moonraker
 rm -rf $MOONRAKER_DIRECTORY/moonraker/*
 cp -pr "$WORK"/moonraker/*/* $MOONRAKER_DIRECTORY/moonraker
 
-# Apply Rinkhals spoolman compatibility fix directly in Moonraker source.
+# Apply Boomslang spoolman compatibility fix directly in Moonraker source.
 # See: https://github.com/utkabobr/DuckPro-Kobra3/issues/54#issuecomment-2540040852
 SPOOLMAN_FILE="$MOONRAKER_DIRECTORY/moonraker/moonraker/components/spoolman.py"
 if [ -f "$SPOOLMAN_FILE" ] && ! grep -q "SPOOL_ID: Union\[int, None\]" "$SPOOLMAN_FILE"; then

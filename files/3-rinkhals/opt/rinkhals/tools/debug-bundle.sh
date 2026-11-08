@@ -14,7 +14,7 @@ cp /useremain/rinkhals/.version $TMP_PATH/.version 2> /dev/null
 mkdir -p $TMP_PATH/moonraker
 cp /useremain/home/rinkhals/printer_data/logs/*.log $TMP_PATH/moonraker/ 2> /dev/null
 
-# Collect different Rinkhals versions logs
+# Collect different Boomslang versions logs
 cd /useremain/rinkhals
 for VERSION in $(ls -1d */); do
     mkdir -p $TMP_PATH/$VERSION
@@ -57,7 +57,7 @@ cat -A /userdata/app/gk/start.sh > $TMP_PATH/start.sh 2> /dev/null
 cat -A /userdata/app/gk/restart_k3c.sh > $TMP_PATH/restart_k3c.sh 2> /dev/null
 cat /userdata/app/gk/printer.cfg > $TMP_PATH/original-printer.cfg 2> /dev/null
 
-# Collect Rinkhals info
+# Collect Boomslang info
 du -sh /useremain/rinkhals/* > $TMP_PATH/du.log 2> /dev/null
 ls -al /useremain > $TMP_PATH/ls-useremain.log 2> /dev/null
 ls -al /useremain/rinkhals > $TMP_PATH/ls-rinkhals.log 2> /dev/null

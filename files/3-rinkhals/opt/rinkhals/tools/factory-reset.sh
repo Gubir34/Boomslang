@@ -3,7 +3,7 @@
 
 # Tasks
 # - Download current firmware
-# - Stop Rinkhals if needed
+# - Stop Boomslang if needed
 # - In /useremain, delete everything except app/ and dev/
 # - Delete /userdata/app/gk/config/ams_config.cfg
 # - Delete /userdata/app/gk/config/para.cfg

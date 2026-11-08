@@ -40,7 +40,7 @@ set_app_property 10-hostname-dns hostname my-printer
 
 The hostname is sanitized automatically: converted to lowercase, invalid characters replaced with hyphens, and truncated to 63 characters (DNS limit).
 
-DHCP propagation can be disabled via the Rinkhals UI toggle or via SSH:
+DHCP propagation can be disabled via the Boomslang UI toggle or via SSH:
 
 ```bash
 source /useremain/rinkhals/.current/tools.sh

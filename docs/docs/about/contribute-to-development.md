@@ -12,12 +12,12 @@ Also, have a look at the other pages, such as [File Structure - Kobra Startup Se
 
 ### What if I want learn more? Klipper etc. I need to learn Python?
 
-For Rinkhals itself you don't need Klipper, you'll need Linux in general (filesystem, shell scripts, ...), Docker for easy setup, Python for Moonraker, the UI and other tools
+For Boomslang itself you don't need Klipper, you'll need Linux in general (filesystem, shell scripts, ...), Docker for easy setup, Python for Moonraker, the UI and other tools
 Depends on what you're interested in!
 
 For Klipper you have two parts, Klippy in Python on the SBC / or GoKlipper in Go for Anycubic, and Klipper for the MCU in C / C++
 
-### What would you recommend as topics for this kind of firmware structure? Or what topics / documentation would help understand how you built Rinkhals to work along side the stock firmware so well?
+### What would you recommend as topics for this kind of firmware structure? Or what topics / documentation would help understand how you built Boomslang to work along side the stock firmware so well?
 
 I'd say the basics of this project is a good understanding of the basics of Linux.
 It's not only about pure dev, but about putting scripts and configuration together to build the system.
@@ -27,7 +27,7 @@ For Rinkhals I decided to create an overlay because it's way safer, easier to bu
 
 So have a look at [https://github.com/rinkhals-community/Rinkhals/blob/master/files/3-rinkhals/start.sh](https://github.com/rinkhals-community/Rinkhals/blob/master/files/3-rinkhals/start.sh), it uses mount heavily to "hide" the stock filesystem and overlay my own to add binaries, scripts and all.
 
-I really think those printers are super interesting to dev on, be curious about how things are starting, why you hear a beep when you plug a USB drive in. For example for startup follow `/etc/init.d/rkS`, after many scripts it will lead you to understand how Rinkhals starts.
+I really think those printers are super interesting to dev on, be curious about how things are starting, why you hear a beep when you plug a USB drive in. For example for startup follow `/etc/init.d/rkS`, after many scripts it will lead you to understand how Boomslang starts.
 Look at the stock firmware images as well, it's interesting to see how they built that, and you will realize it's far from perfect!
 Every time I ask myself such a question and I explore, I end up learning a ton about Linux and how I could modify things.
 

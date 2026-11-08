@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// Rinkhals modifies the stock Anycubic firmware in a few well-known ways. The
-// /api/firmware/patches endpoint exposes the inventory so the Manage Rinkhals
+// Boomslang modifies the stock Anycubic firmware in a few well-known ways. The
+// /api/firmware/patches endpoint exposes the inventory so the Manage Boomslang
 // page can show the user what's actually changed on top of stock - useful both
 // for transparency and as context before deciding to swap firmware versions.
 //
@@ -20,13 +20,13 @@ import (
 //     applied at boot to replace the stock binaries. The file name encodes
 //     which model + firmware version the patch targets.
 //
-//   - Script-level hooks: things Rinkhals installs into /userdata or /etc to
+//   - Script-level hooks: things Boomslang installs into /userdata or /etc to
 //     wire its services into the stock init flow (start.sh patch, DNS hook,
 //     etc.). These are described declaratively here because the install
 //     locations are mostly static and grepping for them gives a clearer
 //     picture than walking the install tree at runtime.
 //
-// All paths are read from the currently-installed Rinkhals - we never reach
+// All paths are read from the currently-installed Boomslang - we never reach
 // out to the repo, so this works on printers that have never been online.
 
 type binaryPatch struct {
@@ -142,7 +142,7 @@ func collectBinaryPatches(currentModel, currentFW string) []binaryPatch {
 	return out
 }
 
-// describedHooks is the static list of script-level modifications Rinkhals
+// describedHooks is the static list of script-level modifications Boomslang
 // makes outside its own tree. Path existence is checked at request time so
 // the UI shows the actual state rather than what's expected to be there.
 var describedHooks = []scriptHook{
@@ -171,7 +171,7 @@ var describedHooks = []scriptHook{
 func resolveScriptHook(h scriptHook) scriptHook {
 	out := h
 	if data, err := os.ReadFile(h.Path); err == nil {
-		// For start.sh-style files we want "present" to mean "Rinkhals loader
+		// For start.sh-style files we want "present" to mean "Boomslang loader
 		// is appended", not just "the file exists". For others, file existence
 		// is the signal.
 		if filepath.Base(h.Path) == "start.sh" || filepath.Base(h.Path) == "restart_k3c.sh" {
@@ -206,7 +206,7 @@ func handlePatchesList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compatible-for-run = at least one binary patch matches the running
-	// (model, firmware) combination. When that's false, Rinkhals will fall
+	// (model, firmware) combination. When that's false, Boomslang will fall
 	// back to stock at boot time.
 	compat := false
 	for _, b := range binaries {

@@ -1,5 +1,5 @@
 ---
-title: Rinkhals apps
+title: Boomslang apps
 ---
 
 ## Overview

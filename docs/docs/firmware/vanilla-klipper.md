@@ -4,7 +4,7 @@ title: Vanilla Klipper
 
 ## Status
 
-The Rinkhals vanilla-klipper app has been retired from the app store, and a replacement app is being worked on. Until it's available, there is no vanilla Klipper app from Rinkhals.
+The Boomslang vanilla-klipper app has been retired from the app store, and a replacement app is being worked on. Until it's available, there is no vanilla Klipper app from Boomslang.
 
 ## K3 and KS1 Support
 
@@ -30,6 +30,6 @@ There is no leviQ3 port available, as this is closed-source IP of Anycubic. Howe
 
 ## Tunneled Klipper for SBCs
 
-An alternative Rinkhals APP build is available that allows running vanilla Klipper on SBCs like the Raspberry Pi 4/5. This utilizes a Rinkhals "tunnel" app which tunnels the serial MCU communication between the printer and RPi via OTG USB Serial Gadget mode.
+An alternative Boomslang APP build is available that allows running vanilla Klipper on SBCs like the Raspberry Pi 4/5. This utilizes a Boomslang "tunnel" app which tunnels the serial MCU communication between the printer and RPi via OTG USB Serial Gadget mode.
 
 More information: [https://github.com/Kobra-S1/vanilla-klipper-swu/blob/main/tunneled-klipper.md](https://github.com/Kobra-S1/vanilla-klipper-swu/blob/main/tunneled-klipper.md)

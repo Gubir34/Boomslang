@@ -4,7 +4,7 @@
 UPDATE_PATH="/useremain/update_swu"
 
 
-# Check if the printer has Rinkhals installed
+# Check if the printer has Boomslang installed
 if [ ! -e /useremain/rinkhals/.current ]; then
     if [ ! -f /useremain/rinkhals/.mute-sounds ]; then
         B=/sys/class/pwm/pwmchip0/pwm0

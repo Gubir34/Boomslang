@@ -1,5 +1,5 @@
 #
-# Main Dockerfile for building Rinkhals
+# Main Dockerfile for building Boomslang
 #
 # This multi-stage Dockerfile includes all steps to go from a clean repository to an installable SWU package.
 # Note: Buildkit and buildx are required, but should already be enabled by default in most nonlegacy Docker installations.

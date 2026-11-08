@@ -98,7 +98,7 @@ func checkProcesses() {
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime)
 
-	// Start Rinkhals Web Portal HTTP Server
+	// Start Boomslang Web Portal HTTP Server
 	go startWebServer()
 
 	// Load environment variables from .env file

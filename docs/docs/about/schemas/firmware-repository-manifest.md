@@ -5,15 +5,15 @@ title: Firmware repository
 ## Definition
 
 A firmware repository hosts stock Anycubic firmware files for one printer model
-and a `manifest.json` describing the versions it offers. Rinkhals uses these
+and a `manifest.json` describing the versions it offers. Boomslang uses these
 manifests to list the stock firmwares available for the current printer (for
 example in the touch UI when checking for a firmware update).
 
-There is one manifest per model. The Rinkhals manifest
+There is one manifest per model. The Boomslang manifest
 (`files/3-rinkhals/manifest.json`) maps each model code to its firmware
 repository manifest URL.
 
-When listing versions, Rinkhals reads the `firmwares` array, sorts entries by
+When listing versions, Boomslang reads the `firmwares` array, sorts entries by
 `version` (descending), and skips any entry whose `supported_models` is present
 but does not include the current model.
 

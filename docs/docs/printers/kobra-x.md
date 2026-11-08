@@ -5,7 +5,7 @@ title: Anycubic Kobra X (K4Pro)
 ## General
 
 - **Software base**: `KlipperC++`
-- **Supported by Rinkhals**: `No` (Blocked by RSA Signature)
+- **Supported by Boomslang**: `No` (Blocked by RSA Signature)
 - **Firmware SWU password**: `rCRgz7RMqOyAYCaQ7TgkmPPDyo3LIEqtuEhv8ZEASa7rfwP3p2XoyQZA8IYYV8W3`
 - **MCU SWU password**: `U2FsdGVkX19deTfqpXHZnB5GeyQ/dtlbHjkUnwgCi+w=`
 - **Ex/Im password**: `2YLVrATRvUEnMeXk6Vtc7qxfzYM4TJzrLnEBma8zpUKeGtseGWqp4LXs7e8KeU2u`

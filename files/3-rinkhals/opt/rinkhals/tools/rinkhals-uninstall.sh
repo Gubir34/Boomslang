@@ -18,17 +18,17 @@ if [ -e /mnt/udisk ]; then
     cp /useremain/config-backup-${DATE}.zip /mnt/udisk/config-backup-${DATE}.zip
 fi
 
-# Read mute flag before deleting Rinkhals directory
+# Read mute flag before deleting Boomslang directory
 MUTE_SOUNDS=0
 [ -f /useremain/rinkhals/.mute-sounds ] && MUTE_SOUNDS=1
 
-# Stop Rinkhals if needed
+# Stop Boomslang if needed
 if [ -e /useremain/rinkhals/.current/stop.sh ]; then
     chmod +x /useremain/rinkhals/.current/stop.sh
     /useremain/rinkhals/.current/stop.sh
 fi
 
-# Delete Rinkhals completely
+# Delete Boomslang completely
 rm -rf /useremain/rinkhals 2> /dev/null
 rm -rf /useremain/home/rinkhals 2> /dev/null
 rm -rf /useremain/home/root 2> /dev/null

@@ -1,4 +1,4 @@
-# Rinkhals Justfile — build orchestration
+# Boomslang Justfile — build orchestration
 #
 # Works inside the devcontainer out of the box. For non-devcontainer setups,
 # copy .env.example to .env and adjust the paths for your environment.
@@ -36,7 +36,7 @@ export EXTERNAL_DIR         := workspace / "build" / "1-buildroot" / "external"
 how:
     cat <<'EOF'
 
-    How To Build Rinkhals
+    How To Build Boomslang
     ---------------------
     For a full (dev) build from scratch, run:
       just build

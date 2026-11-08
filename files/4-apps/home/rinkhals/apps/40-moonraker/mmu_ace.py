@@ -1411,7 +1411,7 @@ class MmuAceController:
 
     def _spoolman_support(self) -> str:
         """Happy Hare's off/readonly/push/pull flag, gating the spool picker in
-        Mainsail and Fluidd. Nothing inside Rinkhals reads it - only the web UIs -
+        Mainsail and Fluidd. Nothing inside Boomslang reads it - only the web UIs -
         so it is derived from whether Moonraker actually has [spoolman] configured
         rather than exposed as yet another option for the user to set.
 
@@ -2753,7 +2753,7 @@ class MmuAcePatcher:
     async def _note_ttg_map_applies_next_print(self):
         """The tool-to-gate map reaches GoKlipper once, at print start (see
         patch_print_data). Changing it while a print is running only changes
-        Rinkhals' own state, which the API then reports as if it had applied.
+        Boomslang's own state, which the API then reports as if it had applied.
         Say so in the console instead of letting it look applied (#131)."""
         try:
             result = await self.ace_controller.printer.query_objects({"print_stats": ["state"]})

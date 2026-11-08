@@ -121,7 +121,7 @@ fb_draw() {
 
 
 log
-log "Starting Rinkhals installation..."
+log "Starting Boomslang installation..."
 
 
 # Capture initial framebuffer
@@ -180,13 +180,13 @@ if [ "$CURRENT_RINKHALS_PATH" != "" ] && [ "$TARGET_PATH" = "$CURRENT_RINKHALS_P
     TARGET_PATH="${TARGET_PATH}-2"
 fi
 
-log "Installing Rinkhals version $RINKHALS_VERSION to $TARGET_PATH"
+log "Installing Boomslang version $RINKHALS_VERSION to $TARGET_PATH"
 
 
-# Copy Rinkhals
+# Copy Boomslang
 progress 0.4
 
-log "Copying Rinkhals files"
+log "Copying Boomslang files"
 
 mkdir -p $TARGET_PATH
 rm -rf $TARGET_PATH/*
@@ -200,7 +200,7 @@ CP_STATUS=$?
 # to show for it. Bail out through the existing error path instead, before
 # .disable-rinkhals is cleared or the previous install is pruned.
 if [ "$CP_STATUS" != "0" ] || [ ! -e "$TARGET_PATH/usr/bin/python" ] || [ ! -d "$TARGET_PATH/home/rinkhals" ] || [ ! -d "$TARGET_PATH/opt/rinkhals" ]; then
-    log "Rinkhals files did not copy correctly, aborting installation"
+    log "Boomslang files did not copy correctly, aborting installation"
     quit
 fi
 
@@ -208,7 +208,7 @@ echo $RINKHALS_VERSION > $TARGET_PATH/.version
 
 progress 0.8
 
-log "Copying Rinkhals startup files"
+log "Copying Boomslang startup files"
 
 cp -f $SOURCE_PATH/start-rinkhals.sh /useremain/rinkhals/start-rinkhals.sh
 cp -f $SOURCE_PATH/start.sh.patch /useremain/rinkhals/start.sh.patch
@@ -217,25 +217,25 @@ echo $(basename $TARGET_PATH) > /useremain/rinkhals/.version
 rm /useremain/rinkhals/.disable-rinkhals 2> /dev/null
 
 
-# Install Rinkhals loader
+# Install Boomslang loader
 progress 0.9
 
 PRESENT=$(cat /userdata/app/gk/start.sh | grep "Rinkhals/begin")
 if [ "$PRESENT" == "" ]; then
-    log "Installing Rinkhals loader as it is missing"
+    log "Installing Boomslang loader as it is missing"
 
     cat $SOURCE_PATH/start.sh.patch >> /userdata/app/gk/start.sh
     if [ -f /userdata/app/gk/restart_k3c.sh ]; then
         cat $SOURCE_PATH/start.sh.patch >> /userdata/app/gk/restart_k3c.sh
     fi
 else
-    log "Rinkhals loader was detected, skipping installation"
+    log "Boomslang loader was detected, skipping installation"
 fi
 
-# Prune older Rinkhals installs, keep current + previous as backup
+# Prune older Boomslang installs, keep current + previous as backup
 progress 0.95
 
-log "Pruning older Rinkhals installs (keeping current + previous)..."
+log "Pruning older Boomslang installs (keeping current + previous)..."
 
 KEEP_CURRENT="$TARGET_PATH"
 KEEP_PREVIOUS=""
@@ -275,7 +275,7 @@ rm -f /useremain/update.swu
 rm -f $USB_PATH/update.swu
 
 sync
-log "Rinkhals installation complete, rebooting..."
+log "Boomslang installation complete, rebooting..."
 
 
 # Notify user

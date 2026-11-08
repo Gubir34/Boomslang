@@ -2,7 +2,7 @@
 title: Spoolman support
 ---
 
-Rinkhals can track filament usage in [Spoolman](https://github.com/Donkie/Spoolman) in two ways:
+Boomslang can track filament usage in [Spoolman](https://github.com/Donkie/Spoolman) in two ways:
 
 - **Per ACE gate** — bind each gate to a spool once, and the active spool follows the gate the
   printer loads, including at print start and at colour changes mid-print.
@@ -32,7 +32,7 @@ http://<printer-ip>/server/spoolman/status
 
 ## Per ACE gate
 
-Once `[spoolman]` is configured, the spool picker appears in Mainsail and Fluidd — Rinkhals
+Once `[spoolman]` is configured, the spool picker appears in Mainsail and Fluidd — Boomslang
 reports Happy Hare's `spoolman_support` as `readonly` whenever Spoolman is set up, and `off`
 when it is not. There is nothing else to enable.
 
@@ -68,7 +68,7 @@ unmapped gates in one print, expect gaps in the usage figures rather than wrong 
 An assignment is dropped when a **different** RFID product is inserted in that gate, since
 that is clear evidence the spool it referred to is gone.
 
-Rinkhals can also drop an assignment when a gate has read **empty** for a while, but that is
+Boomslang can also drop an assignment when a gate has read **empty** for a while, but that is
 **off by default**, so an assignment never disappears without you doing something. To turn it
 on, set the number of seconds in `moonraker.custom.conf`:
 
@@ -91,14 +91,14 @@ is not enough:
   "Highspeed PLA Black" reports the same SKU. Two rolls of the same product are
   indistinguishable to the ACE.
 
-Nothing in what the ACE reports can resolve either case, so Rinkhals does not guess. The
+Nothing in what the ACE reports can resolve either case, so Boomslang does not guess. The
 mapped spool's name and colour are shown per gate in the UI, so a stale assignment is visible
 rather than silent — check it after swapping a spool. If you write your own RFID tags with a
 unique SKU per physical roll, neither case applies and the default `spool_forget_after: 0` is a good fit.
 
 ### Assigning gates automatically
 
-Rinkhals can map an unassigned gate for you, by matching what the ACE reports against your
+Boomslang can map an unassigned gate for you, by matching what the ACE reports against your
 Spoolman inventory. It is **off by default**, because a wrong match is silent: the matched spool
 becomes the active spool when that gate loads, so the next print's usage is charged to it without
 you having confirmed the match. Turn it on in `moonraker.custom.conf`:
@@ -142,7 +142,7 @@ because the SKU is absent or uninformative more often than not:
 
 - an untagged gate has no SKU at all
 - OpenSpool tags all report the literal string `OPENSPOOL` — the hub uses the payload's
-  `protocol` field as the SKU and discards its `spool_id`. Rinkhals skips that value rather than
+  `protocol` field as the SKU and discards its `spool_id`. Boomslang skips that value rather than
   matching on it, since it would pair any two OpenSpool rolls regardless of what is on them.
   This only applies if the ACE runs custom firmware that reads non-Anycubic tags, such as
   [OpenCubic](https://github.com/Jupsi/OpenCubic); stock firmware reads Anycubic tags only, and
@@ -153,7 +153,7 @@ because the SKU is absent or uninformative more often than not:
 Colour is matched exactly, not approximately — on a real inventory the nearest non-match to one
 gate was only ΔE 3.41 (a transparent PETG against a matte white), which is well inside the
 variation between two hand-entered hex values. Any tolerance wide enough to be useful is wide
-enough to be wrong. Spoolman's own colour search defaults to a *similar-colour* match; Rinkhals
+enough to be wrong. Spoolman's own colour search defaults to a *similar-colour* match; Boomslang
 asks for an exact one.
 
 **Archived spools are never matched.** Archiving a spool is how you retire it, so debiting one
@@ -231,7 +231,7 @@ M555 S5
 ```
 
 Note `spool_id` in lower case, and `S5` rather than `S=5`. Those are Moonraker's own parameter
-name and the form that does not need a workaround: `SPOOL_ID=` only works because Rinkhals
+name and the form that does not need a workaround: `SPOOL_ID=` only works because Boomslang
 patches `set_active_spool` to accept it, and `M555 S=5` yields `params.S == "=5"`, which is why
 `kobra.py` has to strip a leading `=`. Both spellings work today; these are the ones that would
 still work without the compatibility shims.

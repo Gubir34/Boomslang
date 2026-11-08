@@ -218,7 +218,7 @@ class ScreenInfo:
 
 
 ################
-# Rinkhals update management
+# Boomslang update management
 
 class RinkhalsVersion:
     version: str
@@ -335,7 +335,7 @@ class Rinkhals:
                 logging.warning(f'Failed to fetch releases: {response.status_code}')
                 return []
         except Exception as e:
-            logging.error(f'Error listing Rinkhals versions: {e}')
+            logging.error(f'Error listing Boomslang versions: {e}')
             return []
     def get_latest_version(include_test=False):
         return (Rinkhals.get_available_versions(include_test=include_test, limit=1) or [None])[0]
@@ -361,7 +361,7 @@ class Firmware:
     # We read the generated manifests from the Rinkhals.Firmwares repo rather
     # than the website directly: the download URLs inside them already point at
     # firmwareforge and Anycubic's CDN, and raw.githubusercontent.com is the
-    # same host the installer already uses for Rinkhals releases, so no new
+    # same host the installer already uses for Boomslang releases, so no new
     # trust or TLS surface. manifests-anycubic is the current set;
     # manifests-mirror is stale and still carries thedju.net download URLs.
     repositories = {
@@ -597,7 +597,7 @@ class Diagnostic:
             except:
                 pass
 
-        # Detect if Rinkhals cannot start
+        # Detect if Boomslang cannot start
         if os.path.exists('/useremain/rinkhals/.disable-rinkhals'):
             yield Diagnostic(
                 type=DiagnosticType.WARNING,
@@ -639,10 +639,10 @@ class Diagnostic:
             pass
                 
         # TODO: Detect if no internet > Run wpa_supplicant
-        # TODO: Detect if Rinkhals is not installed
+        # TODO: Detect if Boomslang is not installed
         # TODO: Detect if there are more than one bed meshes
         # TODO: Detect if LAN mode is enabled
-        # TODO: Detect if there's enough space / too many Rinkhals installs
+        # TODO: Detect if there's enough space / too many Boomslang installs
         # TODO: Detect if gklib failed to boot
         # TODO: Detect if the printer crashed somehow
 
@@ -1645,7 +1645,7 @@ class BaseApp:
             target_path = f'{target_directory}/update-download.swu' if USING_SIMULATOR else '/useremain/update.swu'
 
             try:
-                logging.info(f'Downloading Rinkhals {version.version} from {version.url}...')
+                logging.info(f'Downloading Boomslang {version.version} from {version.url}...')
 
                 import requests
                 with requests.get(version.url, stream=True) as r:
@@ -1710,7 +1710,7 @@ class BaseApp:
                     self.modal_ota_rinkhals.button_uninstall.set_state(lv.STATE.DISABLED, True)
                     self.root_modal.clear_event_cb()
 
-                logging.info(f'Extracting Rinkhals update...')
+                logging.info(f'Extracting Boomslang update...')
                 with lvr.lock():
                     self.modal_ota_rinkhals.label_progress_text.set_text('Extracting...')
 
@@ -1720,7 +1720,7 @@ class BaseApp:
                     if not self.extract_swu():
                         break
 
-                logging.info('Starting Rinkhals update...')
+                logging.info('Starting Boomslang update...')
                 with lvr.lock():
                     self.modal_ota_rinkhals.label_progress_text.set_text('Installing...')
 
@@ -1754,10 +1754,10 @@ class BaseApp:
             self.root_modal.clear_event_cb()
             lv.unlock()
 
-            logging.info(f'Removing Rinkhals {version.version} from {version.path}...')
+            logging.info(f'Removing Boomslang {version.version} from {version.path}...')
             import shutil
             shutil.rmtree(version.path, ignore_errors=True)
-            logging.info(f'Removed Rinkhals {version.version} from {version.path}')
+            logging.info(f'Removed Boomslang {version.version} from {version.path}')
 
             self.hide_modal()
             self.show_screen(self.screen_ota_rinkhals)
@@ -2008,7 +2008,7 @@ class BaseApp:
         # Run the update script
         result = system(f'/useremain/update_swu/update.sh {params}')
 
-        # A Rinkhals update.sh run with "async" runs in the foreground and exits
+        # A Boomslang update.sh run with "async" runs in the foreground and exits
         # non-zero through quit() when the install fails (not enough space, wrong
         # model, incomplete copy). This result used to be ignored, so a failed
         # update rebooted exactly like a successful one, into the old version
@@ -2016,7 +2016,7 @@ class BaseApp:
         # status checked here, so that path only logs it.
         if result != 0:
             if params == 'async':
-                logging.error(f'Rinkhals update.sh failed with status {result}, not rebooting')
+                logging.error(f'Boomslang update.sh failed with status {result}, not rebooting')
                 return False
             logging.warning(f'update.sh returned status {result}')
 

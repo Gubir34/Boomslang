@@ -222,7 +222,7 @@ def patch_K3SysUi(binaryPath, modelCode, version):
     elif modelCode == 'KS1' and (version == '2.7.3.5' or version == '2.7.3.7'):
         buttonCallback = k3sysui.symbols['_ZZN10MainWindow21AcSettingDeviceUiInitEvENKUlRK11QModelIndexE0_clES2_']
         # Anycubic distributes this build as KS1 2.7.3.7, but the SWU writes
-        # 2.7.3.5 to /useremain/dev/version, which is what Rinkhals reads, so
+        # 2.7.3.5 to /useremain/dev/version, which is what Boomslang reads, so
         # both names map to the same K3SysUi (md5 a78d7022704e4d53e9f43b22ea22c698).
         # The callback was rebuilt on the S1 Max code base (version_log.txt:
         # k3api dev-028-s1max) and now dispatches through the same jump table
@@ -251,12 +251,12 @@ def patch_K3SysUi(binaryPath, modelCode, version):
         # AcSettingDeviceUiInit dispatches the tapped row through a jump table.
         # The Device settings menu is: row0 Printer Information, row1 ACE
         # Information, row2 CN Code, row3 Service Support, row4 Export logs.
-        # Rinkhals repurposes Service Support (relabelled "Rinkhals"), which is
+        # Boomslang repurposes Service Support (relabelled "Boomslang"), which is
         # row 3 -> case body 0x150b10. Hook that case directly; being inside the
         # row-3 body means the row is already selected, so no row guard.
         # (The previous 0x150b30 was row 4 / Export logs - the jump table keeps
         # the row index in r3, so the old row()==3 guard never matched there and
-        # Rinkhals never launched. KS1M discussion #53.)
+        # Boomslang never launched. KS1M discussion #53.)
         patchJumpAddress = 0x150b10
         patchReturnAddress = 0x150bd4
         s1CaseAlreadySelected = True
@@ -265,7 +265,7 @@ def patch_K3SysUi(binaryPath, modelCode, version):
         # Same menu layout as 2.6.9.3. Service Support is row 3 -> case body
         # 0x150ab8 (verified against the jump table at callback+0x44). The
         # earlier 0x150ad8 was row 4 / Export logs, so the UI launched from the
-        # wrong menu entry while the relabelled "Rinkhals" row showed the stock
+        # wrong menu entry while the relabelled "Boomslang" row showed the stock
         # Service Support page (the "4 white squares", KS1M discussion #53).
         patchJumpAddress = 0x150ab8
         patchReturnAddress = 0x150b7c

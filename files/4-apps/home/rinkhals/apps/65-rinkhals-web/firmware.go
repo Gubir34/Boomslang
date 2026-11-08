@@ -19,13 +19,13 @@ import (
 //     manifests-anycubic/manifest-<model_lower>.json. The mirror tracks Anycubic
 //     releases plus a community-curated changelog and direct CDN URLs.
 //
-//   - Rinkhals releases come from the GitHub releases API on this repo. We
+//   - Boomslang releases come from the GitHub releases API on this repo. We
 //     filter to non-prereleases by default; the UI can opt in to seeing test
 //     builds with ?include_prerelease=1.
 //
 // Both feeds are cached aggressively to stay well under the unauthenticated
 // 60-requests-per-hour ceiling. The Anycubic manifest is on raw.github which
-// isn't rate-limited, so a 6-hour cache there is cheap; the Rinkhals releases
+// isn't rate-limited, so a 6-hour cache there is cheap; the Boomslang releases
 // listing uses the api.github.com endpoint, capped at 30 minutes.
 
 const (
@@ -39,7 +39,7 @@ const (
 )
 
 // FirmwareStatus is the lightweight summary the dashboard chip and Manage
-// Rinkhals page read. Always includes current installed versions, plus the
+// Boomslang page read. Always includes current installed versions, plus the
 // resolved-from-upstream latest values and computed availability flags.
 type FirmwareStatus struct {
 	ModelCode               string    `json:"model_code"`
@@ -153,7 +153,7 @@ func currentKobraVersion() string {
 	return ""
 }
 
-// currentRinkhalsVersion reads the running Rinkhals release tag the same way:
+// currentRinkhalsVersion reads the running Boomslang release tag the same way:
 // prefer the env var, fall back to the .version file under .current.
 func currentRinkhalsVersion() string {
 	if v := os.Getenv("RINKHALS_VERSION"); v != "" {
@@ -294,7 +294,7 @@ func getAnycubicCatalog(modelCode string, force bool) (*AnycubicCatalog, error) 
 	return fresh, nil
 }
 
-// --- Rinkhals releases catalog ---
+// --- Boomslang releases catalog ---
 
 type ghReleaseEntry struct {
 	TagName     string           `json:"tag_name"`

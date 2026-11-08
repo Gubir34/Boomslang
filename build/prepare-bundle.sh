@@ -31,7 +31,7 @@ find "$BUNDLE_DIR/" -type l -exec sh -c '
     done
     ' sh {} +
 
-# Validate and set Rinkhals version
+# Validate and set Boomslang version
 if [ -z "$VERSION" ] || {
     [ "$VERSION" != "dev" ] &&
     ! echo "$VERSION" | grep -Eq '^[0-9]{8}_[0-9]{2}(_[a-z0-9_-]+)?$' &&

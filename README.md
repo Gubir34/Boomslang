@@ -19,7 +19,7 @@ By using Boomslang, you will keep all stock Anycubic features (print screen, Any
 - [Apps system](https://github.com/rinkhals-community/Rinkhals.Apps) (OctoEverywhere, Cloudflare, Tailscale, ...)
 
 Latest version will likely support the two latest firmwares from Anycubic, unless specified. For older firmware please check older releases or our [firmware archive](https://rinkhals.firmwareforge.org).
-Here are the supported GoKlipper / K3-family printers and firmwares with the latest Rinkhals release:
+Here are the supported GoKlipper / K3-family printers and firmwares with the latest Boomslang release:
 | Model  | Tested firmwares | Notes |
 | -- | -- | -- |
 | Kobra 3 (+ combo) | `2.4.5` `2.4.6.7` |
@@ -39,13 +39,13 @@ The K4-family currently has a separate status:
 
 Some Kobra X firmware packages are publicly available and the SWU password has also been recovered.
 
-However, Anycubic moved from the K3 software base (GoKlipper) to a K4 software base using a C++ Klipper port. Because of this, Kobra X support is not expected to be a simple port of the current Rinkhals stack.
+However, Anycubic moved from the K3 software base (GoKlipper) to a K4 software base using a C++ Klipper port. Because of this, Kobra X support is not expected to be a simple port of the current Boomslang stack.
 
-In addition, the SWU update flow requires a trusted certificate for package acceptance. Until a reliable bypass is discovered, SWU-based firmware injection similar to Rinkhals is not currently feasible on Kobra X.
+In addition, the SWU update flow requires a trusted certificate for package acceptance. Until a reliable bypass is discovered, SWU-based firmware injection similar to Boomslang is not currently feasible on Kobra X.
 
 ## General Information
 
-In case you're wondering this project is named after rinkhals, a sub-species of Cobras ... Kobra ... Rinkhals 👏
+In case you're wondering: Rinkhals is named after the rinkhals, a sub-species of Cobras ... Kobra ... Rinkhals 👏 Boomslang keeps the snake theme with another South African snake, the boomslang.
 
 You can join the Rinkhals community on Discord: https://discord.gg/bQcrsteFGU
 
@@ -57,27 +57,27 @@ Since people have been asking, donations are accepted, but please remember this 
 </p>
 
 
-## Rinkhals installation
+## Boomslang installation
 
 > [!WARNING]
 > **Make sure you're confident tweaking your printer and you understand what you're doing. We're not responsible if you brick your printer (even if there's some [documentation](https://rinkhals-community.github.io/Rinkhals/printers/recover-boot-issues/)) about that)**
 
 > [!CAUTION]
-> Many users want to change their Klipper printer configuration (the printer.cfg file). We strongly advise against modifying the stock printer configuration. Rinkhals offers additional protection you don't have while modifying directly your printer configuration. **We won't offer any support** and **your printer might not work properly or not boot anymore**. Check the documentation for more information: [Printer configuration](https://rinkhals-community.github.io/Rinkhals/about/printer-configuration/)
+> Many users want to change their Klipper printer configuration (the printer.cfg file). We strongly advise against modifying the stock printer configuration. Boomslang offers additional protection you don't have while modifying directly your printer configuration. **We won't offer any support** and **your printer might not work properly or not boot anymore**. Check the documentation for more information: [Printer configuration](https://rinkhals-community.github.io/Rinkhals/about/printer-configuration/)
 
-A [quick start guide](https://rinkhals-community.github.io/Rinkhals/guides/rinkhals-quick-start/) is available to get Rinkhals up and running on your printer.
+A [quick start guide](https://rinkhals-community.github.io/Rinkhals/guides/rinkhals-quick-start/) is available to get Boomslang up and running on your printer.
 
-There are two options to install Rinkhals:
-1. Use the provided Rinkhals installer (named **install-*.swu**)
+There are two options to install Boomslang:
+1. Use the provided Boomslang installer (named **install-*.swu**)
 2. Install the raw swu directly (named **update-*.swu**)
 
 Either way, you'll need to:
-- Download the release / file you want from the [Releases](https://github.com/rinkhals-community/Rinkhals/releases) page
+- Download the release / file you want from the [Releases](https://github.com/Gubir34/Boomslang/releases) page
 - Rename the downloaded SWU file as **update.swu**
 - Copy it in a directory named **aGVscF9zb3Nf** (or **update** for the Kobra 2 Pro in certain conditions) on a FAT32 USB drive (MBR, GPT is not supported)
 - Plug the USB drive in your printer
 
-More detailed information about the Rinkhals installer are available in the [documentation](https://rinkhals-community.github.io/Rinkhals/about/rinkhals-installer/)
+More detailed information about the Boomslang installer are available in the [documentation](https://rinkhals-community.github.io/Rinkhals/about/rinkhals-installer/)
 
 For more information about installation, firmware updates and details about specific situations, go to https://rinkhals-community.github.io/Rinkhals/about/installation-and-firmware-updates/
 
@@ -89,12 +89,12 @@ For more information about installation, firmware updates and details about spec
 
 ## Touch UI
 
-After installation, Rinkhals provides a touch UI accessible from the printer screen when you tap the Settings icon, then tap Rinkhals.
+After installation, Boomslang provides a touch UI accessible from the printer screen when you tap the Settings icon, then tap Boomslang.
 
 The main menu gives you quick access to four areas arranged in a 2×2 grid:
 - **Manage apps** — enable, disable, start and stop individual apps
 - **App Store** — browse and install community apps directly from the printer screen (see below)
-- **Updates** — check for and apply OTA Rinkhals updates
+- **Updates** — check for and apply OTA Boomslang updates
 - **Settings** — advanced options, reboot controls and system information
 
 <p align="center">
@@ -104,9 +104,9 @@ The main menu gives you quick access to four areas arranged in a 2×2 grid:
     <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-updates.png">
 </p>
 
-## Rinkhals Installer
+## Boomslang Installer
 
-From the release pages, you'll find the installer-\*.swu files for your printer model. This is an interactive touch tool to install and update Rinkhals and system firmware updates.
+From the release pages, you'll find the installer-\*.swu files for your printer model. This is an interactive touch tool to install and update Boomslang and system firmware updates.
 
 You can find more information in [the documentation](https://rinkhals-community.github.io/Rinkhals/about/rinkhals-installer/)
 
@@ -116,22 +116,22 @@ You can find more information in [the documentation](https://rinkhals-community.
 > Those printers are quite weak in terms of CPU and Memory. Every additional app / feature and client you connect to the web interface will make the experience slower and might end up in crashes.<br />
 > Having said that, running your printer with Moonraker, 1\~2 apps and 1\~2 connected clients should work fine.
 
-An apps system is provided in Rinkhals. It allows for the users to easily add some features to their printer. Some default ones ship with every release (Moonraker, Mainsail, Fluidd, mjpg-streamer, Remote display via VNC, Hostname/mDNS, the opt-in Firmware Collector, and the Rinkhals monitor for MQTT) and additional community apps are available on separate repos like:
+An apps system is provided in Boomslang. It allows for the users to easily add some features to their printer. Some default ones ship with every release (Moonraker, Mainsail, Fluidd, mjpg-streamer, Remote display via VNC, Hostname/mDNS, the opt-in Firmware Collector, and the Boomslang monitor for MQTT) and additional community apps are available on separate repos like:
 - https://github.com/rinkhals-community/Rinkhals.Apps (Tailscale, Cloudflare Tunnel, OctoApp, OctoEverywhere, NFS mount, stunnel, and more)
-- https://github.com/basvd/Rinkhals.WebUI (a web interface for Rinkhals)
+- https://github.com/basvd/Rinkhals.WebUI (a web interface for Boomslang)
 
 The default apps are listed in detail under [Features and built-in apps](https://rinkhals-community.github.io/Rinkhals/about/#features-and-built-in-apps) in the documentation. Instructions on how to install or develop apps live in the Rinkhals.Apps repository.
 
 ### App Store
 
-The Rinkhals Touch UI includes a built-in **App Store** that lets you browse, install and remove community apps without leaving the printer screen. Apps are sourced directly from [rinkhals-community/Rinkhals.Apps](https://github.com/rinkhals-community/Rinkhals.Apps) on GitHub.
+The Boomslang Touch UI includes a built-in **App Store** that lets you browse, install and remove community apps without leaving the printer screen. Apps are sourced directly from [rinkhals-community/Rinkhals.Apps](https://github.com/rinkhals-community/Rinkhals.Apps) on GitHub.
 
 <p align="center">
     <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-app-store.png">
     <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-app-store-detail.png">
 </p>
 
-To use it, open the Rinkhals Touch UI and tap **App Store**. The store will fetch the latest app list, show version info and flag already-installed apps. Tap any app to see its description, then tap **Install** or **Remove** as needed.
+To use it, open the Boomslang Touch UI and tap **App Store**. The store will fetch the latest app list, show version info and flag already-installed apps. Tap any app to see its description, then tap **Install** or **Remove** as needed.
 
 
 <p align="center">
@@ -146,7 +146,7 @@ To use it, open the Rinkhals Touch UI and tap **App Store**. The store will fetc
 > Run `git config core.autocrlf false` **BEFORE** cloning the repo
 
 More and more contributors help this project move faster. Thank you everyone!
-If you want to help Rinkhals and contribute, whether it's code, documentation or sharing good ideas, come join us on Discord!
+If you want to help and contribute, whether it's code, documentation or sharing good ideas, the upstream Rinkhals community is on Discord!
 
 <a href="https://github.com/rinkhals-community/Rinkhals/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=rinkhals-community/Rinkhals" />

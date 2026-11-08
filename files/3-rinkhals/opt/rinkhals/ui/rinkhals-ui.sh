@@ -14,7 +14,7 @@ cd $(dirname $0)/../../..
 RINKHALS_ROOT=$(pwd)
 
 echo
-echo "-- Rinkhals UI --"
+echo "-- Boomslang UI --"
 echo "Root: $RINKHALS_ROOT"
 echo
 

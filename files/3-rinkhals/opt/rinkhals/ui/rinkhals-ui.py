@@ -46,7 +46,7 @@ if USING_SIMULATOR:
     )
 
 
-# Detect Rinkhals root
+# Detect Boomslang root
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ASSETS_PATH = os.path.join(SCRIPT_PATH, 'assets')
 
@@ -491,18 +491,18 @@ class RinkhalsUiApp(BaseApp):
                 button_restart = lvr.button(panel_buttons)
                 button_restart.set_width(lv.pct(100))
                 button_restart.set_text('Restart Boomslang')
-                button_restart.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto restart Rinkhals?', action='Yes', callback=lambda: self.restart_rinkhals()), lv.EVENT_CODE.CLICKED, None)
+                button_restart.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto restart Boomslang?', action='Yes', callback=lambda: self.restart_rinkhals()), lv.EVENT_CODE.CLICKED, None)
                 
                 button_stock = lvr.button(panel_buttons)
                 button_stock.set_width(lv.pct(100))
                 button_stock.set_text('Switch to stock')
-                button_stock.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto switch to stock firmware?\n\nYou can reboot your printer\nto start Rinkhals again', action='Yes', callback=lambda: self.stop_rinkhals()), lv.EVENT_CODE.CLICKED, None)
+                button_stock.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto switch to stock firmware?\n\nYou can reboot your printer\nto start Boomslang again', action='Yes', callback=lambda: self.stop_rinkhals()), lv.EVENT_CODE.CLICKED, None)
 
                 button_disable = lvr.button(panel_buttons)
                 button_disable.set_width(lv.pct(100))
                 button_disable.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
                 button_disable.set_text('Disable Boomslang')
-                button_disable.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto disable Rinkhals?\n\nYou will need to reinstall\nRinkhals to start it again', action='Yes', action_color=lvr.COLOR_DANGER, callback=lambda: self.disable_rinkhals()), lv.EVENT_CODE.CLICKED, None)
+                button_disable.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto disable Boomslang?\n\nYou will need to reinstall\nRinkhals to start it again', action='Yes', action_color=lvr.COLOR_DANGER, callback=lambda: self.disable_rinkhals()), lv.EVENT_CODE.CLICKED, None)
 
         with lvr.lock():
             self.layout_ota()
@@ -1150,7 +1150,7 @@ class RinkhalsUiApp(BaseApp):
 
         self.quit()
     def restart_rinkhals(self, e=None):
-        logging.info('Restarting Rinkhals...')
+        logging.info('Restarting Boomslang...')
 
         if not USING_SIMULATOR:
             self.clear()
@@ -1158,7 +1158,7 @@ class RinkhalsUiApp(BaseApp):
 
         self.quit()
     def stop_rinkhals(self, e=None):
-        logging.info('Stopping Rinkhals...')
+        logging.info('Stopping Boomslang...')
 
         if not USING_SIMULATOR:
             self.clear()
@@ -1166,7 +1166,7 @@ class RinkhalsUiApp(BaseApp):
 
         self.quit()
     def disable_rinkhals(self, e=None):
-        logging.info('Disabling Rinkhals...')
+        logging.info('Disabling Boomslang...')
 
         if not USING_SIMULATOR:
             self.clear()

@@ -19,7 +19,7 @@ This section covers generic and specific documentation about the Anycubic Kobra 
 
 ## Printers
 
-### Supported by Rinkhals (GoKlipper / K3)
+### Supported by Boomslang (GoKlipper / K3)
 - [Anycubic Kobra 2 Pro](kobra-2-pro.md)
 - [Anycubic Kobra 3](kobra-3.md)
 - [Anycubic Kobra 3 V2](kobra-3-v2.md)

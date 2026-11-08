@@ -9,7 +9,7 @@ check_compatibility
 
 quit() {
     echo
-    log "/!\\ Startup failed, stopping Rinkhals..."
+    log "/!\\ Startup failed, stopping Boomslang..."
 
     if [ ! -f /useremain/rinkhals/.mute-sounds ]; then
         B=/sys/class/pwm/pwmchip0/pwm0
@@ -47,7 +47,7 @@ fi
 BOOT_ID=$(cat /tmp/rinkhals/bootid)
 
 log
-log "[$BOOT_ID] Starting Rinkhals..."
+log "[$BOOT_ID] Starting Boomslang..."
 
 echo
 echo "          ██████████              "
@@ -70,9 +70,9 @@ echo
 log " --------------------------------------------------"
 log "| Kobra model: $KOBRA_MODEL ($KOBRA_MODEL_CODE)"
 log "| Kobra firmware: $KOBRA_VERSION"
-log "| Rinkhals version: $RINKHALS_VERSION"
-log "| Rinkhals root: $RINKHALS_ROOT"
-log "| Rinkhals home: $RINKHALS_HOME"
+log "| Boomslang version: $RINKHALS_VERSION"
+log "| Boomslang root: $RINKHALS_ROOT"
+log "| Boomslang home: $RINKHALS_HOME"
 log " --------------------------------------------------"
 echo
 
@@ -342,7 +342,7 @@ for APP in $APPS; do
     fi
 
     if [ "$APP_SCHEMA_VERSION" != "1" ]; then
-        log "  - Skipped $APP ($APP_ROOT) as it is not compatible with this version of Rinkhals"
+        log "  - Skipped $APP ($APP_ROOT) as it is not compatible with this version of Boomslang"
         continue
     fi
 
@@ -374,7 +374,7 @@ rm /useremain/rinkhals/.disable-rinkhals
 rm /useremain/rinkhals/.reboot-marker 2> /dev/null
 
 echo
-log "Rinkhals started"
+log "Boomslang started"
 
 ta_da() {
     B=/sys/class/pwm/pwmchip0/pwm0

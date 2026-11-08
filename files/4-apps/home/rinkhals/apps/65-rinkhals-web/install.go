@@ -18,7 +18,7 @@ import (
 )
 
 // Firmware install: a unified flow that handles both Anycubic stock firmware
-// SWUs and Rinkhals release SWUs. The mechanism on the printer is the same in
+// SWUs and Boomslang release SWUs. The mechanism on the printer is the same in
 // both cases:
 //
 //   1. Download the .swu to /useremain/update.swu
@@ -27,7 +27,7 @@ import (
 //   4. Patch the inner update.sh to suppress self-cleanup and the final reboot
 //      (we want to control rebooting ourselves so the UI can report status)
 //   5. Run /useremain/update_swu/update.sh
-//   6. Re-append start.sh.patch to /userdata/app/gk/start.sh if Rinkhals's
+//   6. Re-append start.sh.patch to /userdata/app/gk/start.sh if Boomslang's
 //      loader is missing (defensive - only matters when an Anycubic install
 //      wiped /userdata, which shouldn't happen but we double-check)
 //   7. Touch /useremain/rinkhals/.reboot-marker and reboot
@@ -44,7 +44,7 @@ import (
 //
 //   - Basic auth on every endpoint (same as the rest of /api/*)
 //   - Two-step preflight + commit, with single-use 60s-TTL install_id
-//   - URL allowlist (Rinkhals = our GitHub release attachments,
+//   - URL allowlist (Boomslang = our GitHub release attachments,
 //     Anycubic = cdn.cloud-universe.anycubic.com)
 //   - Print-state gate via fetchPrinterState before minting a token
 //   - Concurrency mutex (second install request returns 409)
@@ -115,10 +115,10 @@ type preflightToken struct {
 }
 
 // compatibilityReport explains whether installing the target SWU is safe given
-// what's running. For Rinkhals SWUs this is always true. For Anycubic SWUs we
-// check whether the current Rinkhals install has patches for the target stock
-// firmware version - if not, Rinkhals will refuse to load on next boot and the
-// user will be on stock until they install a compatible Rinkhals release.
+// what's running. For Boomslang SWUs this is always true. For Anycubic SWUs we
+// check whether the current Boomslang install has patches for the target stock
+// firmware version - if not, Boomslang will refuse to load on next boot and the
+// user will be on stock until they install a compatible Boomslang release.
 type compatibilityReport struct {
 	Compatible              bool     `json:"compatible"`
 	Warnings                []string `json:"warnings"`
@@ -169,7 +169,7 @@ func randomToken() string {
 }
 
 // validateAssetURL ensures the URL is from a trusted source for the given
-// source category. Rinkhals SWUs must come from the rinkhals-community GitHub
+// source category. Boomslang SWUs must come from the rinkhals-community GitHub
 // release attachments; Anycubic SWUs must come from Anycubic's CDN or the
 // raw.githubusercontent.com manifest mirror's recorded URL. Anything else is
 // rejected so we don't allow installing an arbitrary attacker-supplied SWU.
@@ -201,10 +201,10 @@ func validateAssetURL(source, assetURL string) error {
 
 // --- compatibility check ---
 
-// checkAnycubicCompatibility verifies that the currently-installed Rinkhals
-// has patches for the target Anycubic firmware version. Rinkhals ships patches
+// checkAnycubicCompatibility verifies that the currently-installed Boomslang
+// has patches for the target Anycubic firmware version. Boomslang ships patches
 // as files under opt/rinkhals/patches/ named like K3SysUi.KS1_2.7.2.1.* and
-// gkapi.KS1_2.7.2.1.*. If the corresponding files don't exist, Rinkhals's
+// gkapi.KS1_2.7.2.1.*. If the corresponding files don't exist, Boomslang's
 // start.sh will refuse to apply the loader and the printer will boot stock.
 func checkAnycubicCompatibility(targetVersion string) *compatibilityReport {
 	report := &compatibilityReport{
@@ -220,7 +220,7 @@ func checkAnycubicCompatibility(targetVersion string) *compatibilityReport {
 	patchesDir := "/useremain/rinkhals/.current/opt/rinkhals/patches"
 	entries, err := os.ReadDir(patchesDir)
 	if err != nil {
-		// No Rinkhals installed at all - installing a stock Anycubic firmware
+		// No Boomslang installed at all - installing a stock Anycubic firmware
 		// is fine in that case (there's nothing to be broken).
 		report.RinkhalsPatchesForTarget = true
 		return report
@@ -765,16 +765,16 @@ func patchUpdateScript() error {
 	return nil
 }
 
-// rinkhalsInstallerGuard is how a Rinkhals update.sh starts: unless it is given
+// rinkhalsInstallerGuard is how a Boomslang update.sh starts: unless it is given
 // "async" it relaunches itself in the background and exits 0. That is what the
 // USB install path needs, where the stock updater would otherwise kill it, but
 // run from here it means we only ever saw the 0 from the copy that relaunched
-// itself, never the result of the install. A failed Rinkhals update (not enough
+// itself, never the result of the install. A failed Boomslang update (not enough
 // space, wrong model, incomplete copy) was reported as a success and the printer
 // rebooted into the old version (found by mane in #170).
 const rinkhalsInstallerGuard = `if [ "$1" != "async" ]`
 
-// updateScriptArgs returns the arguments to run update.sh with. A Rinkhals
+// updateScriptArgs returns the arguments to run update.sh with. A Boomslang
 // installer gets "async" so it runs in the foreground and its exit status is the
 // real one. Anything else, Anycubic's own update.sh included, is run exactly as
 // before, with no arguments.
@@ -813,7 +813,7 @@ func ensureStartShPatch() error {
 	if strings.Contains(string(data), "Rinkhals/begin") {
 		return nil
 	}
-	// Find the patch file in the freshly-installed Rinkhals tree.
+	// Find the patch file in the freshly-installed Boomslang tree.
 	patchFile := "/useremain/rinkhals/start.sh.patch"
 	if !fileExists(patchFile) {
 		return fmt.Errorf("start.sh.patch not present after install")

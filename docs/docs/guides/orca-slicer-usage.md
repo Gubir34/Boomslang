@@ -12,9 +12,9 @@ Download and install the latest OrcaSlicer application from: [Official OrcaSlice
 
     Do not use websites like "orcaslicer.net", "orcaslicer.co" or "orca-slicer.com" as those are not the official websites.
 
-Make sure you have Rinkhals installed on your printer. 
+Make sure you have Boomslang installed on your printer. 
 
-For the installation of Rinkhals, use [this guide](../about/installation-and-firmware-updates.md).
+For the installation of Boomslang, use [this guide](../about/installation-and-firmware-updates.md).
 
 When you first start OrcaSlicer, you will be prompted to select a printer preset. Look for your printer and the nozzle type you are using.
 
@@ -74,6 +74,6 @@ If your printer suddenly halts with a "Timer too close" error during prints:
 - **Turn off Dynamic Cooling:** Go to Filament settings > Cooling. Disable "Dynamic overhang cooling" or minimize the frequency of fan speed changes. Rapid temperature/fan adjustment commands (`M106` / `M160`) interleaved with tight G-Code movements easily overload the host communications.
 
 **Anycubic Slicer Next ACE Connection Issues**
-If you are using Anycubic Slicer Next (based on Orca) and experience errors where the slicer fails to detect the ACE unit or complains about ACE status, ensure your firmware is updated to **Rinkhals 20260501_01** or later, which completely resolves the `ACE missing` error logic payload from Slicer Next.
+If you are using Anycubic Slicer Next (based on Orca) and experience errors where the slicer fails to detect the ACE unit or complains about ACE status, ensure your firmware is updated to **Boomslang 20260501_01** or later, which completely resolves the `ACE missing` error logic payload from Slicer Next.
 
 **Happy Printing!**

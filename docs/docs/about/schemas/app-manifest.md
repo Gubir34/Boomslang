@@ -4,16 +4,16 @@ title: App
 
 ## Definition
 
-Every Rinkhals app ships an `app.json` file next to its `app.sh`. This manifest
-describes the app to Rinkhals: its name, version and description, optional
-resource hints, and any settings that should be exposed in the Rinkhals touch UI.
+Every Boomslang app ships an `app.json` file next to its `app.sh`. This manifest
+describes the app to Boomslang: its name, version and description, optional
+resource hints, and any settings that should be exposed in the Boomslang touch UI.
 
-At startup Rinkhals reads `$version` and only loads apps whose schema version it
+At startup Boomslang reads `$version` and only loads apps whose schema version it
 understands (currently `1`). Apps with a missing or unsupported `$version` are
 skipped. The `name`, `description`, `version` and `properties` fields are also
 read by the touch UI to render the app's settings page.
 
-JSON comments (`//`) are tolerated in `app.json`; Rinkhals strips them before
+JSON comments (`//`) are tolerated in `app.json`; Boomslang strips them before
 parsing.
 
 ## Schema
@@ -76,7 +76,7 @@ Property `type` values:
         "memory": 0 // Memory usage in MB
     },
 
-    // Those properties will be exposed in Rinkhals UI
+    // Those properties will be exposed in Boomslang UI
     "properties": {
         "text_input": {
             "display": "IP address", // Optional: if display is not set, the property won't be shown in the UI

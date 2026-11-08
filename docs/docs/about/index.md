@@ -1,34 +1,34 @@
 ---
-title: Rinkhals project
+title: Boomslang project
 weight: 0
 ---
 
 ## Core principles
 
-The goal of Rinkhals is to expand existing Anycubic features with better compatibility, apps and more. It will likely not support all use cases, like running vanilla Klipper or your specific feature / plugin.
+The goal of Boomslang is to expand existing Anycubic features with better compatibility, apps and more. It will likely not support all use cases, like running vanilla Klipper or your specific feature / plugin.
 
 Even though progress have been made for running vanilla Klipper (still not working), the goal is NOT to provide a complete replacement for Anycubic firmware, but instead to complement stock firmware.
 
-Rinkhals is targeted at a wide audience, not experts. I designed it to be as easy to use as possible with the default configuration for anyone to use. It is still a firmware mod and people should avoid using it if they are not comfortable potentially making their printer not work anymore. Because of that, experts might find the firmware still too limited, it's intended even though I exposed ways to go deeper if needed.
+Boomslang is targeted at a wide audience, not experts. I designed it to be as easy to use as possible with the default configuration for anyone to use. It is still a firmware mod and people should avoid using it if they are not comfortable potentially making their printer not work anymore. Because of that, experts might find the firmware still too limited, it's intended even though I exposed ways to go deeper if needed.
 
-Rinkhals includes many firmware protection features. It is designed as an overlay and won't modify any files in stock firmware except for the launcher script. Then everyhting is isolated to allow reverting back to stock very easily. Rinkhals will disable itself if anything goes wrong during its startup.
+Boomslang includes many firmware protection features. It is designed as an overlay and won't modify any files in stock firmware except for the launcher script. Then everyhting is isolated to allow reverting back to stock very easily. Boomslang will disable itself if anything goes wrong during its startup.
 
-For anyone curious enough: [Rinkhals internals](how-rinkhals-works.md)
+For anyone curious enough: [Boomslang internals](how-rinkhals-works.md)
 
 ## Kobra X status
 
 Some Kobra X firmware images are available publicly and the SWU password is known.
 
-However, the software stack differs significantly from the K3 family. Anycubic appears to have moved from GoKlipper-based firmware to a K4 base with a C++ Klipper port. Because of this, Kobra X support is not expected to be a straightforward Rinkhals port.
+However, the software stack differs significantly from the K3 family. Anycubic appears to have moved from GoKlipper-based firmware to a K4 base with a C++ Klipper port. Because of this, Kobra X support is not expected to be a straightforward Boomslang port.
 
 Additionally, Kobra X SWU updates appear to require certificate validation. Until a reliable method is found to bypass or satisfy this requirement, Rinkhals-style SWU injection is not currently feasible on Kobra X.
 
 
 ## Summary
 
-- There are no prerequisites for Rinkhals, except version compatibility
+- There are no prerequisites for Boomslang, except version compatibility
 - [Installation instructions](installation-and-firmware-updates.md)
-- Rinkhals will not remove any feature from Anycubic, just add more
+- Boomslang will not remove any feature from Anycubic, just add more
   - The only difference is the camera not being available in Anycubic apps by default. This can be changed, check the [FAQ](../faq.md)
 - After installation; Orca, OctoApp, Mainsail and more will work directly without any special configuration (except adding the printer IP of course)
 
@@ -44,7 +44,7 @@ TLDR:
 
 ADB is a protocol and client / server programs to help remote accessing and debugging Android devices. Nowadays it is used as a remote access protocol on many other devices.
 
-ADB is bundled but disabled in most Anycubic Kobra firmwares (except for the KS1). Rinkhals re-enables ADB on startup. ADB listens on port 5555 by default.
+ADB is bundled but disabled in most Anycubic Kobra firmwares (except for the KS1). Boomslang re-enables ADB on startup. ADB listens on port 5555 by default.
 
 To connect, you'll need to install the ADB client usually available in Android SDK platform tools: https://developer.android.com/tools/adb
 
@@ -58,9 +58,9 @@ adb shell
 ### SSH
 
 OpenSSH is bundled but disbaled in most Anycubic Kobra firmwares (except for the KS1). 
-Rinkhals bundles Dropbear, a lightweight SSH server alternative to OpenSSH.
+Boomslang bundles Dropbear, a lightweight SSH server alternative to OpenSSH.
 
-During Rinkhals startup, Dropbear is started and listens on port 22. Default root credentials are used for password authentication exclusively.
+During Boomslang startup, Dropbear is started and listens on port 22. Default root credentials are used for password authentication exclusively.
 
 On the K2P, K3, K3V2 and KS1, the root password is `rockchip`
 On the K3M, the root password is not yet known.
@@ -68,7 +68,7 @@ On the K3M, the root password is not yet known.
 
 ### Default apps
 
-System apps are normal Rinkhals apps that are bundled in every Rinkhals release. They can still be enabled or disabled depending on your preference, and they can be overriden by adding a user app with the same name.
+System apps are normal Boomslang apps that are bundled in every Boomslang release. They can still be enabled or disabled depending on your preference, and they can be overriden by adding a user app with the same name.
 
 
 #### Hostname & DNS
@@ -91,7 +91,7 @@ When no custom hostname is configured, one is auto-generated from the printer mo
 
 Moonraker is an API gateway for Klipper. It exposes Klipper information and interactions to 3rd party clients using web API and websockets.
 
-Rinkhals is using [vanilla Moonraker](https://github.com/Arksine/moonraker) plus [a special Kobra component](https://github.com/rinkhals-community/Rinkhals/blob/master/files/4-apps/home/rinkhals/apps/40-moonraker/kobra.py). This component is used to modify vanilla Moonraker behavior and adapt it to GoKlipper.
+Boomslang is using [vanilla Moonraker](https://github.com/Arksine/moonraker) plus [a special Kobra component](https://github.com/rinkhals-community/Rinkhals/blob/master/files/4-apps/home/rinkhals/apps/40-moonraker/kobra.py). This component is used to modify vanilla Moonraker behavior and adapt it to GoKlipper.
 
 When using GoKlipper and LAN mode, this component will intercept Print calls from Mainsail, Fluid, Orca and more and replace it with a proprietary Anycubic call. This call allows a few settings to be changed, such as Bed leveling on print start, flow calibration and resonance testing.
 By default, those settings are all disabled for every print. This behavior can be changed using [app configuration](apps/configuration.md).
@@ -153,7 +153,7 @@ Please refer to Mainsail documentation above as the behavior is exactly the same
 
 #### mjpg-streamer
 
-mjpg-streamer is a lightweight web server to expose a camera stream over HTTP. In Rinkhals, it is used to expose the connected cameras in Mainsail, Fluidd and other Moonraker clients.
+mjpg-streamer is a lightweight web server to expose a camera stream over HTTP. In Boomslang, it is used to expose the connected cameras in Mainsail, Fluidd and other Moonraker clients.
 
 When starting, this app will scan for connected cameras and start one process for each of them. The first process will listen to port 8080, the next 8081 and so on.
 
@@ -183,7 +183,7 @@ When enabled and started, you can connect your VNC client to port 5900 or access
 | Memory usage | ? |
 
 
-#### Rinkhals monitor
+#### Boomslang monitor
 
 This app allows to collect system metrics and expose them in a MQTT server. The data is preformatted to be discovered and used with Home Assistant but might be used by anything reading MQTT messages.
 

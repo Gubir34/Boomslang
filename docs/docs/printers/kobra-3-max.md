@@ -5,7 +5,7 @@ title: Anycubic Kobra 3 Max
 ## General
 
 - **Software base**: `GoKlipper`
-- **Supported by Rinkhals**: `Yes`
+- **Supported by Boomslang**: `Yes`
 - **SWU password**: `4DKXtEGStWHpPgZm8Xna9qluzAI8VJzpOsEIgd8brTLiXs8fLSu3vRx8o7fMf4h6`
 - **Ex/Im password**: `3BPHsCFRsVJdOfYl9Wmb8pkyoZH7UIyqMrDFnc9aqSJhWtudJQnx6Qk9m4JQc3g5`
 - **SSH root password**: `Unknown`

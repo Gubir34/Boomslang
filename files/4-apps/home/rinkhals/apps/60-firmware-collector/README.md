@@ -1,6 +1,6 @@
 # Firmware Collector (opt-in)
 
-This Rinkhals app helps the community catch new Anycubic firmware
+This Boomslang app helps the community catch new Anycubic firmware
 releases faster. It is **disabled by default**. You must enable it
 explicitly before it does anything.
 
@@ -43,7 +43,7 @@ Only these fields, only when a new firmware is announced:
 | `package_md5`      | (Anycubic-supplied md5 of the blob)           |
 | `package_size`     | (bytes)                                       |
 | `zone`             | `us`, `eu`, `cn` (from device.ini)            |
-| `rinkhals_version` | the Rinkhals build that sent the notification |
+| `rinkhals_version` | the Boomslang build that sent the notification |
 
 ## What it does NOT send
 
@@ -62,7 +62,7 @@ The app never transmits:
 ## Why this is useful
 
 The Rinkhals team needs to obtain new firmware as soon as Anycubic
-releases it in order to produce Rinkhals patches. Today this is done
+releases it in order to produce Boomslang patches. Today this is done
 with a single test printer that has its own certificate. Anycubic's
 OTA server only tells that printer what is newer than its currently
 installed version, and only within that printer's geographic zone.
@@ -77,7 +77,7 @@ community archive can fetch it from its own infrastructure.
 
 ## How to enable
 
-Toggle this app on from the Rinkhals touchscreen UI, or create the
+Toggle this app on from the Boomslang touchscreen UI, or create the
 enable marker manually over SSH:
 
 ```sh
@@ -96,7 +96,7 @@ All activity is logged to `/tmp/rinkhals/app-firmware-collector.log`.
 
 ## Configuration
 
-Tunable from the app properties in the Rinkhals UI, or by editing
+Tunable from the app properties in the Boomslang UI, or by editing
 `/useremain/home/rinkhals/apps/60-firmware-collector.config`:
 
 - `ingest_endpoint` -- default `https://ingest.firmwareforge.org/v1/notify`
@@ -105,5 +105,5 @@ Tunable from the app properties in the Rinkhals UI, or by editing
 
 ## License and source
 
-Part of the Rinkhals project. See the top-level repository for license
+Part of the Boomslang project. See the top-level repository for license
 and contribution information.

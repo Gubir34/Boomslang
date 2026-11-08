@@ -17,7 +17,7 @@ for i in $installs; do
         continue
     fi
     
-    # Actually delete any other folder found in the Rinkhals root
+    # Actually delete any other folder found in the Boomslang root
     rm -rf "$i"
 done
 

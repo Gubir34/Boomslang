@@ -10,11 +10,11 @@
     let activeLog = $state('/tmp/rinkhals/rinkhals.log');
     // These are the live logs the running processes actually write, all under
     // RINKHALS_LOGS=/tmp/rinkhals (tmpfs) except Moonraker:
-    //  - Rinkhals: tools.sh log() appends to /tmp/rinkhals/rinkhals.log for the
+    //  - Boomslang: tools.sh log() appends to /tmp/rinkhals/rinkhals.log for the
     //    whole session. (/useremain/rinkhals/rinkhals.log is only the early boot
     //    loader stub, written before tools.sh and then frozen, so it goes stale.)
     //  - gklib/gkapi: live logs in /tmp; the /useremain/log/*.log copies are the
-    //    stock Anycubic files and go stale once Rinkhals takes over.
+    //    stock Anycubic files and go stale once Boomslang takes over.
     //  - Moonraker: the bind-mounted printer_data log it actively writes.
     const logFiles = [
         { name: "Boomslang", path: "/tmp/rinkhals/rinkhals.log" },

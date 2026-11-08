@@ -2072,8 +2072,8 @@ class Kobra:
         Because the deadlock is inside gklib itself - not in Moonraker, not in
         our patches - there is no client-side recovery short of a full restart
         of gklib. Killing gklib would let appCheck.sh respawn it but with the
-        stock printer.cfg (Rinkhals lives in rinkhals_gklib.cfg), which would
-        silently disable the Rinkhals layer until the next reboot.
+        stock printer.cfg (Boomslang lives in rinkhals_gklib.cfg), which would
+        silently disable the Boomslang layer until the next reboot.
 
         The safest thing we can do is to refuse the command entirely so we
         don't trigger the deadlock in the first place. Mainsail/Fluidd users

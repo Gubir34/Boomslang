@@ -30,7 +30,7 @@ hardware access:
 
 ### Re-flash a supported SWU via USB
 
-This is the same path used for normal Rinkhals install/upgrade. If the printer
+This is the same path used for normal Boomslang install/upgrade. If the printer
 will still mount a USB drive and run an update on boot, this can rebuild
 enough of the system to get you to a working state.
 
@@ -41,11 +41,11 @@ enough of the system to get you to a working state.
    folder named `aGVscF9zb3Nf`.
 3. Plug the USB drive in and power-cycle the printer. Wait for the install
    sequence (two beeps signals completion on most models).
-4. After the stock firmware comes up, re-install Rinkhals normally.
+4. After the stock firmware comes up, re-install Boomslang normally.
 
 ### Restore a partition backup you took earlier
 
-If you ran `/opt/rinkhals/tools/backup-partitions.sh` from a previous Rinkhals
+If you ran `/opt/rinkhals/tools/backup-partitions.sh` from a previous Boomslang
 install while the printer was healthy, you have a partition snapshot in
 `/useremain/rinkhals/backups/`. Save that snapshot off-device now (before any
 further tinkering) and use it for partition recovery via the mainboard
@@ -80,14 +80,14 @@ from `unzip` with no further explanation. The canonical table is:
 | Kobra S1, Kobra S1 Max | `U2FsdGVkX1+lG6cHmshPLI/LaQr9cZCjA8HZt6Y8qmbB7riY` |
 | Kobra 3 Max | `4DKXtEGStWHpPgZm8Xna9qluzAI8VJzpOsEIgd8brTLiXs8fLSu3vRx8o7fMf4h6` |
 
-This table is mirrored in three places in the Rinkhals source tree and is
+This table is mirrored in three places in the Boomslang source tree and is
 expected to stay in sync:
 
 - `build/prepare-version.sh` (`get_printer_swu_password`)
 - `files/3-rinkhals/tools.sh` (`get_swu_password`, used by `install_swu`)
 - `files/3-rinkhals/opt/rinkhals/ui/common.py` (`extract_swu`)
 
-If you have already sourced Rinkhals' `tools.sh` (for example, on a different
+If you have already sourced Boomslang's `tools.sh` (for example, on a different
 working printer), `install_swu <path-to-swu>` will pick the correct password
 automatically based on the model code.
 

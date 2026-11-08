@@ -4,7 +4,7 @@
  */
 
 /*
- * Configured for Rinkhals:
+ * Configured for Boomslang:
  * - Evdev driver enabled (LV_USE_EVDEV)
  * - Framebuffer driver enabled (LV_USE_LINUX_FBDEV)
  * - Freetype support enabled (LV_USE_FREETYPE)

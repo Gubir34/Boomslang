@@ -4,7 +4,7 @@ cd $RINKHALS_ROOT
 mkdir -p $RINKHALS_LOGS
 
 if [ ! -d /useremain/rinkhals/.current ]; then
-    echo Rinkhals has not started
+    echo Boomslang has not started
     exit 1
 fi
 
@@ -60,4 +60,4 @@ cd /userdata/app/gk
 rm /useremain/rinkhals/.disable-rinkhals
 
 echo
-log "Rinkhals stopped"
+log "Boomslang stopped"

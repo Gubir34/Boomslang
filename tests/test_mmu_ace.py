@@ -2812,7 +2812,7 @@ class MmuAcePackagingTests(unittest.TestCase):
     moonraker.sh copies components in one by one. A sibling added to mmu_ace.py
     without a matching copy line imports fine from the app directory during
     development and then raises ModuleNotFoundError on the printer, which takes
-    the whole component down - and with it Moonraker, and with that a Rinkhals
+    the whole component down - and with it Moonraker, and with that a Boomslang
     boot that never finishes, leaving .disable-rinkhals behind. Cheap to check.
     """
 

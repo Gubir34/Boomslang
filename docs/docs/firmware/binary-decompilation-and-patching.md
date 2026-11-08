@@ -52,11 +52,11 @@ Once downloaded, place the scripts in Ghidra directory, then:
 
 Then after Ghidra analysis is complete, I usually run `go_func.py` then `find_dynamic_strings.py` and `find_static_strings.py`.
 
-## Binary patching in Rinkhals
+## Binary patching in Boomslang
 
-Rinkhals injects a menu entry in the UI process in order to provide a touch UI experience to manage apps, updates and more. I chose to replace the “Support” menu item to avoid people having issues with Rinkhals calling Anycubic support.
+Boomslang injects a menu entry in the UI process in order to provide a touch UI experience to manage apps, updates and more. I chose to replace the “Support” menu item to avoid people having issues with Boomslang calling Anycubic support.
 
-To do that, patch scripts are provided in every Rinkhals release for supported firmware versions.
+To do that, patch scripts are provided in every Boomslang release for supported firmware versions.
 
 This is the patch generation process (in `/3-rinkhals/opt/rinkhals/patches/create-patches.py`)
 - Using `pwntools` this script will dynamically patch a binary to generate a new patched one

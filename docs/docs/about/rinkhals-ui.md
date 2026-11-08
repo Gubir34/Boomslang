@@ -1,8 +1,8 @@
 ---
-title: Rinkhals UI
+title: Boomslang UI
 ---
 
-Rinkhals includes a touch UI you can access from the Settings (gear icon) > Rinkhals.
+Boomslang includes a touch UI you can access from the Settings (gear icon) > Boomslang.
 
 During startup, Rinkhals replaces the Support option in the menu by the Rinkhals option (so you don't contact Anycubic support for something about Rinkhals).
 
@@ -35,8 +35,8 @@ By tapping the app name you will enter the app details view where you can indivi
 ![](../assets/rinkhals-ui/ui-advanced.png){ width="160", align=right }
 
 - **Reboot printer**: Reboot the printer (`sync && reboot`)
-- **Restart Rinkhals**: Soft reboot for Rinkhals. Will restart the currently running version of Rinkhals.
-- **Switch to stock**: Stops Rinkhals, making the printer switch to stock firmware. On the next reboot, the printer will reboot back to Rinkhals.
-- **Disable Rinkhals**: Disables Rinkhals and reboot to stock firmware. Rinkhals is now disabled and will need to be reinstalled and re-enabled to start again.
+- **Restart Boomslang**: Soft reboot for Boomslang. Will restart the currently running version of Boomslang.
+- **Switch to stock**: Stops Boomslang, making the printer switch to stock firmware. On the next reboot, the printer will reboot back to Boomslang.
+- **Disable Boomslang**: Disables Boomslang and reboot to stock firmware. Boomslang is now disabled and will need to be reinstalled and re-enabled to start again.
   
 <div style="clear: both;"></div>

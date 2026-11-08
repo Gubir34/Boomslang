@@ -40,17 +40,17 @@ In `/lib/udev/rules.d`:
                 * `/userdata/app/gk/gkapi` : Anycubic API service, cloud and local printing services + Mochi MQTT server when lan mode is enabled
                 * `/userdata/app/gk/gkcam` : Anycubic camera process to stream video to Anycubic clients
                 * `/userdata/app/gk/K3SysUi` : Anycubic screen / touch UI binary + starts wpa_supplicant
-                * `/useremain/rinkhals/start-rinkhals.sh` : Rinkhals entrypoint, checking for selected version
+                * `/useremain/rinkhals/start-rinkhals.sh` : Boomslang entrypoint, checking for selected version
                     * `/useremain/rinkhals/[VERSION]/start.sh`
                     * `/useremain/rinkhals/[VERSION]/tools.sh`
     * `/etc/init.d/S95dbus` : Start dbus
     * `/etc/init.d/S99_bootcontrol`
         * `/usr/bin/rk_ota` : Makes sure system has booted properly
 
-## Rinkhals startup sequence
+## Boomslang startup sequence
 
 * `/useremain/rinkhals/start-rinkhals.sh`
-    * `/useremain/rinkhals/[VERSION]/start.sh` : Rinkhals startup routine
+    * `/useremain/rinkhals/[VERSION]/start.sh` : Boomslang startup routine
         * Sources `/useremain/rinkhals/[VERSION]/tools.sh`
         * Check for compatible printer and firmware
         * Creates `/useremain/rinkhals/.disable-rinkhals`

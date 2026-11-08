@@ -84,7 +84,7 @@ def main():
             resolvedSections[sectionName][key] = value
 
     # Write resolved sections to destination file
-    print('# This file is generated automatically on every Rinkhals startup')
+    print('# This file is generated automatically on every Boomslang startup')
     print('# To modify its content, please use the printer.custom.cfg instead')
     print('')
 

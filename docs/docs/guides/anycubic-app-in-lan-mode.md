@@ -2,7 +2,7 @@
 title: Anycubic app in LAN mode
 ---
 
-In LAN mode, the stock firmware stops talking to Anycubic's cloud, so the Anycubic app can no longer reach the printer. The [Cloud to LAN bridge](https://github.com/rinkhals-community/Rinkhals.Apps/tree/master/apps/cloud2lan-bridge) app connects to Anycubic's cloud on the printer's behalf, so you can keep using the Anycubic app (status, controls and the camera) while the printer stays in LAN mode for Mainsail, Orca and the rest of Rinkhals.
+In LAN mode, the stock firmware stops talking to Anycubic's cloud, so the Anycubic app can no longer reach the printer. The [Cloud to LAN bridge](https://github.com/rinkhals-community/Rinkhals.Apps/tree/master/apps/cloud2lan-bridge) app connects to Anycubic's cloud on the printer's behalf, so you can keep using the Anycubic app (status, controls and the camera) while the printer stays in LAN mode for Mainsail, Orca and the rest of Boomslang.
 
 !!! warning "Don't turn on LAN mode from the touchscreen"
 
@@ -14,7 +14,7 @@ In LAN mode, the stock firmware stops talking to Anycubic's cloud, so the Anycub
 
 1. With the printer in cloud mode (the default), add it to your Anycubic account by scanning the QR code in the Anycubic app, if you haven't already.
 2. Install the Cloud to LAN bridge app (version 1.2 or later), then enable and start it.
-3. On the touchscreen, go to Settings (gear icon) > Rinkhals > Apps > Cloud to LAN bridge, open its settings and turn on **LAN mode (keeps the printer on your Anycubic account, reboot after changing)**.
+3. On the touchscreen, go to Settings (gear icon) > Boomslang > Apps > Cloud to LAN bridge, open its settings and turn on **LAN mode (keeps the printer on your Anycubic account, reboot after changing)**.
 4. **Reboot the printer.**
 
 After the reboot, the printer is in LAN mode, the bridge starts by itself, and the Anycubic app shows the printer online again. It can take a minute after boot while the printer's clock and network come up.

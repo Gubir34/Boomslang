@@ -1,21 +1,21 @@
 ---
-title: Rinkhals quick start guide
+title: Boomslang quick start guide
 ---
 
-## To install Rinkhals
+## To install Boomslang
 
 ### Using the full offline package
 
-- Go to the release page on GitHub: [Rinkhals releases](https://github.com/rinkhals-community/Rinkhals/releases)
+- Go to the release page on GitHub: [Boomslang releases](https://github.com/Gubir34/Boomslang/releases)
 - Select and download the right update-\*.swu for your printer
 - Follow the install [instructions](../about/installation-and-firmware-updates.md) for your printer.
 
-### Using the Rinkhals installer
+### Using the Boomslang installer
 
 !!! note
     The installer you downloaded will still work for future releases. You can leave it on your USB drive and just plug it, even for future releases
 
-- Go to the release page on GitHub: [Rinkhals releases](https://github.com/rinkhals-community/Rinkhals/releases)
+- Go to the release page on GitHub: [Boomslang releases](https://github.com/Gubir34/Boomslang/releases)
 - Select and download the right installer-\*.swu for your printer
 - Rename the downloaded SWU file as **update.swu**
 
@@ -67,5 +67,5 @@ Please refer to Mainsail documentation for more information: [https://docs.mains
 
 ## To directly print from Orca or OctoApp
 
-Rinkhals supports Orca and OctoApp out of the box. Just add your printer using its IP address.
+Boomslang supports Orca and OctoApp out of the box. Just add your printer using its IP address.
 Then, you should be able to directly upload or print from those software or other similar ones.

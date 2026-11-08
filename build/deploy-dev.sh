@@ -16,7 +16,7 @@ export RCLONE_CONFIG_KOBRA_PORT=${KOBRA_PORT:-22}
 export RCLONE_CONFIG_KOBRA_USER=root
 export RCLONE_CONFIG_KOBRA_PASS=$(rclone obscure "rockchip")
 
-# Extract Rinkhals package
+# Extract Boomslang package
 mkdir -p /tmp/target
 rm -rf /tmp/target/*
 tar -xzf /build/dist/update_swu/setup.tar.gz  -C /tmp/target

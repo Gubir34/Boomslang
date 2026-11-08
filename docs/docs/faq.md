@@ -38,7 +38,7 @@ This is often caused by MCU starvation when GoKlipper receives too many small, h
 If you are using **Anycubic Slicer Next** or **Orca Slicer**:
 1. Increase your **Max Deviation** settings (under Print settings > Precision) to reduce the G-Code fragment density.
 2. Consider disabling **Dynamic overhang cooling** or reducing the frequency of fan speed changes, as the constant back-and-forth commands can overwhelm the host proxy.
-*(Note: As of Rinkhals 20260501_01, core priority processes have been optimized to better mitigate this, but slicer adjustments remain the best practice.)*
+*(Note: As of Boomslang 20260501_01, core priority processes have been optimized to better mitigate this, but slicer adjustments remain the best practice.)*
 
 ## Leveling always probes the whole bed, never an adaptive mesh
 
@@ -59,9 +59,9 @@ On a Kobra S1 with firmware 2.7.2.7, the adaptive mesh also shows up in the Main
 
 ## Should I use installer-\*.swu or update-\*.swu?
 
-The installer-\*.swu is the Rinkhals Installer tool. It's like a web installer on steroids. Using this tool you can download any Rinkhals or system firmware and perform some other operations. Check more details on the [Installer page](about/rinkhals-installer.md)
+The installer-\*.swu is the Boomslang Installer tool. It's like a web installer on steroids. Using this tool you can download any Boomslang or system firmware and perform some other operations. Check more details on the [Installer page](about/rinkhals-installer.md)
 
-The update-\*.swu is the full Rinkhals package. There's no installation screen here, it will just install the downloaded Rinkhals version on your printer. Useful for offline installations for example.
+The update-\*.swu is the full Boomslang package. There's no installation screen here, it will just install the downloaded Boomslang version on your printer. Useful for offline installations for example.
 
 Either way, select the right SWU for your printer, download it and install it as described in the [installation page](about/installation-and-firmware-updates.md).
 
@@ -74,10 +74,10 @@ In Orca, you can add 4 filaments and they will be mapped with the 4 slots of the
 
 Later, if you need to print with only one filament, you’ll need to remove the other and keep only one before exporting gcode or printing.
 
-## After installing Rinkhals, the camera doesn't work in Anycubic apps
+## After installing Boomslang, the camera doesn't work in Anycubic apps
 
 The camera cannot work both in OctoApp / Mainsail / Fluidd and Anycubic apps at the same time.
-Rinkhals uses mjpg-streamer by default (available as an app).
+Boomslang uses mjpg-streamer by default (available as an app).
 
 When the app is started and enabled, the camera will be available in OctoApp, Mainsail, Fluidd and other Moonraker clients.
 
@@ -87,8 +87,8 @@ You have to disable and stop the app to make the camera work in Anycubic apps.
 
 On recent firmware, the touchscreen's LAN mode toggle also removes the printer from your Anycubic account, so the app shows "Scan to add device". To keep using the Anycubic app in LAN mode, use the Cloud to LAN bridge app and its own LAN mode setting instead, see [Anycubic app in LAN mode](guides/anycubic-app-in-lan-mode.md).
 
-## Can I use OctoApp with Rinkhals?
-Yes, Rinkhals supports OctoApp out of the box. To work properly, OctoApp needs the Moonraker app and one of Mainsail and Fluidd app to be enabled.
+## Can I use OctoApp with Boomslang?
+Yes, Boomslang supports OctoApp out of the box. To work properly, OctoApp needs the Moonraker app and one of Mainsail and Fluidd app to be enabled.
 
 You don’t need the octoapp companion from this repo: [Rinkhals.apps](https://github.com/rinkhals-community/Rinkhals.apps/) for OctoApp to work. This companion app will allow you to get live notifications if this is something you want.
 
@@ -99,26 +99,26 @@ First, make sure the mjpg-streamer app is enabled as described above. Then you w
 ## How do I make Spoolman work?
 Follow this guide: [https://github.com/utkabobr/DuckPro-Kobra3/issues/54#issuecomment-2540040852](https://github.com/utkabobr/DuckPro-Kobra3/issues/54#issuecomment-2540040852)
 
-The code modifications are already in Rinkhals.
+The code modifications are already in Boomslang.
 
 ## How to get SSH access?
-If Rinkhals is running on your printer, you can already connect to port 22 on your printer.
+If Boomslang is running on your printer, you can already connect to port 22 on your printer.
 
 If you’re running stock firmware or any other, you’ll need to use the SSH SWU tool. This tool will start a SSH server on port 2222 on any firmware at any time.
-1. Go to the releases page: [https://github.com/rinkhals-community/Rinkhals/releases](https://github.com/rinkhals-community/Rinkhals/releases)
+1. Go to the releases page: [https://github.com/Gubir34/Boomslang/releases](https://github.com/Gubir34/Boomslang/releases)
 2. Download the right SWU tools for your printer (tools-xxx.zip)
 3. Extract and get the SSH tool you want
-4. Copy the tool as `update.swu` on a FAT32 USB drive in a `aGVscF9zb3Nf` directory (same as during Rinkhals installation)
+4. Copy the tool as `update.swu` on a FAT32 USB drive in a `aGVscF9zb3Nf` directory (same as during Boomslang installation)
 5. Use any SSH client to connect to your printer IP on port 2222
 
 
-## How does Rinkhals work with official updates (stock OTA)?
-When you install an official update, Rinkhals startup files will be overwritten and thus Rinkhals won't boot anymore.
+## How does Boomslang work with official updates (stock OTA)?
+When you install an official update, Boomslang startup files will be overwritten and thus Boomslang won't boot anymore.
 
-In this case, you can reflash a Rinkhals version that supports your firmware version and it will start again. Your configuration will be kept.
+In this case, you can reflash a Boomslang version that supports your firmware version and it will start again. Your configuration will be kept.
 
-If you update your printer firmware to a version that's not supported with Rinkhals, you can either:
+If you update your printer firmware to a version that's not supported with Boomslang, you can either:
 
-- Wait for the new Rinkhals version to be released. Please do not open issues or ask for ETA, I'm working on my free time!
-- Reinstall a supported version of your printer firmware and install a matching Rinkhals version
-- Starting from 20250316_01, you can create a .enable-rinkhals file at the root of a USB drive, plug it and reboot your printer. It will force Rinkhals to start, but you might experience weird behavior or even worse as the version was not tested.
+- Wait for the new Boomslang version to be released. Please do not open issues or ask for ETA, I'm working on my free time!
+- Reinstall a supported version of your printer firmware and install a matching Boomslang version
+- Starting from 20250316_01, you can create a .enable-rinkhals file at the root of a USB drive, plug it and reboot your printer. It will force Boomslang to start, but you might experience weird behavior or even worse as the version was not tested.

@@ -8,20 +8,20 @@ A debug bundle is a ZIP file containing all recent logs and information about yo
 
 Debug bundle are usually safe to share publicly. No private or sensitive information are voluntarily collected during its generation. Please note that if some apps are logging some URLs or token in their main log file, this one might be collected and end up in the bundle. In this case it's the app developer responsibility not to log the secret information or log it where it won't be collected.
 
-Rinkhals developers might ask you to generate one if you report an issue during testing or general usage. You can either generate it and send it to them or send individual logs if you prefer, but the logs collection has been automated to help the developers.
+Boomslang developers might ask you to generate one if you report an issue during testing or general usage. You can either generate it and send it to them or send individual logs if you prefer, but the logs collection has been automated to help the developers.
 
 ## How to generate it?
 
 There are 2 ways to generate a debug bundle:
 
-### 1. Using the Rinkhals Installer
+### 1. Using the Boomslang Installer
 
 Refer to [this page](../about/rinkhals-installer.md#tools) to use the Debug Bundle tool from the installer.
 
 ### 2. Using the Debug Bundle SWU tool
 
 A SWU tool to directly collect a Debug Bundle on a connected USB drive is also provided.
-To use it, go to [GitHub releases](https://github.com/rinkhals-community/Rinkhals/releases) and download the tools-*.zip for your printer. Extract the ZIP file and get the debug bundle SWU file.
+To use it, go to [GitHub releases](https://github.com/Gubir34/Boomslang/releases) and download the tools-*.zip for your printer. Extract the ZIP file and get the debug bundle SWU file.
 
 Then you can follow the same steps as during a [manual installation](../about/installation-and-firmware-updates.md). Copy the SWU as update.swu in a `aGVscF9zb3Nf` directory on a FAT32 USB drive, plug it in your printer.
 
@@ -31,7 +31,7 @@ Once running you'll hear 2 beeps, the first one for the tool startup and the sec
 
 A debug bundle contains:
 
-- Rinkhals
+- Boomslang
     - Installation log
     - Current version
     - Installation size

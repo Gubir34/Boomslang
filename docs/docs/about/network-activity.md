@@ -21,10 +21,10 @@ title: Network activity
 
 ### HTTPS
 
-Those URLs are repositories and mirrors for system / Rinkhals updates. They are used explicitely by Rinkhals when checking for updates.
+Those URLs are repositories and mirrors for system / Boomslang updates. They are used explicitely by Boomslang when checking for updates.
 
-- [https://github.com](https://github.com): To check / download Rinkhals updates
-- [https://api.github.com](https://api.github.com): To check Rinkhals updates
+- [https://github.com](https://github.com): To check / download Boomslang updates
+- [https://api.github.com](https://api.github.com): To check Boomslang updates
 - [https://raw.githubusercontent.com](https://raw.githubusercontent.com): As a trusted repository to check / download new apps
 - [https://cdn.meowcat285.com](https://cdn.meowcat285.com): To check / download system updates
 - [https://cdn.cloud-universe.anycubic.com](https://cdn.cloud-universe.anycubic.com): To download official updates
@@ -32,7 +32,7 @@ Those URLs are repositories and mirrors for system / Rinkhals updates. They are 
 ### MQTT
 
 Live connection to Anycubic public MQTT servers. Used for OTA updates, remote control using Anycubic apps.
-Anycubic firmware is connecting to them when LAN mode is disabled. Rinkhals Installer uses them to detect new (not yet mirrored) updates.
+Anycubic firmware is connecting to them when LAN mode is disabled. Boomslang Installer uses them to detect new (not yet mirrored) updates.
 
 - ssl://mqtt.anycubic.com:8883: Used for China
 - ssl://mqtt-universe.anycubic.com:8883: Used globally

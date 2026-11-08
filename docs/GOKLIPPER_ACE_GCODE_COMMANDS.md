@@ -57,7 +57,7 @@ SET_CURRENT_FILAMENT INDEX=1
 FEED_FILAMENT INDEX=1 LENGTH=100 SPEED=25
 ```
 
-**Rinkhals Mapping**:
+**Boomslang Mapping**:
 - Wrapped by `MMU_LOAD GATE=<0-7>` which converts global gate to local INDEX
 
 **Critical Notes**:
@@ -97,7 +97,7 @@ UNWIND_FILAMENT INDEX=<0-3> LENGTH=<mm> SPEED=<mm/s>
 UNWIND_FILAMENT INDEX=2 LENGTH=100 SPEED=20
 ```
 
-**Rinkhals Mapping**:
+**Boomslang Mapping**:
 - Wrapped by `MMU_UNLOAD GATE=<0-7>` which converts global gate to local INDEX
 - Wrapped by `MMU_EJECT GATE=<0-7>` with default LENGTH=500 (still ignored)
 
@@ -804,7 +804,7 @@ default_unwind_speed: 15       # Default unwind speed mm/s
 - **ACEResearch Protocol**: https://github.com/printers-for-people/ACEResearch/blob/main/PROTOCOL.md
 - **N033 Protocol**: `/home/robertpeerenboom/rinkhals/Kobra3/klipper-go/docs/N033料盒通信协议.md`
 - **Reverse Engineering Report**: `/tmp/rinkhals-acm-fix/gklib_analysis_report.txt`
-- **Rinkhals MMU Integration**: `/home/robertpeerenboom/rinkhals/rinkhals-repo/files/4-apps/home/rinkhals/apps/40-moonraker/mmu_ace.py`
+- **Boomslang MMU Integration**: `/home/robertpeerenboom/rinkhals/rinkhals-repo/files/4-apps/home/rinkhals/apps/40-moonraker/mmu_ace.py`
 
 ---
 
