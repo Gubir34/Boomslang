@@ -1317,7 +1317,7 @@ class RinkhalsUiApp(BaseApp):
         else:
             self.show_screen(self.screen_main)
 
-    def browser_label(self, parent, text, kind='p'):
+    def browser_label(self, parent, text, kind='p', color=None, align=None):
         if kind == 'h1':
             label = lvr.title(parent)
         else:
@@ -1326,6 +1326,14 @@ class RinkhalsUiApp(BaseApp):
                 label.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
             elif kind in ('quote', 'pre'):
                 label.set_style_text_color(lvr.COLOR_SUBTITLE, lv.STATE.DEFAULT)
+        # Colour and alignment from the page's own CSS (reader.py already
+        # dropped colours that would be unreadable on the dark screen)
+        if color:
+            label.set_style_text_color(lv.color_make(*color), lv.STATE.DEFAULT)
+        if align == 'center':
+            label.set_style_text_align(lv.TEXT_ALIGN.CENTER, lv.STATE.DEFAULT)
+        elif align == 'right':
+            label.set_style_text_align(lv.TEXT_ALIGN.RIGHT, lv.STATE.DEFAULT)
         label.set_width(lv.pct(100))
         label.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
         label.set_text(('\u2022 ' + text) if kind == 'li' else text)
@@ -1406,7 +1414,8 @@ class RinkhalsUiApp(BaseApp):
             with lvr.lock():
                 for block in page.blocks[i:i + step]:
                     if block['text']:
-                        self.browser_label(panel, block['text'], block['kind'])
+                        self.browser_label(panel, block['text'], block['kind'],
+                                           block.get('color'), block.get('align'))
                     for text, link in block['links']:
                         if links_left > 0:
                             self.browser_link(panel, text, link)

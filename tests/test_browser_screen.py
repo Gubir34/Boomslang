@@ -35,10 +35,10 @@ def load_browser_class():
                  'run_async': lambda fn: fn(), 'printer_ip': lambda: '192.168.1.5',
                  'RINKHALS_VERSION': 'test', 'KOBRA_MODEL': 'Kobra', 'KOBRA_VERSION': '1.0'}
     exec(compile(code, 'rinkhals-ui-browser', 'exec'), namespace)
-    return namespace['BrowserApp'], lvr
+    return namespace['BrowserApp'], lvr, lv
 
 
-BrowserApp, LVR = load_browser_class()
+BrowserApp, LVR, LV = load_browser_class()
 
 
 def page(url, title='T', blocks=None, truncated=False):
@@ -48,6 +48,7 @@ def page(url, title='T', blocks=None, truncated=False):
 class BrowserScreenTests(unittest.TestCase):
     def setUp(self):
         LVR.reset_mock()
+        LV.reset_mock()
         self.app = BrowserApp()
         self.app.root_screen = mock.MagicMock()
         self.app.screen_main = object()
@@ -221,6 +222,18 @@ class BrowserScreenTests(unittest.TestCase):
         self.assertTrue(LVR.title.called)
         texts = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
         self.assertIn('• item', texts)
+
+    def test_css_colour_and_alignment_reach_the_widgets(self):
+        blocks = [{'kind': 'p', 'text': 'warning', 'links': [], 'color': (255, 80, 80), 'align': 'center'},
+                  {'kind': 'p', 'text': 'right', 'links': [], 'color': None, 'align': 'right'},
+                  {'kind': 'p', 'text': 'plain', 'links': [], 'color': None, 'align': None}]
+        self.pages['https://css.example/'] = page('https://css.example/', blocks=blocks)
+        LV.reset_mock()
+        self.open('https://css.example/')
+        LV.color_make.assert_called_once_with(255, 80, 80)
+        label = LVR.label.return_value
+        aligns = [c.args[0] for c in label.set_style_text_align.call_args_list]
+        self.assertEqual(aligns, [LV.TEXT_ALIGN.CENTER, LV.TEXT_ALIGN.RIGHT])
 
 
 if __name__ == '__main__':

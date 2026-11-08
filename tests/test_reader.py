@@ -24,12 +24,13 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(kinds(page), [('h1', 'Big'), ('p', 'Hello bold world'), ('h2', 'Sub'),
                                        ('h3', 'Small'), ('li', 'one'), ('li', 'two')])
 
-    def test_scripts_styles_and_hidden_elements_are_dropped(self):
+    def test_scripts_styles_and_svg_are_dropped_but_noscript_is_shown(self):
+        # nothing runs JavaScript here, so what <noscript> offers is what there is to read
         page = reader.parse_html(
-            '<p>Visible</p><script>var x = "secret";</script><style>p{color:red}</style>'
-            '<noscript>enable js</noscript><svg><text>logo</text></svg><p>Also visible</p>',
+            '<p>Visible</p><script>var x = "secret";</script><style>.z{color:red}</style>'
+            '<noscript>needs js</noscript><svg><text>logo</text></svg><p>Also visible</p>',
             'https://example.com/')
-        self.assertEqual([t for _, t in kinds(page)], ['Visible', 'Also visible'])
+        self.assertEqual([t for _, t in kinds(page)], ['Visible', 'needs js', 'Also visible'])
 
     def test_preformatted_text_keeps_its_lines(self):
         page = reader.parse_html('<pre>line one\n  indented\nline three</pre>', 'https://example.com/')
@@ -208,6 +209,150 @@ class FetchTests(unittest.TestCase):
     def test_invalid_or_wrong_charset_does_not_crash(self):
         page = fetching(FakeResponse(b'<p>caf\xe9 \xff\xfe</p>', ctype='text/html; charset=bogus', encoding='bogus'))
         self.assertIn('caf', page.blocks[0]['text'])
+
+
+def texts(page):
+    return [b['text'] for b in page.blocks]
+
+
+class CssTests(unittest.TestCase):
+    def test_elements_hidden_by_the_pages_own_rules_are_left_out(self):
+        page = reader.parse_html(
+            '<style>.cookie-banner { display: none } #popup{visibility:hidden} li.skip{display:none!important}</style>'
+            '<div class="cookie-banner"><p>Accept cookies</p></div><div id="popup">Subscribe</div>'
+            '<ul><li>keep</li><li class="skip">drop</li><li class="other skip">drop too</li></ul><p>Text</p>',
+            'https://example.com/')
+        self.assertEqual(texts(page), ['keep', 'Text'])
+
+    def test_inline_style_and_the_hidden_attribute_hide_too(self):
+        page = reader.parse_html(
+            '<p style="display:none">no</p><p hidden>no</p><div style="color:red"><p>yes</p></div>'
+            '<span style="visibility: hidden">gone</span><p>end</p>', 'https://example.com/')
+        self.assertEqual(texts(page), ['yes', 'end'])
+
+    def test_hiding_covers_the_whole_subtree_and_ends_with_the_element(self):
+        page = reader.parse_html(
+            '<div style="display:none"><div><p>deep <b>in</b> it</p><ul><li>x</li></ul></div></div>'
+            '<p>after</p><div hidden><p>one</p></div><p>last</p>', 'https://example.com/')
+        self.assertEqual(texts(page), ['after', 'last'])
+
+    def test_hidden_void_elements_and_misnested_tags_keep_the_stack_balanced(self):
+        page = reader.parse_html(
+            '<div style="display:none"><br><img src=x alt=pic><input><p>gone</div>'
+            '<p>visible <b>one</p><div hidden>x</i></div><p>visible two</p>', 'https://example.com/')
+        self.assertEqual(texts(page), ['visible one', 'visible two'])
+
+    def test_rules_are_simple_and_unsupported_selectors_do_nothing(self):
+        css = ('@media (max-width:600px){.a{display:none}} @import url(x.css);'
+               'div p{display:none} a:hover{display:none} .b > .c{display:none} p.keep{color:#ffd700} ,{}')
+        rules = reader.parse_css(css)
+        self.assertEqual([(t, c, i) for t, c, i, _ in rules], [('p', ['keep'], None)])
+
+    def test_media_query_rules_are_ignored(self):
+        page = reader.parse_html('<style>@media print{.hide{display:none}}</style><p class="hide">shown</p>',
+                                 'https://example.com/')
+        self.assertEqual(texts(page), ['shown'])
+
+    def test_colour_and_centring_reach_the_block(self):
+        page = reader.parse_html(
+            '<style>.warn{color:#ff5050} .mid{text-align:center}</style>'
+            '<p class="warn">red</p><div class="mid"><p>centred</p></div><p>plain</p>', 'https://example.com/')
+        self.assertEqual([(b['text'], b['color'], b['align']) for b in page.blocks],
+                         [('red', (255, 80, 80), None), ('centred', None, 'center'), ('plain', None, None)])
+
+    def test_dark_colours_are_ignored_on_the_dark_screen(self):
+        page = reader.parse_html('<p style="color:#222">dark</p><p style="color:navy">navy</p><p style="color:#ccc">light</p>',
+                                 'https://example.com/')
+        self.assertEqual([b['color'] for b in page.blocks], [None, None, (204, 204, 204)])
+
+    def test_colour_parsing(self):
+        c = reader.parse_color
+        self.assertEqual(c('#ffd700'), (255, 215, 0))
+        self.assertEqual(c('#fff'), (255, 255, 255))
+        self.assertEqual(c('rgb(200, 200, 200)'), (200, 200, 200))
+        self.assertEqual(c('rgba(200,200,200,0.5)'), (200, 200, 200))
+        self.assertEqual(c('orange'), (255, 165, 0))
+        for unusable in ('', None, 'black', '#000', 'inherit', 'var(--x)', 'rgb(1,2,3)'):
+            self.assertIsNone(c(unusable), unusable)
+
+    def test_huge_stylesheets_are_bounded(self):
+        css = ''.join(f'.c{i}{{display:none}}' for i in range(reader.MAX_CSS_RULES * 3))
+        self.assertLessEqual(len(reader.parse_css(css)), reader.MAX_CSS_RULES)
+
+
+class RedirectTests(unittest.TestCase):
+    def test_meta_refresh(self):
+        page = reader.parse_html('<meta http-equiv="Refresh" content="0; url=/new/place">', 'https://example.com/old')
+        self.assertEqual(page.redirect, 'https://example.com/new/place')
+        slow = reader.parse_html('<meta http-equiv="refresh" content="60; url=/later">', 'https://example.com/')
+        self.assertIsNone(slow.redirect)
+        reload_only = reader.parse_html('<meta http-equiv="refresh" content="5">', 'https://example.com/')
+        self.assertIsNone(reload_only.redirect)
+
+    def test_a_script_that_only_redirects(self):
+        for script in ('window.location = "/go"', "location.href='/go';", 'window.location.href = "/go";',
+                       'document.location="/go"', 'top.location.replace("/go")', 'location.assign( "/go" );'):
+            with self.subTest(script=script):
+                page = reader.parse_html(f'<script>{script}</script><p>Redirecting</p>', 'https://example.com/a')
+                self.assertEqual(page.redirect, 'https://example.com/go')
+
+    def test_scripts_with_logic_are_never_guessed_at(self):
+        for script in ('if (mobile) { location.href = "/m" }', 'setTimeout(function(){ location = "/x" }, 100)',
+                       'var u = "/x"; location = u', 'location.href = base + "/x"', 'console.log(1)',
+                       'location = "/a" + suffix',            # would go to /a, not where the script means
+                       'location.href = "/x"; track();',      # does more than redirect
+                       'location.replace("/x") || fallback()'):
+            with self.subTest(script=script):
+                page = reader.parse_html(f'<script>{script}</script><p>text</p>', 'https://example.com/')
+                self.assertIsNone(page.redirect)
+
+    def test_unusable_redirect_targets_are_dropped(self):
+        for target in ('javascript:void(0)', 'mailto:a@b.c', 'ftp://x/y'):
+            page = reader.parse_html(f'<meta http-equiv="refresh" content="0;url={target}">', 'https://example.com/')
+            self.assertIsNone(page.redirect, target)
+
+    def test_script_text_does_not_leak_into_the_page(self):
+        page = reader.parse_html('<script>window.location = "/go"</script><p>Hello</p>', 'https://example.com/')
+        self.assertEqual(texts(page), ['Hello'])
+
+
+class FollowRedirectTests(unittest.TestCase):
+    def serve(self, pages):
+        calls = []
+
+        def get(url, **kwargs):
+            calls.append(url)
+            return FakeResponse(pages[url].encode(), url=url)
+        return get, calls
+
+    def test_fetch_follows_a_redirect_to_the_real_page(self):
+        get, calls = self.serve({
+            'https://a.example/': '<meta http-equiv="refresh" content="0;url=https://b.example/home">',
+            'https://b.example/home': '<title>Real</title><p>content</p>'})
+        page = reader.fetch('https://a.example/', get=get, available_kb=lambda: None)
+        self.assertEqual((page.title, page.url, calls), ('Real', 'https://b.example/home', ['https://a.example/', 'https://b.example/home']))
+
+    def test_redirect_loops_stop(self):
+        get, calls = self.serve({
+            'https://a.example/': '<meta http-equiv="refresh" content="0;url=https://b.example/">',
+            'https://b.example/': '<meta http-equiv="refresh" content="0;url=https://a.example/">'})
+        page = reader.fetch('https://a.example/', get=get, available_kb=lambda: None)
+        self.assertEqual(calls, ['https://a.example/', 'https://b.example/'])
+        self.assertEqual(page.url, 'https://b.example/')
+
+    def test_long_redirect_chains_stop_at_the_limit(self):
+        pages = {f'https://s{i}.example/': f'<meta http-equiv="refresh" content="0;url=https://s{i + 1}.example/">'
+                 for i in range(10)}
+        get, calls = self.serve(pages)
+        reader.fetch('https://s0.example/', get=get, available_kb=lambda: None)
+        self.assertEqual(len(calls), reader.MAX_REDIRECTS + 1)
+
+    def test_memory_is_checked_before_every_hop(self):
+        get, calls = self.serve({'https://a.example/': '<meta http-equiv="refresh" content="0;url=https://b.example/">'})
+        readings = iter([500000, 1000])
+        with self.assertRaises(reader.BrowserError):
+            reader.fetch('https://a.example/', get=get, available_kb=lambda: next(readings))
+        self.assertEqual(calls, ['https://a.example/'])
 
 
 if __name__ == '__main__':
