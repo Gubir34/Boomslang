@@ -219,6 +219,22 @@ def patch_K3SysUi(binaryPath, modelCode, version):
         patchJumpAddress = 0x151da8
         patchReturnAddress = 0x151e6c
         s1CaseAlreadySelected = True
+    elif modelCode == 'KS1' and (version == '2.7.3.5' or version == '2.7.3.7'):
+        buttonCallback = k3sysui.symbols['_ZZN10MainWindow21AcSettingDeviceUiInitEvENKUlRK11QModelIndexE0_clES2_']
+        # Anycubic distributes this build as KS1 2.7.3.7, but the SWU writes
+        # 2.7.3.5 to /useremain/dev/version, which is what Rinkhals reads, so
+        # both names map to the same K3SysUi (md5 a78d7022704e4d53e9f43b22ea22c698).
+        # The callback was rebuilt on the S1 Max code base (version_log.txt:
+        # k3api dev-028-s1max) and now dispatches through the same jump table
+        # as KS1M 2.6.9.3+: callback at 0x17c9a4, cmp r3,#4 / addls pc,pc,r3,lsl#2
+        # at 0x17c9e8, table base 0x17c9f0. Rows are Printer Information,
+        # ACE Information, CN Code, Service Support, Export logs to U-disk
+        # (same string table order at the relabel site). Entry 3 (Service
+        # Support) branches to 0x17cca0: this-ptr load, mov r1,#3, nav call,
+        # then b 0x17cd90 into the shared switch epilogue (return address).
+        patchJumpAddress = 0x17cca0
+        patchReturnAddress = 0x17cd90
+        s1CaseAlreadySelected = True
 
     elif modelCode == 'KS1M' and version == '2.1.6':
         buttonCallback = k3sysui.symbols['_ZZN10MainWindow21AcSettingDeviceUiInitEvENKUlRK11QModelIndexE0_clES2_']
