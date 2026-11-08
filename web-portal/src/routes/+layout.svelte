@@ -4,13 +4,21 @@
 	import "../app.css";
 	import { LayoutDashboard, FolderOpen, Terminal, Settings, FileText, ScrollText, ShieldAlert, Sun, Moon, Monitor, Boxes, Cpu } from "lucide-svelte";
 	import { themePreference, resolvedTheme, cycleTheme, type ThemePreference } from "$lib/theme";
-	import TerminalPanel from "$lib/TerminalPanel.svelte";
 	let { children } = $props();
 
 	// The terminal panel is mounted here, once, for the lifetime of the app -
 	// see TerminalPanel.svelte for why. Routing to /terminal only flips this
 	// flag to swap CSS visibility; it never mounts/unmounts the panel.
 	let onTerminalRoute = $derived($page.url.pathname.startsWith("/terminal"));
+
+	// The panel (and xterm, most of the app's JavaScript) is only loaded the
+	// first time the terminal page is opened. It used to load on every page and
+	// open a shell on the printer for every browser tab, terminal or not. Once
+	// loaded it stays mounted, so shells still survive navigation.
+	let terminalWanted = $state(false);
+	$effect(() => {
+		if (onTerminalRoute) terminalWanted = true;
+	});
 
 	const themeLabels: Record<ThemePreference, string> = {
 		system: "System theme",
@@ -140,7 +148,11 @@
 			<!-- Always mounted (never destroyed by routing); only hidden when not
 			     on /terminal. This is what keeps shells alive across navigation. -->
 			<div class="absolute inset-0 p-8 {onTerminalRoute ? '' : 'hidden'}">
-				<TerminalPanel active={onTerminalRoute} />
+				{#if terminalWanted}
+					{#await import("$lib/TerminalPanel.svelte") then { default: TerminalPanel }}
+						<TerminalPanel active={onTerminalRoute} />
+					{/await}
+				{/if}
 			</div>
 		</div>
 	</main>

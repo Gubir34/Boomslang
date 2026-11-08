@@ -1,4 +1,5 @@
 import { readable } from "svelte/store";
+import { poll } from "./poll";
 
 export type PrinterStateValue =
 	| "standby"
@@ -55,11 +56,10 @@ export const printerState = readable<PrinterStateResponse>(initialState, (set) =
 		}
 	};
 
-	tick();
-	const handle = setInterval(tick, 5000);
+	const stop = poll(tick, 5000);
 
 	return () => {
 		active = false;
-		clearInterval(handle);
+		stop();
 	};
 });

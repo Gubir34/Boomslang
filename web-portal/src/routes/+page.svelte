@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from "svelte";
 	import { Box, Video, MonitorPlay, Activity, HardDrive, Printer, Thermometer, ExternalLink, ArrowUpCircle } from "lucide-svelte";
 	import { firmwareStatus } from "$lib/firmwareStatus";
+	import { poll } from "$lib/poll";
 
 	type AppInfo = { id: string; name: string; url?: string; port: string; icon: any; status: string; accent: string; };
 
@@ -26,7 +27,7 @@
 		"50-remote-display": { port: "5800", icon: MonitorPlay, accent: "text-coral" }
 	};
 
-	let pollingInterval: any;
+	let stopPolling: (() => void) | undefined;
 
 	const fetchData = async () => {
 		const hostname = window.location.hostname;
@@ -84,12 +85,11 @@
 	};
 
 	onMount(() => {
-		fetchData();
-		pollingInterval = setInterval(fetchData, 5000);
+		stopPolling = poll(fetchData, 5000);
 	});
 
 	onDestroy(() => {
-		if (pollingInterval) clearInterval(pollingInterval);
+		stopPolling?.();
 	});
 </script>
 

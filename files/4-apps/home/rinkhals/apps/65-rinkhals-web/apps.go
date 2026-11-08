@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Locations that match tools.sh:
@@ -171,7 +173,66 @@ func readTempConfig(id string) map[string]string {
 // queryAppStates runs a single shell invocation that emits a line per app
 // with enabled and running flags. This keeps the cost flat (one fork) instead
 // of paying it per-app.
-func queryAppStates(ids []string) map[string]struct {
+type appState = struct {
+	Enabled bool
+	Running bool
+}
+
+// The apps page and the dashboard poll every few seconds, and each query runs
+// every app's app.sh status (which sources tools.sh and runs ps) on a
+// single-core printer. Answer polls from a short-lived cache and let callers
+// that arrive while a query runs wait for it instead of starting their own.
+// Anything that changes an app calls invalidateAppStates().
+const appStatesCacheTTL = 3 * time.Second
+
+var (
+	appStatesQueryMu  sync.Mutex
+	appStatesCacheMu  sync.Mutex
+	appStatesCache    map[string]appState
+	appStatesCacheKey string
+	appStatesCachedAt time.Time
+)
+
+func invalidateAppStates() {
+	appStatesCacheMu.Lock()
+	appStatesCache = nil
+	appStatesCacheMu.Unlock()
+}
+
+func cachedAppStates(key string) (map[string]appState, bool) {
+	appStatesCacheMu.Lock()
+	defer appStatesCacheMu.Unlock()
+	if appStatesCache != nil && appStatesCacheKey == key && time.Since(appStatesCachedAt) < appStatesCacheTTL {
+		return appStatesCache, true
+	}
+	return nil, false
+}
+
+func queryAppStates(ids []string) map[string]appState {
+	key := strings.Join(ids, "\x00")
+	if cached, ok := cachedAppStates(key); ok {
+		return cached
+	}
+
+	appStatesQueryMu.Lock()
+	defer appStatesQueryMu.Unlock()
+	if cached, ok := cachedAppStates(key); ok {
+		return cached
+	}
+
+	result := runAppStatesQueryFn(ids)
+
+	appStatesCacheMu.Lock()
+	appStatesCache = result
+	appStatesCacheKey = key
+	appStatesCachedAt = time.Now()
+	appStatesCacheMu.Unlock()
+	return result
+}
+
+var runAppStatesQueryFn = runAppStatesQuery
+
+func runAppStatesQuery(ids []string) map[string]struct {
 	Enabled bool
 	Running bool
 } {
@@ -361,6 +422,9 @@ func handleAppsList(w http.ResponseWriter, r *http.Request) {
 func handleApp(w http.ResponseWriter, r *http.Request) {
 	if corsPreflight(w, r, "GET, POST, PUT, DELETE, OPTIONS") {
 		return
+	}
+	if r.Method != http.MethodGet {
+		defer invalidateAppStates()
 	}
 	writeJSONHeaders(w)
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -147,6 +148,8 @@ func handleSaveFile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
 }
 
+var serviceIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
 func handleServices(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -159,9 +162,14 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 			{"id": "50-remote-display", "name": "Remote Display", "status": "Stopped"},
 		}
 
+		// One shared, cached query instead of a shell sourcing tools.sh per service
+		ids := make([]string, 0, len(services))
 		for _, s := range services {
-			out, err := exec.Command("sh", "-c", "source /useremain/rinkhals/.current/tools.sh && get_app_status "+s["id"]).CombinedOutput()
-			if err == nil && strings.Contains(string(out), "started") {
+			ids = append(ids, s["id"])
+		}
+		states := queryAppStates(ids)
+		for _, s := range services {
+			if states[s["id"]].Running {
 				s["status"] = "Running"
 			}
 		}
@@ -174,6 +182,17 @@ func handleServices(w http.ResponseWriter, r *http.Request) {
 		Service string `json:"service"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+	defer invalidateAppStates()
+
+	// Both values end up in a shell command line
+	if req.Action != "start" && req.Action != "stop" && req.Action != "restart" {
+		http.Error(w, "Invalid action", http.StatusBadRequest)
+		return
+	}
+	if !serviceIDPattern.MatchString(req.Service) {
+		http.Error(w, "Invalid service", http.StatusBadRequest)
+		return
+	}
 
 	cmdStr := fmt.Sprintf("source /useremain/rinkhals/.current/tools.sh && %s_app %s", req.Action, req.Service)
 	if req.Action == "restart" {

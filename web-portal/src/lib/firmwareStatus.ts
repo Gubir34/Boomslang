@@ -1,4 +1,5 @@
 import { readable } from "svelte/store";
+import { poll } from "./poll";
 
 export interface FirmwareStatusResponse {
 	model_code: string;
@@ -51,11 +52,10 @@ export const firmwareStatus = readable<FirmwareStatusResponse>(initialStatus, (s
 		}
 	};
 
-	tick();
-	const handle = setInterval(tick, 60_000);
+	const stop = poll(tick, 60_000);
 
 	return () => {
 		active = false;
-		clearInterval(handle);
+		stop();
 	};
 });

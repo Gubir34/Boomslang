@@ -495,7 +495,7 @@ func startWebServer() {
 	mux.HandleFunc("/api/firmware/install/state", handleInstallState)
 	mux.HandleFunc("/api/firmware/install/progress", handleInstallProgress)
 
-	mux.Handle("/", http.FileServer(http.FS(uiFS)))
+	mux.Handle("/", newStaticHandler(uiFS))
 
 	log.Println("Starting Boomslang Web Portal on :8090")
 

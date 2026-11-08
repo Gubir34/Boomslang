@@ -3,6 +3,7 @@
 	import QRCode from "qrcode";
 	import ReportField from "$lib/ReportField.svelte";
 	import { printerState } from "$lib/printerState";
+	import { poll } from "$lib/poll";
 	import {
 		Boxes,
 		Play,
@@ -139,7 +140,7 @@
 				width: 220,
 				color: { dark: "#1a1a1a", light: "#ffffff" },
 				errorCorrectionLevel: "M"
-			}).catch((e) => console.error("QR render failed", e));
+			}).catch((e: unknown) => console.error("QR render failed", e));
 		};
 		render(url);
 		return {
@@ -206,7 +207,7 @@
 	let configSaving = $state(false);
 	let toast = $state<{ text: string; tone: "ok" | "err" } | null>(null);
 
-	let pollHandle: ReturnType<typeof setInterval> | undefined;
+	let stopPolling: (() => void) | undefined;
 
 	async function fetchApps() {
 		try {
@@ -290,13 +291,12 @@
 	}
 
 	onMount(() => {
-		fetchApps();
 		fetchCatalog(false);
-		pollHandle = setInterval(fetchApps, 5000);
+		stopPolling = poll(fetchApps, 5000);
 	});
 
 	onDestroy(() => {
-		if (pollHandle) clearInterval(pollHandle);
+		stopPolling?.();
 	});
 
 	function showToast(text: string, tone: "ok" | "err" = "ok") {

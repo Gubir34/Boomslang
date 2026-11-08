@@ -466,6 +466,7 @@ func handleCatalogInstall(w http.ResponseWriter, r *http.Request) {
 	if corsPreflight(w, r, "POST, OPTIONS") {
 		return
 	}
+	defer invalidateAppStates()
 	writeJSONHeaders(w)
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
