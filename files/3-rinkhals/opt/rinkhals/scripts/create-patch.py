@@ -219,21 +219,31 @@ def patch_K3SysUi(binaryPath, modelCode, version):
         patchJumpAddress = 0x151da8
         patchReturnAddress = 0x151e6c
         s1CaseAlreadySelected = True
-    elif modelCode == 'KS1' and (version == '2.7.3.5' or version == '2.7.3.7'):
+    elif modelCode == 'KS1' and version == '2.7.3.5':
         buttonCallback = k3sysui.symbols['_ZZN10MainWindow21AcSettingDeviceUiInitEvENKUlRK11QModelIndexE0_clES2_']
-        # Anycubic distributes this build as KS1 2.7.3.7, but the SWU writes
-        # 2.7.3.5 to /useremain/dev/version, which is what Boomslang reads, so
-        # both names map to the same K3SysUi (md5 a78d7022704e4d53e9f43b22ea22c698).
-        # The callback was rebuilt on the S1 Max code base (version_log.txt:
-        # k3api dev-028-s1max) and now dispatches through the same jump table
-        # as KS1M 2.6.9.3+: callback at 0x17c9a4, cmp r3,#4 / addls pc,pc,r3,lsl#2
+        # K3SysUi md5 a78d7022704e4d53e9f43b22ea22c698 (k3ui dev031 9bb99d66).
+        # The firmware archive lists this build as KS1_2.7.3.7.swu, but its
+        # version file says 2.7.3.5; the real 2.7.3.7 is a different binary
+        # (see below). The callback was rebuilt on the S1 Max code base
+        # (k3api dev-028-s1max) and dispatches through the same jump table as
+        # KS1M 2.6.9.3+: callback at 0x17c9a4, cmp r3,#4 / addls pc,pc,r3,lsl#2
         # at 0x17c9e8, table base 0x17c9f0. Rows are Printer Information,
-        # ACE Information, CN Code, Service Support, Export logs to U-disk
-        # (same string table order at the relabel site). Entry 3 (Service
-        # Support) branches to 0x17cca0: this-ptr load, mov r1,#3, nav call,
-        # then b 0x17cd90 into the shared switch epilogue (return address).
+        # ACE Information, CN Code, Service Support, Export logs to U-disk.
+        # Entry 3 (Service Support) branches to 0x17cca0: this-ptr load,
+        # mov r1,#3, nav call, then b 0x17cd90 into the shared epilogue.
         patchJumpAddress = 0x17cca0
         patchReturnAddress = 0x17cd90
+        s1CaseAlreadySelected = True
+    elif modelCode == 'KS1' and version == '2.7.3.7':
+        buttonCallback = k3sysui.symbols['_ZZN10MainWindow21AcSettingDeviceUiInitEvENKUlRK11QModelIndexE0_clES2_']
+        # K3SysUi md5 76fd7793422aee9a6917568ce04a3c6c (k3ui release_s1c_v2.7.3.7
+        # dbbeb3c1), read from a printer running 2.7.3.7. Same callback as
+        # 2.7.3.5 moved by +0xa60: callback at 0x17d404, all 288 instructions
+        # identical at the same offsets. Jump table entry 3 (Service Support)
+        # is 0x17d700 (callback +0x2fc), shared epilogue 0x17d7f0 (+0x3ec).
+        # Same menu rows and string order.
+        patchJumpAddress = 0x17d700
+        patchReturnAddress = 0x17d7f0
         s1CaseAlreadySelected = True
 
     elif modelCode == 'KS1M' and version == '2.1.6':

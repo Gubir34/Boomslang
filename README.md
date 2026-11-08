@@ -26,7 +26,7 @@ Here are the supported GoKlipper / K3-family printers and firmwares with the lat
 | -- | -- | -- |
 | Kobra 3 (+ combo) | `2.4.5` `2.4.6.7` |
 | Kobra 2 Pro | `3.1.2.3` `3.1.4` | Only with mainboard [Trigorilla Spe **B** v1.0.x](https://1coderookie.github.io/Kobra2ProInsights/hardware/mainboard/#trigorilla_spe_b_v10x-stock-new-revision). `3.1.4` seems to be buggy for some people |
-| Kobra S1 (+ combo) | `2.7.0.9` `2.7.2.7` | `2.7.3.7` is patched but not yet tested on a printer. Its update writes `2.7.3.5` as the firmware version, so both are accepted |
+| Kobra S1 (+ combo) | `2.7.0.9` `2.7.2.7` | `2.7.3.5` and `2.7.3.7` are patched. The firmware archive's `KS1_2.7.3.7.swu` is actually 2.7.3.5; the 2.7.3.7 patches were made from a printer running the real 2.7.3.7 |
 | Kobra 3 Max (+ combo) | `2.5.1.7` `2.5.2.8` |
 | Kobra 3 V2 (+ combo) | `1.1.0.4` `1.1.2.8` |
 | Kobra S1 Max (+ combo) | `2.6.9.6` `2.7.1.4` `2.7.2.1` |
