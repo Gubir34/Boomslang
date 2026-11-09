@@ -198,6 +198,7 @@ class _Extractor(HTMLParser):
         self._a_text = []
         self._main = 0
         self._rules = []          # simple CSS rules from <style>
+        self._rule_cache = {}
         self._css = None          # text of the <style> being read
         self._script = None       # text of the inline <script> being read
         self._stack = []          # open elements: tag, hides, colour, alignment
@@ -240,18 +241,27 @@ class _Extractor(HTMLParser):
 
     # --- styles ---------------------------------------------------------------
     def _declarations(self, tag, attrs):
-        classes = (attrs.get('class') or '').split()
+        classes = tuple((attrs.get('class') or '').split())
         element_id = attrs.get('id') or ''
-        declared = {}
-        for rule_tag, rule_classes, rule_id, props in self._rules:
-            if rule_tag and rule_tag != tag:
-                continue
-            if rule_id and rule_id != element_id:
-                continue
-            if any(c not in classes for c in rule_classes):
-                continue
-            declared.update(props)
-        declared.update(parse_declarations(attrs.get('style')))
+        # Pages repeat the same tag/class/id combinations thousands of times,
+        # so the (slow on this CPU) rule scan is remembered per combination
+        key = (tag, classes, element_id, len(self._rules))
+        cached = self._rule_cache.get(key)
+        if cached is None:
+            cached = {}
+            for rule_tag, rule_classes, rule_id, props in self._rules:
+                if rule_tag and rule_tag != tag:
+                    continue
+                if rule_id and rule_id != element_id:
+                    continue
+                if any(c not in classes for c in rule_classes):
+                    continue
+                cached.update(props)
+            if len(self._rule_cache) < 2000:
+                self._rule_cache[key] = cached
+        declared = dict(cached)
+        if attrs.get('style'):
+            declared.update(parse_declarations(attrs.get('style')))
         if 'hidden' in attrs:
             declared['display'] = 'none'
         return declared
@@ -456,16 +466,22 @@ def _fetch_once(url, get, available_kb):
         kind = (response.headers.get('Content-Type') or 'text/html').split(';')[0].strip().lower()
         if kind not in ('text/html', 'application/xhtml+xml', 'text/plain', ''):
             raise BrowserError(f'This is a {kind} file, not a web page')
-        data = b''
+        parts, size = [], 0
         for chunk in response.iter_content(chunk_size=16384):
-            data += chunk
-            if len(data) >= MAX_BYTES:
-                data = data[:MAX_BYTES]
+            parts.append(chunk)
+            size += len(chunk)
+            if size >= MAX_BYTES:
                 break
+        data = b''.join(parts)[:MAX_BYTES]
         # Use the charset the server states, otherwise UTF-8 (undecodable
         # bytes become replacement characters instead of an error)
         header = response.headers.get('Content-Type') or ''
-        encoding = response.encoding if 'charset' in header.lower() and response.encoding else 'utf-8'
+        if 'charset' in header.lower() and response.encoding:
+            encoding = response.encoding
+        else:
+            # No charset in the header: trust <meta charset> (Turkish sites often use windows-1254)
+            found = re.search(rb'<meta[^>]+charset\s*=\s*["\']?\s*([\w-]+)', data[:4096], re.I)
+            encoding = found.group(1).decode('ascii', 'ignore') if found else 'utf-8'
         try:
             text = data.decode(encoding, errors='replace')
         except LookupError:

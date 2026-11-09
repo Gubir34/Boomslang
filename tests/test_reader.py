@@ -166,6 +166,18 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(page.url, 'https://www.example.org/dir/')
         self.assertEqual(page.blocks[0]['links'], [('x', 'https://www.example.org/dir/x')])
 
+    def test_meta_charset_is_used_when_the_header_names_none(self):
+        body = '<meta charset="windows-1254"><p>Çay şeker ığ</p>'.encode('cp1254')
+        page = fetching(FakeResponse(body, ctype='text/html', encoding='ISO-8859-1'))
+        self.assertEqual(kinds(page), [('p', 'Çay şeker ığ')])
+
+    def test_repeated_css_matches_give_the_same_result(self):
+        html = '<style>.w{color:#ff5050}</style>' + '<p class="w">a</p>' * 3 + '<p class="w" style="text-align:center">b</p>'
+        page = reader.parse_html(html, 'https://example.com/')
+        self.assertEqual([b['color'] for b in page.blocks], [(255, 80, 80)] * 4)
+        self.assertEqual(page.blocks[3]['align'], 'center')
+        self.assertIsNone(page.blocks[0]['align'])
+
     def test_big_pages_stop_downloading_at_the_limit(self):
         response = FakeResponse(b'<p>' + b'a' * (3 * reader.MAX_BYTES) + b'</p>')
         fetching(response)
