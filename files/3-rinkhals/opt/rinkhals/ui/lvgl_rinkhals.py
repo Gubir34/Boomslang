@@ -170,6 +170,25 @@ def get_style_modal():
     style_modal.set_pad_all(lv.dpx(20))
     return style_modal
 
+# Fonts and styles are built once and shared. Before this every widget loaded
+# its font file again and made its own style objects, which made long lists
+# and browser pages slow and used a lot of the printer's small memory.
+def _cached(function):
+    store = []
+    def wrapper():
+        if not store:
+            store.append(function())
+        return store[0]
+    wrapper.__name__ = function.__name__
+    return wrapper
+
+for _name in ('get_font_text', 'get_font_title', 'get_font_subtitle', 'get_font_icon', 'get_font_icon_small',
+              'get_style_screen', 'get_style_panel', 'get_style_panel_pressed', 'get_style_label_title',
+              'get_style_label_subtitle', 'get_style_label_text', 'get_style_button', 'get_style_button_icon',
+              'get_style_button_pressed', 'get_style_button_disabled', 'get_style_title_bar',
+              'get_style_checkbox', 'get_style_tag', 'get_style_tag_pressed', 'get_style_modal'):
+    globals()[_name] = _cached(globals()[_name])
+
 # Styled objects
 def screen(tag=None):
     result = lv.obj(None)

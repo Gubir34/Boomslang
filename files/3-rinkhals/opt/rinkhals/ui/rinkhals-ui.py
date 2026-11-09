@@ -261,14 +261,62 @@ class RinkhalsUiApp(BaseApp):
         if self.screen_main:
             self.screen_main.set_flex_flow(lv.FLEX_FLOW.COLUMN)
             self.screen_main.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
-            self.screen_main.set_style_pad_row(lvr.get_global_margin(), lv.STATE.DEFAULT)
+            self.screen_main.set_style_pad_row(lv.dpx(10), lv.STATE.DEFAULT)
+            self.screen_main.set_style_pad_all(lv.dpx(10), lv.STATE.DEFAULT)
 
-            # Icon tiles, three per row like the stock Anycubic screens: icon on
-            # top, short label below. Icons are Material Icons code points.
-            def tile(parent, icon, label, callback, color=None):
+            # Home screen after branding/ui-mockups/png/Main.png (Classic theme):
+            # header, a 3x2 grid of cards, and a row of three plain buttons.
+            SURFACE = lv.color_make(22, 29, 23)
+            BORDER = lv.color_make(36, 48, 38)
+            ICON_BOX = lv.color_make(31, 42, 33)
+            ICON_GREEN = lv.color_make(201, 234, 127)
+            PILL = lv.color_make(30, 62, 32)
+
+            def plain(widget):
+                widget.remove_flag(lv.OBJ_FLAG.CLICKABLE)
+                return widget
+
+            def card(parent, icon, label, hint, callback):
                 button = lvr.button(parent)
                 button.set_flex_grow(1)
-                button.set_height(lv.dpx(88))
+                button.set_height(lv.dpx(150))
+                button.set_flex_flow(lv.FLEX_FLOW.COLUMN)
+                button.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START)
+                button.set_style_pad_all(lv.dpx(14), lv.STATE.DEFAULT)
+                button.set_style_pad_row(lv.dpx(4), lv.STATE.DEFAULT)
+                button.set_style_radius(lv.dpx(14), lv.STATE.DEFAULT)
+                button.set_style_bg_color(SURFACE, lv.STATE.DEFAULT)
+                button.set_style_border_color(BORDER, lv.STATE.DEFAULT)
+                button.set_icon('')
+                button.set_text('')
+                box = plain(lvr.panel(button))
+                box.set_size(lv.dpx(48), lv.dpx(48))
+                box.set_style_pad_all(0, lv.STATE.DEFAULT)
+                box.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
+                box.set_style_bg_color(ICON_BOX, lv.STATE.DEFAULT)
+                box.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+                glyph = lv.label(box)
+                glyph.set_text(icon)
+                glyph.set_style_text_font(lvr.get_font_icon(), lv.STATE.DEFAULT)
+                glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'Browser') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+                glyph.center()
+                spacer = plain(lvr.panel(button))
+                spacer.set_size(1, lv.dpx(8))
+                spacer.set_style_pad_all(0, lv.STATE.DEFAULT)
+                plain(lvr.title(button)).set_text(label)
+                plain(lvr.subtitle(button)).set_text(hint)
+                button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
+                return button
+
+            def flat(parent, icon, label, callback, color=None):
+                button = lvr.button(parent)
+                button.set_flex_grow(1)
+                button.set_height(lv.dpx(52))
+                button.set_flex_flow(lv.FLEX_FLOW.ROW)
+                button.set_style_pad_column(lv.dpx(10), lv.STATE.DEFAULT)
+                button.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
+                button.set_style_bg_color(SURFACE, lv.STATE.DEFAULT)
+                button.set_style_border_color(BORDER, lv.STATE.DEFAULT)
                 button.set_icon(icon)
                 button.set_text(label)
                 if color:
@@ -276,11 +324,13 @@ class RinkhalsUiApp(BaseApp):
                 button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
                 return button
 
-            def tile_row():
-                row = lvr.panel(self.screen_main, flex_flow=lv.FLEX_FLOW.ROW)
+            def row_of(parent, height=None):
+                row = lvr.panel(parent, flex_flow=lv.FLEX_FLOW.ROW)
                 row.set_width(lv.pct(100))
-                row.set_style_pad_column(lvr.get_global_margin(), lv.STATE.DEFAULT)
+                row.set_style_pad_column(lv.dpx(10), lv.STATE.DEFAULT)
                 row.set_style_pad_all(0, lv.STATE.DEFAULT)
+                if height:
+                    row.set_height(height)
                 return row
 
             def show_link(port, name):
@@ -293,20 +343,44 @@ class RinkhalsUiApp(BaseApp):
             def confirm(text, action):
                 self.show_text_dialog(text, action='Yes', callback=action)
 
-            row = tile_row()
-            tile(row, '\ue5c3', 'Apps', lambda: self.show_screen(self.screen_apps))
-            tile(row, '\ue8d1', 'App Store', lambda: self.show_screen(self.screen_store))
-            tile(row, '\ue62a', 'Updates', lambda: self.show_screen(self.screen_ota))
+            # Header: logo, name, model and address, version pill
+            header = row_of(self.screen_main, lv.dpx(48))
+            header.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+            logo = lvr.image(header)
+            logo.set_src(ASSETS_PATH + '/icon.png')
+            logo.scale_to(lv.dpx(40))
+            lvr.title(header).set_text('Boomslang')
+            gap = plain(lvr.panel(header))
+            gap.set_flex_grow(1)
+            gap.set_height(1)
+            gap.set_style_pad_all(0, lv.STATE.DEFAULT)
+            self.home_label_device = lvr.subtitle(header)
+            self.home_label_device.set_width(lv.SIZE_CONTENT)
+            self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} \u00b7 {printer_ip() or "no network"}', 34))
+            pill = plain(lvr.panel(header))
+            pill.set_style_pad_hor(lv.dpx(12), lv.STATE.DEFAULT)
+            pill.set_style_pad_ver(lv.dpx(4), lv.STATE.DEFAULT)
+            pill.set_style_radius(lv.dpx(20), lv.STATE.DEFAULT)
+            pill.set_style_bg_color(PILL, lv.STATE.DEFAULT)
+            pill.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+            pill_text = lv.label(pill)
+            pill_text.set_text(ellipsis(f'v{RINKHALS_VERSION}', 18))
+            pill_text.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
 
-            row = tile_row()
-            tile(row, '\ue00b', 'Web portal', lambda: show_link(8090, 'Boomslang web portal'))
-            tile(row, '\ue894', 'Mainsail', lambda: show_link(4409, 'Mainsail'))
-            tile(row, '\ue80b', 'Browser', self.browser_show)
+            row = row_of(self.screen_main)
+            card(row, '\ue5c3', 'Apps', 'Start, stop, configure', lambda: self.show_screen(self.screen_apps))
+            card(row, '\ue8d1', 'App Store', 'Browse and install', lambda: self.show_screen(self.screen_store))
+            card(row, '\ue62a', 'Updates', 'Boomslang and firmware', lambda: self.show_screen(self.screen_ota))
 
-            row = tile_row()
-            tile(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
-            tile(row, '\ue8ac', 'Reboot', lambda: confirm('Are you sure you want\nto reboot your printer?', self.reboot_printer))
-            tile(row, '\ue8b8', 'Settings', lambda: self.show_screen(self.screen_advanced), lvr.COLOR_DANGER)
+            row = row_of(self.screen_main)
+            card(row, '\ue00b', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
+            card(row, '\ue894', 'Mainsail', 'Klipper web interface', lambda: show_link(4409, 'Mainsail'))
+            card(row, '\ue80b', 'Browser', 'Reader-mode web', self.browser_show)
+
+            row = row_of(self.screen_main)
+            flat(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
+            flat(row, '\ue8ac', 'Reboot', lambda: confirm('Are you sure you want\nto reboot your printer?', self.reboot_printer))
+            flat(row, '\ue8b8', 'Settings', lambda: self.show_screen(self.screen_advanced), lvr.COLOR_DANGER)
 
         # fireworks_shown = get_app_property('rinkhals_ui', 'fireworks_shown')
         # if not fireworks_shown or fireworks_shown.lower() != 'true':
