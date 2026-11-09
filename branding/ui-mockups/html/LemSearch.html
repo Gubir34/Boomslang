@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LemSearch</title>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}a:hover{color:inherit}
+.ic{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;white-space:nowrap;font-feature-settings:'liga'}
+button,input{font:inherit;color:inherit;cursor:pointer}
+</style>
+</head>
+<body>
+
+
+<div style="width: 800px; height: 480px; position: relative; overflow: hidden; box-sizing: border-box; font-family: Inter, sans-serif; color: #f2f8ee; background: radial-gradient(ellipse at 70% 30%, #1d4a1f 0%, #0c2410 45%, #050d07 100%)">
+  <svg aria-hidden="true" width="800" height="480" viewBox="0 0 800 480" style="position: absolute; left: 0; top: 0">
+    <path d="M-40 420 C 160 300, 300 360, 460 250 S 720 80, 860 120" fill="none" stroke="#4fb548" stroke-opacity="0.55" stroke-width="3"></path>
+    <path d="M-40 440 C 170 330, 320 390, 480 280 S 730 110, 860 150" fill="none" stroke="#c9ea7f" stroke-opacity="0.35" stroke-width="2"></path>
+    <path d="M-40 390 C 140 270, 290 330, 440 220 S 700 40, 860 80" fill="none" stroke="#4fb548" stroke-opacity="0.25" stroke-width="10"></path>
+    <path d="M120 -20 C 220 120, 180 260, 320 480" fill="none" stroke="#4fb548" stroke-opacity="0.12" stroke-width="24"></path>
+  </svg>
+
+  <a href="Aero.html" aria-label="Back to home" style="position: absolute; left: 14px; top: 10px; width: 60px; height: 60px; box-sizing: border-box; border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.07) 48%, rgba(0,0,0,0.18) 100%, rgba(0,0,0,0.30) 100%); border: 1px solid rgba(255,255,255,0.28); box-shadow: 0 4px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35); display: flex; align-items: center; justify-content: center">
+    <span class="ic" aria-hidden="true" style="font-size: 30px">undo</span>
+  </a>
+
+  <div style="position: absolute; left: 50%; top: 0; transform: translateX(-50%); height: 60px; box-sizing: border-box; padding: 0 26px; border-radius: 0 0 22px 22px; background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.07) 48%, rgba(0,0,0,0.18) 100%, rgba(0,0,0,0.30) 100%); border: 1px solid rgba(255,255,255,0.28); box-shadow: 0 4px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35); border-top: none; display: flex; align-items: center; gap: 10px">
+    <svg aria-hidden="true" width="26" height="26" viewBox="0 0 32 32" fill="none" stroke="currentColor"><path d="M8 4 V26 H20" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"></path><circle cx="19" cy="12" r="4.5" stroke-width="2.5"></circle><path d="M22.2 15.2 L25.8 18.8" stroke-width="2.5" stroke-linecap="round"></path></svg>
+    <span style="font-size: 20px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.6); white-space: nowrap">LemSearch</span>
+  </div>
+
+  <div style="position: absolute; right: 14px; top: 10px; box-sizing: border-box; padding: 6px 8px; border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.07) 48%, rgba(0,0,0,0.18) 100%, rgba(0,0,0,0.30) 100%); border: 1px solid rgba(255,255,255,0.28); box-shadow: 0 4px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35); display: flex; gap: 2px">
+    <span class="ic" role="img" aria-label="Wi-Fi connected" style="width: 30px; height: 46px; font-size: 21px; display: flex; align-items: center; justify-content: center">wifi</span>
+    <span class="ic" role="img" aria-label="Network activity" style="width: 30px; height: 46px; font-size: 21px; display: flex; align-items: center; justify-content: center">swap_vert</span>
+    <span style="width: 30px; height: 46px; position: relative; display: flex; align-items: center; justify-content: center">
+      <span class="ic" role="img" aria-label="1 notification" style="font-size: 21px">notifications</span>
+      <span style="position: absolute; right: 0; top: 8px; min-width: 15px; height: 15px; border-radius: 999px; background: #e0533f; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center">1</span>
+    </span>
+  </div>
+
+  <main style="position: absolute; left: 14px; right: 14px; top: 82px; height: 300px; box-sizing: border-box">
+    <div style="height: 300px; box-sizing: border-box; padding: 14px; background: rgba(6,18,8,0.62); border: 1px solid rgba(255,255,255,0.22); box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.18); border-radius: 16px; display: flex; flex-direction: column; gap: 10px">
+      <label for="q" style="height: 52px; flex-shrink: 0; box-sizing: border-box; padding: 0 6px 0 14px; border-radius: 999px; background: rgba(255,255,255,0.92); color: #10210f; display: flex; align-items: center; gap: 10px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.25)">
+        <span class="ic" aria-hidden="true" style="font-size: 24px; color: #3f9a3c">search</span>
+        <input id="q" type="text" value="pressure advance kobra s1" aria-label="Search" style="flex-grow: 1; border: none; outline: none; background: transparent; font-size: 17px; color: #10210f; cursor: text">
+        <button type="button" style="height: 40px; padding: 0 18px; font-size: 15px; font-weight: 700; border-radius: 999px; color: #0b1a0c; background: linear-gradient(180deg, #e9f8c8 0%, #c9ea7f 50%, #4fb548 100%); border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 1px 4px rgba(0,0,0,0.4)">Search</button>
+      </label>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <a href="Browser.html" style="box-sizing: border-box; padding: 10px 14px; background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 50%, rgba(0,0,0,0.10) 100%); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; display: flex; flex-direction: column; gap: 3px">
+          <span style="font-size: 12px; color: #b8cdb0">klipper3d.org</span>
+          <span style="font-size: 16px; font-weight: 600; color: #d9f2a4">Pressure advance</span>
+          <span style="font-size: 13px; color: #cfdcc9">How to tune pressure advance for sharper corners.</span>
+        </a>
+        <a href="Browser.html" style="box-sizing: border-box; padding: 10px 14px; background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 50%, rgba(0,0,0,0.10) 100%); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; display: flex; flex-direction: column; gap: 3px">
+          <span style="font-size: 12px; color: #b8cdb0">docs.mainsail.xyz</span>
+          <span style="font-size: 16px; font-weight: 600; color: #d9f2a4">Mainsail documentation</span>
+          <span style="font-size: 13px; color: #cfdcc9">Setting up macros and tuning from the web interface.</span>
+        </a>
+        <a href="Browser.html" style="box-sizing: border-box; padding: 10px 14px; background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 50%, rgba(0,0,0,0.10) 100%); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; display: flex; flex-direction: column; gap: 3px">
+          <span style="font-size: 12px; color: #b8cdb0">github.com</span>
+          <span style="font-size: 16px; font-weight: 600; color: #d9f2a4">Boomslang</span>
+          <span style="font-size: 13px; color: #cfdcc9">Custom firmware for the Kobra S1, S1 Max and Kobra 3.</span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <nav style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 14px; background: linear-gradient(180deg, rgba(20,40,22,0.70) 0%, rgba(8,18,10,0.88) 100%, rgba(2,6,3,0.95) 100%); border-top: 1px solid rgba(255,255,255,0.30); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12)">
+    <a href="Settings.html" aria-label="Settings" style="box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.55); background: radial-gradient(circle at 50% 22%, #ffffff 0%, #eef7e8 38%, #b7d6a3 100%); box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 -3px 6px rgba(40,80,30,0.25); color: #10210f; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ic" aria-hidden="true" style="font-size: 30px">settings</span></a>
+    <a href="Store.html" aria-label="App Store" style="box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.55); background: radial-gradient(circle at 50% 22%, #ffffff 0%, #eef7e8 38%, #b7d6a3 100%); box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 -3px 6px rgba(40,80,30,0.25); color: #10210f; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ic" aria-hidden="true" style="font-size: 30px">local_mall</span></a>
+    <a href="AeroApps.html" aria-label="Apps" style="box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.55); background: radial-gradient(circle at 50% 22%, #ffffff 0%, #eef7e8 38%, #b7d6a3 100%); box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 -3px 6px rgba(40,80,30,0.25); color: #10210f; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ic" aria-hidden="true" style="font-size: 30px">widgets</span></a>
+    <a href="Portal.html" aria-label="Web portal QR code" style="box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.55); background: radial-gradient(circle at 50% 22%, #ffffff 0%, #eef7e8 38%, #b7d6a3 100%); box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 -3px 6px rgba(40,80,30,0.25); color: #10210f; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ic" aria-hidden="true" style="font-size: 30px">qr_code_2</span></a>
+    <a href="LemSearch.html" aria-label="LemSearch" style="box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.55); background: radial-gradient(circle at 50% 22%, #ffffff 0%, #eef7e8 38%, #b7d6a3 100%); box-shadow: 0 0 0 3px #4fb548, 0 0 16px #4fb548, inset 0 -3px 6px rgba(40,80,30,0.25); color: #10210f; display: flex; align-items: center; justify-content: center; padding: 0"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor"><path d="M8 4 V26 H20" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"></path><circle cx="19" cy="12" r="4.5" stroke-width="2.5"></circle><path d="M22.2 15.2 L25.8 18.8" stroke-width="2.5" stroke-linecap="round"></path></svg></a>
+    <a href="Power.html" aria-label="Power" style="box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.55); background: radial-gradient(circle at 50% 22%, #ffffff 0%, #eef7e8 38%, #b7d6a3 100%); box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 -3px 6px rgba(40,80,30,0.25); color: #10210f; display: flex; align-items: center; justify-content: center; padding: 0"><span class="ic" aria-hidden="true" style="font-size: 30px">power_settings_new</span></a>
+    <div style="flex-grow: 1"></div>
+    <div style="height: 60px; box-sizing: border-box; padding: 0 16px; border-radius: 14px; background: radial-gradient(circle at 50% 15%, #ffffff 0%, #eef7e8 45%, #b7d6a3 100%); border: 1px solid rgba(255,255,255,0.55); box-shadow: 0 2px 6px rgba(0,0,0,0.45); color: #10210f; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px">
+      <span style="font-size: 19px; font-weight: 700">19:09</span>
+      <span style="font-size: 12px; font-weight: 500; color: #2c4a2a">11/11/2026</span>
+    </div>
+  </nav>
+</div>
+
+
+</body>
+</html>
