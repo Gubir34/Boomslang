@@ -9,6 +9,9 @@
 #                                       patches and start/stop scripts
 #   sh build/bs.sh apps [name..] apps from this repo or ../Boomslang.Apps
 #                                       (restarts each one if it is enabled)
+#   sh build/bs.sh install <update-*.swu>
+#                                       full update from this PC, like Updates > Install on
+#                                       the printer (asks to confirm, then reboots it)
 #   sh build/bs.sh status        versions, memory and Boomslang processes
 #   sh build/bs.sh close         close the connection now
 #
@@ -108,8 +111,45 @@ case "$cmd" in
                 else echo '$app is installed but not enabled (enable it in Boomslang > Apps)'; fi"
         done
         ;;
+    install)
+        need_connection
+        swu=${1:-}
+        [ -f "$swu" ] || { echo "Usage: bs.sh install <path to update-*.swu>" >&2; exit 1; }
+        echo "File: $swu ($(du -h "$swu" | cut -f1))"
+        if [ -n "$BS_DRY" ]; then echo "would send it to /useremain/update.swu, unpack, install and reboot"; exit 0; fi
+        if [ "$BS_YES" != 1 ]; then
+            printf 'Install this on %s and reboot the printer? [y/N] ' "$HOST"
+            read -r answer
+            [ "$answer" = y ] || [ "$answer" = Y ] || { echo "Cancelled"; exit 1; }
+        fi
+        remote "cat > /useremain/update.swu && sync" < "$swu"
+        echo "Uploaded, installing (the printer reboots when done)..."
+        remote ". $CUR/tools.sh > /dev/null 2>&1
+            case \"\$KOBRA_MODEL_CODE\" in
+                K2P|K3|K3V2) P='U2FsdGVkX19deTfqpXHZnB5GeyQ/dtlbHjkUnwgCi+w=' ;;
+                KS1|KS1M) P='U2FsdGVkX1+lG6cHmshPLI/LaQr9cZCjA8HZt6Y8qmbB7riY' ;;
+                K3M) P='4DKXtEGStWHpPgZm8Xna9qluzAI8VJzpOsEIgd8brTLiXs8fLSu3vRx8o7fMf4h6' ;;
+                *) echo \"Unknown model \$KOBRA_MODEL_CODE\"; exit 1 ;;
+            esac
+            set -e
+            rm -rf /useremain/update_swu
+            unzip -P \"\$P\" /useremain/update.swu -d /useremain > /dev/null || { echo 'Wrong package for this printer model'; rm -f /useremain/update.swu; exit 1; }
+            rm -f /useremain/update.swu
+            if [ -f /useremain/update_swu/setup.tar.gz.md5 ]; then
+                [ \"\$(md5sum /useremain/update_swu/setup.tar.gz | cut -d' ' -f1)\" = \"\$(tr -d ' \\n' < /useremain/update_swu/setup.tar.gz.md5)\" ] || { echo 'Package checksum does not match'; exit 1; }
+            fi
+            tar zxf /useremain/update_swu/setup.tar.gz -C /useremain/update_swu
+            chmod +x /useremain/update_swu/update.sh
+            sed -i -e 's|rm -rf \${swu_path}/update.swu|echo|' -e 's|rm -f \$USB_PATH/update.swu||' -e 's|reboot|echo|' /useremain/update_swu/update.sh
+            /useremain/update_swu/update.sh async
+            mkdir -p /useremain/rinkhals
+            : > /useremain/rinkhals/.reboot-marker
+            sync
+            echo 'Installed, rebooting now'
+            reboot"
+        ;;
     *)
-        sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
         exit 1
         ;;
 esac
