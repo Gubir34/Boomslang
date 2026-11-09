@@ -712,33 +712,31 @@ class RinkhalsUiApp(BaseApp):
             for app in apps:
                 enabled = apps_enabled.get(app) == '1'
 
-                lv.lock()
-                panel_app = lvr.panel(self.screen_apps.panel_apps)
-                panel_app.set_style_pad_all(0, lv.STATE.DEFAULT)
-                panel_app.set_width(lv.pct(100))
+                with lvr.lock():
+                    panel_app = lvr.panel(self.screen_apps.panel_apps)
+                    panel_app.set_style_pad_all(0, lv.STATE.DEFAULT)
+                    panel_app.set_width(lv.pct(100))
 
-                button_app = lvr.button(panel_app)
-                button_app.set_width(lv.pct(100))
-                button_app.set_text(ellipsis(names[app], 26))
-                button_app.set_style_pad_left(lv.dpx(15), lv.STATE.DEFAULT)
-                button_app.set_style_pad_right(lv.dpx(4), lv.STATE.DEFAULT)
-                button_app.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
-                button_app.add_event_cb(lambda e, app=app: self.show_app(app), lv.EVENT_CODE.CLICKED, None)
+                    button_app = lvr.button(panel_app)
+                    button_app.set_width(lv.pct(100))
+                    button_app.set_text(ellipsis(names[app], 26))
+                    button_app.set_style_pad_left(lv.dpx(15), lv.STATE.DEFAULT)
+                    button_app.set_style_pad_right(lv.dpx(4), lv.STATE.DEFAULT)
+                    button_app.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
+                    button_app.add_event_cb(lambda e, app=app: self.show_app(app), lv.EVENT_CODE.CLICKED, None)
 
-                checkbox_app = lvr.checkbox(panel_app)
-                checkbox_app.align(lv.ALIGN.RIGHT_MID, -lv.dpx(5), 0)
-                # Query ground truth on each click. The previous implementation
-                # captured `enabled` via a keyword default, which only reflects
-                # state at widget-creation time. After the first click flipped
-                # the app, subsequent clicks kept sending the same command
-                # (because the closure's `enabled` never updated), so users
-                # saw the checkbox stay in whatever state the first click left
-                # it in until they backed out and re-entered the Apps screen.
-                checkbox_app.add_event_cb(lambda e, app=app: toggle_app(app, is_app_enabled(app) != '1'), lv.EVENT_CODE.CLICKED, None)
-                checkbox_app.set_checked(enabled)
-                lv.unlock()
-
-                self.app_checkboxes[app] = checkbox_app
+                    checkbox_app = lvr.checkbox(panel_app)
+                    checkbox_app.align(lv.ALIGN.RIGHT_MID, -lv.dpx(5), 0)
+                    # Query ground truth on each click. The previous implementation
+                    # captured `enabled` via a keyword default, which only reflects
+                    # state at widget-creation time. After the first click flipped
+                    # the app, subsequent clicks kept sending the same command
+                    # (because the closure's `enabled` never updated), so users
+                    # saw the checkbox stay in whatever state the first click left
+                    # it in until they backed out and re-entered the Apps screen.
+                    checkbox_app.add_event_cb(lambda e, app=app: toggle_app(app, is_app_enabled(app) != '1'), lv.EVENT_CODE.CLICKED, None)
+                    checkbox_app.set_checked(enabled)
+                    self.app_checkboxes[app] = checkbox_app
 
         run_async(refresh_apps)
     def show_app(self, app):
@@ -1634,13 +1632,19 @@ class RinkhalsUiApp(BaseApp):
         # the one bundled in the installable SWU. Apps added after the release
         # won't exist at the tag, so fall back to the branch for display.
         import requests
+        cache = self.__dict__.setdefault('store_manifest_cache', {})
+        cached = cache.get((app_dir, ref))
+        if cached and time.time() - cached[0] < 600:
+            return cached[1]
         refs = [ref] + ([self.APP_STORE_BRANCH] if ref != self.APP_STORE_BRANCH else [])
         for r in refs:
             try:
                 url = f'https://raw.githubusercontent.com/{self.APP_STORE_REPO}/{r}/apps/{app_dir}/app.json'
                 resp = requests.get(url, headers=api_headers, timeout=5)
                 if resp.status_code == 200:
-                    return json.loads(resp.text, cls=JSONWithCommentsDecoder)
+                    manifest = json.loads(resp.text, cls=JSONWithCommentsDecoder)
+                    cache[(app_dir, ref)] = (time.time(), manifest)
+                    return manifest
             except Exception:
                 pass
         return {}
@@ -1666,6 +1670,9 @@ class RinkhalsUiApp(BaseApp):
         label_loading.set_text('Loading...')
         label_loading.set_style_text_align(lv.TEXT_ALIGN.CENTER, lv.STATE.DEFAULT)
         label_loading.center()
+
+        self.store_generation = getattr(self, 'store_generation', 0) + 1
+        generation = self.store_generation
 
         def fetch_apps():
             try:
@@ -1696,15 +1703,19 @@ class RinkhalsUiApp(BaseApp):
                 except Exception:
                     pass
 
+                # The manifests are small files on a slow link: read several at
+                # once instead of one after the other (42 apps took minutes)
+                from concurrent.futures import ThreadPoolExecutor
+                app_names = [e.get('name') for e in app_dirs if e.get('name')]
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    manifests = list(pool.map(lambda d: self.fetch_store_manifest(d, manifest_ref, api_headers), app_names))
+                if generation != self.store_generation:
+                    return  # the user left the store and came back: this list is stale
+
                 with lvr.lock():
                     label_loading.add_flag(lv.OBJ_FLAG.HIDDEN)
 
-                for entry in app_dirs:
-                    app_dir = entry.get('name')
-                    if not app_dir:
-                        continue
-
-                    app_manifest = self.fetch_store_manifest(app_dir, manifest_ref, api_headers)
+                for app_dir, app_manifest in zip(app_names, manifests):
 
                     app_name = app_manifest.get('name') or app_dir
                     app_version = app_manifest.get('version') or ''
