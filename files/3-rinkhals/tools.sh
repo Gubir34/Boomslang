@@ -77,19 +77,38 @@ is_supported_firmware() {
     [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.6.0.0" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.9.9" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.8.8" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.6.4" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.6.0" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.3.8" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.3.5" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.3.1" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "KS1" ] && [ "$KOBRA_VERSION" = "2.5.2.3" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.2.8" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.2.7" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.2.5" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.0.4" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.0.1" ] && SUPPORTED=1
-    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.2.7" ] && SUPPORTED=1
-    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.1.2.8" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.0.9.7" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.0.7.3" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3V2" ] && [ "$KOBRA_VERSION" = "1.0.5.8" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.5.2.8" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.5.1.7" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.5.1.3" ] && SUPPORTED=1
-    [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.5.2.8" ] && SUPPORTED=1
-    [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.6.4" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.5.0.9" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.4.8.4" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.4.6.5" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3M" ] && [ "$KOBRA_VERSION" = "2.4.6" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.6.7" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.6.4" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.5" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.4.7" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.4.3" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.1.9" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.0.4" ] && SUPPORTED=1
+    [ "$KOBRA_MODEL_CODE" = "K3" ] && [ "$KOBRA_VERSION" = "2.4.0" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K2P" ] && [ "$KOBRA_VERSION" = "3.1.4" ] && SUPPORTED=1
     [ "$KOBRA_MODEL_CODE" = "K2P" ] && [ "$KOBRA_VERSION" = "3.1.2.3" ] && SUPPORTED=1
+    [ -f "$RINKHALS_ROOT/opt/rinkhals/patches/K3SysUi.${KOBRA_MODEL_CODE}_${KOBRA_VERSION}.sh" ] && SUPPORTED=1
     echo $SUPPORTED
 }
 
