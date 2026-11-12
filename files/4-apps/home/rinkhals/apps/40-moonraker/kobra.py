@@ -168,6 +168,8 @@ def is_live_bed_mesh(status):
 # Add entries one at a time once confirmed on that model and firmware.
 LIVE_BED_MESH_VERIFIED = (
     ('KS1', '2.7.2.7'),
+    ('KS1', '2.7.3.5'),
+    ('KS1', '2.7.3.7'),
 )
 
 

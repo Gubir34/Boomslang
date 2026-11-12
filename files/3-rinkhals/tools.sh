@@ -52,10 +52,13 @@ quit() {
 }
 
 check_compatibility() {
-    if [ "$KOBRA_MODEL_CODE" != "K2P" ] && [ "$KOBRA_MODEL_CODE" == "K3" ] && [ "$KOBRA_MODEL_CODE" == "KS1" ] && [ "$KOBRA_MODEL_CODE" == "K3M" ]; then
-        log "Your printer's model is not recognized, exiting"
-        quit
-    fi
+    case "$KOBRA_MODEL_CODE" in
+        K2P|K3|K3V2|K3M|KS1|KS1M) ;;
+        *)
+            log "Your printer's model ($KOBRA_MODEL_CODE) is not recognized, exiting"
+            quit
+            ;;
+    esac
 }
 is_supported_firmware() {
     SUPPORTED=0

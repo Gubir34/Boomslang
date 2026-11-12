@@ -137,7 +137,11 @@ class LiveBedMeshTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result["status"]["bed_mesh"]["mesh_min"], (5.0, 5.0))
 
     def test_verified_list(self):
-        self.assertEqual(tuple(self.module.LIVE_BED_MESH_VERIFIED), (("KS1", "2.7.2.7"),))
+        self.assertEqual(tuple(self.module.LIVE_BED_MESH_VERIFIED), (
+            ("KS1", "2.7.2.7"),
+            ("KS1", "2.7.3.5"),
+            ("KS1", "2.7.3.7"),
+        ))
 
     def test_is_live_bed_mesh(self):
         f = self.module.is_live_bed_mesh
