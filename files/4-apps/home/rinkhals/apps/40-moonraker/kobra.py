@@ -1753,9 +1753,9 @@ class Kobra:
                         )
 
                     if (self.KOBRA_MODEL_CODE == 'KS1M' and
-                            self.KOBRA_VERSION == '2.7.1.4'):
-                        # These three fans are verified on KS1M 2.7.1.4 only. In particular,
-                        # exhaust_fan was introduced in that firmware; exposing it on older
+                            self.KOBRA_VERSION in ('2.7.1.4', '2.7.2.1')):
+                        # These three fans are verified on KS1M 2.7.1.4 and 2.7.2.1. In particular,
+                        # exhaust_fan was introduced in 2.7.1.4; exposing it on older
                         # releases risks a fatal subscription to an object GoKlipper lacks.
                         objects.append("fan_generic chamber_fan")
                         objects.append("fan_generic exhaust_fan")

@@ -327,16 +327,18 @@ class KobraObjectsListPatchTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("chamber_temp", objects)
 
     async def test_verified_ks1m_exposes_reported_chamber_and_fans(self):
-        objects, _requests = await self._objects_for(
-            "KS1M",
-            "2.7.1.4",
-            available_heaters=["heater_bed", "chamber_temp", "extruder"],
-        )
+        for version in ("2.7.1.4", "2.7.2.1"):
+            with self.subTest(version=version):
+                objects, _requests = await self._objects_for(
+                    "KS1M",
+                    version,
+                    available_heaters=["heater_bed", "chamber_temp", "extruder"],
+                )
 
-        self.assertIn("chamber_temp", objects)
-        self.assertIn("fan_generic chamber_fan", objects)
-        self.assertIn("fan_generic exhaust_fan", objects)
-        self.assertIn("controller_fan controller_fan", objects)
+                self.assertIn("chamber_temp", objects)
+                self.assertIn("fan_generic chamber_fan", objects)
+                self.assertIn("fan_generic exhaust_fan", objects)
+                self.assertIn("controller_fan controller_fan", objects)
 
     async def test_older_ks1m_exposes_reported_chamber_but_not_unverified_fans(self):
         objects, _requests = await self._objects_for(
