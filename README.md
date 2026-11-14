@@ -5,7 +5,7 @@
 
 # Boomslang
 
-Boomslang is a fork of [Rinkhals](https://github.com/rinkhals-community/Rinkhals) by Julien Batonnet and the Rinkhals Community. It keeps Rinkhals' on-printer layout (`/useremain/rinkhals`), so apps and tools made for Rinkhals keep working, and adds support for newer firmware such as Kobra S1 `2.7.3.7`.
+Boomslang is a fork of [Rinkhals](https://github.com/rinkhals-community/Rinkhals). It keeps Rinkhals' on-printer layout (`/useremain/rinkhals`), so apps and tools made for Rinkhals keep working, and adds support for newer firmware such as Kobra S1 `2.7.3.7`.
 
 Boomslang is a custom firmware for some Anycubic Kobra 3D printers (specifically the ones running Kobra OS, see below for the details).
 
