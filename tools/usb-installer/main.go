@@ -25,7 +25,7 @@ var version = "dev" // set at build time with -ldflags "-X main.version=..."
 
 type options struct {
 	model, channel, tag, drive, target, file, folder string
-	force, yes, list                                 bool
+	force, yes, list, cli, gui                       bool
 }
 
 var stdin = bufio.NewReader(os.Stdin)
@@ -45,14 +45,24 @@ func main() {
 	flag.BoolVar(&o.force, "force", false, "write even when the drive does not look readable by the printer")
 	flag.BoolVar(&o.yes, "yes", false, "do not ask for confirmation")
 	flag.BoolVar(&o.list, "list", false, "list the USB drives found and exit")
+	flag.BoolVar(&o.cli, "cli", false, "ask in this window instead of opening the browser page")
+	flag.BoolVar(&o.gui, "gui", false, "open the browser page (the default when started without options)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "boomslang-usb %s - put Boomslang on a USB drive for an Anycubic Kobra printer\n\n", version)
-		fmt.Fprintf(os.Stderr, "Run it without options to be asked for everything, or:\n\n")
+		fmt.Fprintf(os.Stderr, "Without options it opens a page in your browser. --cli asks here instead, or:\n\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExample: boomslang-usb --model KS1 --channel release --yes\n")
 	}
 	flag.Parse()
-	wizard := len(os.Args) == 1 // started by a double click, or without options
+	if len(os.Args) == 1 || o.gui {
+		fmt.Printf("Boomslang USB installer %s\n\n", version)
+		if err := runGUI(); err != nil {
+			fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	wizard := o.cli && flag.NFlag() == 1 // asked for the console version and nothing else: wait before closing
 
 	fmt.Printf("Boomslang USB installer %s\n\n", version)
 	err := run(o)
@@ -320,7 +330,8 @@ func run(o options) error {
 	}
 
 	// What to install
-	var source, sum, title string
+	var source, title string
+	var sum string
 	var size int64
 	var pkg *asset
 	if o.file != "" {
@@ -407,48 +418,10 @@ func run(o options) error {
 		}
 	}
 
-	// Download next to the system's temporary files, not onto the stick: it
-	// is checked before a single byte goes to the drive
-	if pkg != nil {
-		temporary, err := os.CreateTemp("", "boomslang-*.swu")
-		if err != nil {
-			return err
-		}
-		temporary.Close()
-		defer os.Remove(temporary.Name())
-		source = temporary.Name()
-
-		sum, err = download(pkg.URL, source, pkg.Size, func(done, total int64) {
-			if total > 0 {
-				fmt.Printf("\rDownloading... %3d%%  (%d / %d MB)", done*100/total, done>>20, total>>20)
-			} else {
-				fmt.Printf("\rDownloading... %d MB", done>>20)
-			}
-		})
-		fmt.Println()
-		if err != nil {
-			return err
-		}
-		if !digestMatches(pkg.Digest, sum) {
-			return fmt.Errorf("the download does not match the checksum GitHub published; nothing was written to the drive. Try again")
-		}
-		if err := checkPackage(source); err != nil {
-			return fmt.Errorf("%s: %w", pkg.Name, err)
-		}
-		fmt.Println("Download checked.")
-	} else {
-		if sum, err = sha256File(source); err != nil {
-			return err
-		}
+	err = writePackage(pkg, source, sum, target, folders, cliReporter())
+	if err != nil {
+		return err
 	}
-
-	for _, folder := range folders {
-		fmt.Printf("Writing %s...\n", filepath.Join(target.Root, folder, usbFileName))
-		if _, err := placeOnDrive(source, target.Root, folder, sum); err != nil {
-			return err
-		}
-	}
-	flush(target.Root)
 
 	fmt.Printf(`
 Done. The drive is ready.

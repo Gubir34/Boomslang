@@ -11,8 +11,13 @@ page:
 - Linux: `boomslang-usb-linux-x64` (or `-arm64`), then
   `chmod +x boomslang-usb-linux-x64 && ./boomslang-usb-linux-x64`
 
-Started without options it asks for the printer model, the version and the
-USB drive, shows what it is about to write, and waits for a yes.
+Started without options it opens a page in your browser (a small window on
+your own computer, nothing is sent anywhere but to GitHub for the download).
+Pick the printer, the version and the USB drive, then press **Write to USB
+drive**. Closing the browser tab quits the program. It needs no installation
+and no extra libraries.
+
+Prefer the console? `--cli` asks the same questions in the terminal window.
 
 ## What it checks
 
@@ -34,6 +39,7 @@ USB drive, shows what it is about to write, and waits for a yes.
 boomslang-usb --model KS1 --channel release --yes     # newest stable release, no questions
 boomslang-usb --model KS1M --version 2611-3-alpha     # one exact release
 boomslang-usb --model K3 --file update-k2p-k3.swu     # a file you already downloaded
+boomslang-usb --cli                                   # questions in the terminal, no browser
 boomslang-usb --list                                  # the USB drives found
 boomslang-usb --target /media/me/STICK ...            # write to a folder, skip drive detection
 ```
@@ -55,5 +61,7 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o boomslang-usb.exe .
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o boomslang-usb .
 ```
 
-No dependencies outside Go's standard library. On Linux it uses `lsblk` to
+The window is a local web page (`index.html`, embedded in the program) served
+on 127.0.0.1 with a random token, so no web page you have open elsewhere can
+use it. No dependencies outside Go's standard library. On Linux it uses `lsblk` to
 find drives and `udisksctl` to mount one that isn't mounted.

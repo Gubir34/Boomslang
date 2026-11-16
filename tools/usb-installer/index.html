@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boomslang USB installer</title>
+<style>
+  :root { --bg:#0f1511; --panel:#161d17; --line:#24302a; --ink:#e8efe9; --mute:#93a396; --brand:#4fb548; --bad:#ff6b5e; --warn:#e8b84a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:28px 20px 60px; }
+  h1 { font-size:24px; margin:0 0 4px; } h1 span { color:var(--brand); }
+  .sub { color:var(--mute); margin:0 0 24px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  section.off { opacity:.45; pointer-events:none; }
+  h2 { font-size:15px; margin:0 0 10px; display:flex; gap:10px; align-items:center; }
+  h2 b { background:var(--brand); color:#0b130c; width:24px; height:24px; border-radius:50%; display:inline-grid; place-items:center; font-size:13px; }
+  label.opt { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-top:8px; cursor:pointer; }
+  label.opt:hover { border-color:#35493c; }
+  label.opt.bad { opacity:.55; cursor:not-allowed; }
+  label.opt input { margin-top:4px; accent-color:var(--brand); }
+  .t { font-weight:600; } .d { color:var(--mute); font-size:14px; }
+  .pill { font-size:12px; border:1px solid var(--warn); color:var(--warn); border-radius:20px; padding:1px 8px; margin-left:6px; }
+  .why { color:var(--bad); font-size:14px; margin-top:2px; } .note { color:var(--warn); font-size:14px; margin-top:2px; }
+  select, button { font:inherit; border-radius:10px; border:1px solid var(--line); background:#0f1511; color:var(--ink); padding:9px 12px; }
+  select { width:100%; }
+  button { cursor:pointer; } button.link { background:none; border:none; color:var(--mute); padding:4px 0; text-decoration:underline; }
+  button.go { width:100%; background:var(--brand); color:#0b130c; border:none; font-weight:700; padding:13px; font-size:17px; }
+  button.go:disabled { background:#2a352c; color:var(--mute); cursor:not-allowed; }
+  .bar { height:12px; background:#0f1511; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0 8px; }
+  .bar div { height:100%; width:0; background:var(--brand); transition:width .3s; }
+  pre { margin:8px 0 0; color:var(--mute); font-size:13px; white-space:pre-wrap; }
+  .ok { border-color:var(--brand); } .err { border-color:var(--bad); }
+  .err h2 { color:var(--bad); } .ok h2 { color:var(--brand); }
+  .hidden { display:none; } ol { padding-left:20px; margin:8px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Boomslang <span>USB installer</span></h1>
+  <p class="sub">Puts Boomslang on a USB drive. Plug the drive into your Kobra printer afterwards and it installs itself.</p>
+
+  <section id="s1">
+    <h2><b>1</b> Which printer?</h2>
+    <select id="model"></select>
+  </section>
+
+  <section id="s2" class="off">
+    <h2><b>2</b> Which version?</h2>
+    <div id="releases" class="d">Pick a printer first.</div>
+  </section>
+
+  <section id="s3" class="off">
+    <h2><b>3</b> Which USB drive? <button class="link" id="refreshDrives" type="button">Refresh</button></h2>
+    <div id="drives" class="d"></div>
+    <div class="d" style="margin-top:10px">The printer only reads <b>FAT32</b> drives with an <b>MBR</b> partition table. This tool never formats a drive.</div>
+  </section>
+
+  <section id="s4" class="off">
+    <div id="summary" class="d" style="margin-bottom:12px"></div>
+    <button class="go" id="go" disabled>Write to USB drive</button>
+  </section>
+
+  <section id="progress" class="hidden">
+    <h2 id="progressTitle">Working...</h2>
+    <div class="bar"><div id="fill"></div></div>
+    <pre id="log"></pre>
+  </section>
+
+  <section id="done" class="hidden ok">
+    <h2>The drive is ready</h2>
+    <ol>
+      <li id="eject"></li>
+      <li>Plug it into the printer while the printer is on and not printing.</li>
+      <li>The printer installs it and restarts by itself. Leave it on until it is back; this takes a few minutes.</li>
+    </ol>
+  </section>
+
+  <section id="failed" class="hidden err">
+    <h2>It did not work</h2>
+    <div id="error"></div>
+    <div class="d" style="margin-top:8px">Nothing was left half written on the drive. You can try again.</div>
+    <div style="margin-top:12px"><button id="again" type="button">Start again</button></div>
+  </section>
+</main>
+<script>
+const token = new URLSearchParams(location.search).get('t') || '';
+const $ = id => document.getElementById(id);
+const api = async (path, options = {}) => {
+  const res = await fetch(path, { ...options, headers: { 'X-Token': token, 'Content-Type': 'application/json' } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+};
+const mb = n => Math.round(n / 1048576) + ' MB';
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.forEach(k => e.append(k)); return e; };
+const enable = (id, on) => $(id).classList.toggle('off', !on);
+
+const K2P_FOLDERS = ['aGVscF9zb3Nf', 'update'];
+let chosen = { model: '', tag: '', drive: '' }, driveList = [];
+
+function summary() {
+  const ready = chosen.model && chosen.tag && chosen.drive;
+  enable('s4', !!ready);
+  $('go').disabled = !ready;
+  if (!ready) { $('summary').textContent = ''; return; }
+  const d = driveList.find(x => x.id === chosen.drive);
+  const r = document.querySelector('input[name=rel]:checked');
+  $('summary').textContent = `Boomslang ${r.dataset.title} for the ${$('model').selectedOptions[0].text}, written to ${d ? d.text : chosen.drive}. An update.swu already on the drive is replaced.`;
+}
+
+async function loadReleases() {
+  chosen.tag = ''; summary();
+  const box = $('releases'); box.textContent = 'Looking for releases...';
+  try {
+    const list = await api('/api/releases?model=' + encodeURIComponent(chosen.model));
+    box.textContent = '';
+    if (!list.length) { box.textContent = 'No release with a package for this printer was found.'; return; }
+    list.forEach((r, i) => {
+      const input = el('input', { type: 'radio', name: 'rel', value: r.tag });
+      input.dataset.title = r.title;
+      input.onchange = () => { chosen.tag = r.tag; summary(); };
+      const title = el('div', { className: 't' }, r.title);
+      if (r.test) title.append(el('span', { className: 'pill' }, 'test version'));
+      box.append(el('label', { className: 'opt' }, input,
+        el('div', {}, title, el('div', { className: 'd' }, `${r.date} · ${mb(r.size)}` + (r.test ? ' · test versions can have problems' : '')))));
+      if (r.default) { input.checked = true; chosen.tag = r.tag; }
+    });
+    enable('s2', true); summary();
+  } catch (e) { box.textContent = ''; box.append(el('div', { className: 'why' }, e.message)); }
+}
+
+async function loadDrives() {
+  chosen.drive = ''; summary();
+  const box = $('drives'); box.textContent = 'Looking for USB drives...';
+  try {
+    driveList = await api('/api/drives');
+    box.textContent = '';
+    if (!driveList.length) { box.textContent = 'No USB drive found. Plug one in and press Refresh.'; return; }
+    driveList.forEach(d => {
+      const input = el('input', { type: 'radio', name: 'drive', value: d.id, disabled: d.blocking.length > 0 });
+      input.onchange = () => { chosen.drive = d.id; summary(); };
+      const info = el('div', {}, el('div', { className: 't' }, d.text));
+      d.blocking.forEach(m => info.append(el('div', { className: 'why' }, 'Cannot be used: ' + m)));
+      d.warnings.forEach(m => info.append(el('div', { className: 'note' }, 'Note: ' + m)));
+      box.append(el('label', { className: 'opt' + (d.blocking.length ? ' bad' : '') }, input, info));
+    });
+    const usable = driveList.filter(d => !d.blocking.length);
+    if (usable.length === 1) { document.querySelector('input[name=drive]:not(:disabled)').checked = true; chosen.drive = usable[0].id; summary(); }
+  } catch (e) { box.textContent = ''; box.append(el('div', { className: 'why' }, e.message)); }
+}
+
+async function start() {
+  const body = { model: chosen.model, tag: chosen.tag, drive: chosen.drive };
+  if (chosen.model === 'K2P') {
+    body.folders = confirm('The Kobra 2 Pro reads a different folder on some firmwares.\n\nOK = write both folders (works either way)\nCancel = only the usual one') ? K2P_FOLDERS : [K2P_FOLDERS[0]];
+  }
+  ['s1', 's2', 's3', 's4'].forEach(id => enable(id, false));
+  $('progress').classList.remove('hidden'); $('fill').style.width = '0';
+  try { await api('/api/install', { method: 'POST', body: JSON.stringify(body) }); } catch (e) { return showFailed(e.message); }
+  const timer = setInterval(async () => {
+    try {
+      const j = await api('/api/job');
+      $('fill').style.width = j.percent + '%';
+      $('log').textContent = (j.log || []).join('\n');
+      $('progressTitle').textContent = j.percent < 100 ? `Downloading... ${j.percent}%` : 'Writing to the drive...';
+      if (j.state === 'done') { clearInterval(timer); $('progress').classList.add('hidden'); $('eject').textContent = j.eject; $('done').classList.remove('hidden'); }
+      if (j.state === 'failed') { clearInterval(timer); showFailed(j.error); }
+    } catch (e) { clearInterval(timer); showFailed('Lost contact with the installer: ' + e.message); }
+  }, 600);
+}
+
+function showFailed(message) {
+  $('progress').classList.add('hidden'); $('error').textContent = message; $('failed').classList.remove('hidden');
+}
+
+$('go').onclick = start;
+$('again').onclick = () => location.reload();
+$('refreshDrives').onclick = loadDrives;
+$('model').onchange = () => { chosen.model = $('model').value; enable('s2', false); enable('s3', !!chosen.model); if (chosen.model) { loadReleases(); loadDrives(); } };
+
+(async () => {
+  try {
+    const state = await api('/api/state');
+    $('model').append(el('option', { value: '', textContent: 'Choose your printer...' }));
+    state.models.forEach(m => $('model').append(el('option', { value: m.Code, textContent: `${m.Name} (${m.Code})` })));
+    setInterval(() => api('/api/ping').catch(() => {}), 5000); api('/api/ping').catch(() => {});
+  } catch (e) { document.querySelector('main').append(el('p', { className: 'why' }, 'Could not start: ' + e.message)); }
+})();
+</script>
+</body>
+</html>
