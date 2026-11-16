@@ -142,7 +142,10 @@ jobs:
         CGO_ENABLED: '0'
       run: |
         flags="-s -w -X main.version=${{ steps.tag.outputs.name }}"
-        GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$flags" -o ../../build/dist/boomslang-usb-windows-x64.exe .
+        # -H=windowsgui: a window program, no console window behind it (it
+        # attaches to a terminal by itself when started from one with options).
+        # rsrc_windows_amd64.syso, in the folder, adds the icon.
+        GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$flags -H=windowsgui" -o ../../build/dist/boomslang-usb-windows-x64.exe .
         GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$flags" -o ../../build/dist/boomslang-usb-linux-x64 .
         GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$flags" -o ../../build/dist/boomslang-usb-linux-arm64 .
         ls -l ../../build/dist/boomslang-usb-*

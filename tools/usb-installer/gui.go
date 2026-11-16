@@ -9,8 +9,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -159,8 +162,8 @@ func (g *gui) state(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"version": version, "models": models})
 }
 
-// releaseList is what can be installed on a model: the newest stable release
-// first (preselected), then newer test versions.
+// releaseList is what can be installed on a model, newest first. The newest
+// is preselected; test versions are marked as such.
 func (g *gui) releaseList(w http.ResponseWriter, r *http.Request) {
 	model := strings.ToUpper(r.URL.Query().Get("model"))
 	if _, ok := modelGroups[model]; !ok {
@@ -172,20 +175,23 @@ func (g *gui) releaseList(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	var out []releaseInfo
+	var picked []*release
 	seen := map[string]bool{}
 	for _, channel := range []string{"release", "release-preview", "beta", "alpha"} {
-		rel := pickRelease(releases, model, channel, "")
-		if rel == nil || seen[rel.Tag] {
-			continue
+		if rel := pickRelease(releases, model, channel, ""); rel != nil && !seen[rel.Tag] {
+			seen[rel.Tag] = true
+			picked = append(picked, rel)
 		}
-		seen[rel.Tag] = true
+	}
+	sort.SliceStable(picked, func(i, j int) bool { return tagNewer(picked[i].Tag, picked[j].Tag) })
+	out := []releaseInfo{}
+	for i, rel := range picked {
 		date := ""
 		if len(rel.Published) >= 10 {
 			date = rel.Published[:10]
 		}
 		out = append(out, releaseInfo{Tag: rel.Tag, Title: rel.title(), Test: rel.rank() < channelRank("release"),
-			Date: date, Size: rel.usbAsset(model).Size, Default: len(out) == 0})
+			Date: date, Size: rel.usbAsset(model).Size, Default: i == 0})
 	}
 	writeJSON(w, out)
 }
@@ -345,7 +351,53 @@ func (g *gui) idleFor() (time.Duration, bool) {
 	return time.Since(g.lastPing), true
 }
 
+// appBrowsers are browsers that can show a page as a window of its own, with
+// no tabs and no address bar (--app). Edge is part of Windows; Chrome and
+// Chromium are tried on both systems. Anything else gets the normal browser.
+func appBrowsers() []string {
+	switch runtime.GOOS {
+	case "windows":
+		var found []string
+		for _, base := range []string{os.Getenv("ProgramFiles(x86)"), os.Getenv("ProgramFiles"), os.Getenv("LocalAppData")} {
+			if base == "" {
+				continue
+			}
+			for _, rel := range []string{`Microsoft\Edge\Application\msedge.exe`, `Google\Chrome\Application\chrome.exe`} {
+				if path := filepath.Join(base, rel); fileExists(path) {
+					found = append(found, path)
+				}
+			}
+		}
+		return found
+	case "linux":
+		var found []string
+		for _, name := range []string{"google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge", "brave-browser"} {
+			if path, err := exec.LookPath(name); err == nil {
+				found = append(found, path)
+			}
+		}
+		return found
+	}
+	return nil
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
 func openBrowser(address string) error {
+	for _, browser := range appBrowsers() {
+		// A separate profile folder, so this window is its own program and
+		// closing it really ends it, instead of handing the page to a browser
+		// that is already running and returning at once
+		profile := filepath.Join(os.TempDir(), "boomslang-usb-window")
+		cmd := exec.Command(browser, "--app="+address, "--user-data-dir="+profile, "--window-size=720,900",
+			"--no-first-run", "--no-default-browser-check")
+		if cmd.Start() == nil {
+			return nil
+		}
+	}
 	switch runtime.GOOS {
 	case "windows":
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", address).Start()
@@ -369,9 +421,9 @@ func runGUI() error {
 	server := &http.Server{Handler: g.handler(), ReadHeaderTimeout: 10 * time.Second}
 	go server.Serve(listener)
 
-	fmt.Println("Boomslang USB installer is open in your browser.")
+	fmt.Println("Boomslang USB installer is open in a window.")
 	fmt.Println("If it did not open, go to:", address)
-	fmt.Println("Close the browser tab, or this window, to quit.")
+	fmt.Println("Close that window to quit.")
 	if err := openBrowser(address); err != nil {
 		fmt.Println("(Could not open the browser by itself:", err.Error()+")")
 	}

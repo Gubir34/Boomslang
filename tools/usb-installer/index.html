@@ -182,8 +182,11 @@ $('model').onchange = () => { chosen.model = $('model').value; enable('s2', fals
 (async () => {
   try {
     const state = await api('/api/state');
-    $('model').append(el('option', { value: '', textContent: 'Choose your printer...' }));
     state.models.forEach(m => $('model').append(el('option', { value: m.Code, textContent: `${m.Name} (${m.Code})` })));
+    // Kobra S1 and the newest version are preselected; one click on the
+    // drive and the button is ready
+    $('model').value = 'KS1';
+    $('model').onchange();
     setInterval(() => api('/api/ping').catch(() => {}), 5000); api('/api/ping').catch(() => {});
   } catch (e) { document.querySelector('main').append(el('p', { className: 'why' }, 'Could not start: ' + e.message)); }
 })();

@@ -127,11 +127,11 @@ func TestGUIListsReleasesAndDrives(t *testing.T) {
 		t.Fatalf("releases: %d %v", code, list)
 	}
 	first, second := list[0].(map[string]any), list[1].(map[string]any)
-	if first["tag"] != "2611-2-release" || first["default"] != true || first["test"] != false {
-		t.Errorf("the stable release must come first and be preselected: %v", first)
+	if first["tag"] != "2611-5-alpha" || first["default"] != true || first["test"] != true || first["title"] != "2611 5 Alpha" {
+		t.Errorf("the newest release comes first, preselected, and a test version says so: %v", first)
 	}
-	if second["tag"] != "2611-5-alpha" || second["test"] != true || second["title"] != "2611 5 Alpha" {
-		t.Errorf("then the test version, marked as such: %v", second)
+	if second["tag"] != "2611-2-release" || second["default"] != false || second["test"] != false {
+		t.Errorf("then the older stable one: %v", second)
 	}
 	if code, _, _ := f.call(t, "GET", "/api/releases?model=NOPE", "", nil); code != http.StatusBadRequest {
 		t.Errorf("unknown model: %d", code)

@@ -11,13 +11,17 @@ page:
 - Linux: `boomslang-usb-linux-x64` (or `-arm64`), then
   `chmod +x boomslang-usb-linux-x64 && ./boomslang-usb-linux-x64`
 
-Started without options it opens a page in your browser (a small window on
-your own computer, nothing is sent anywhere but to GitHub for the download).
-Pick the printer, the version and the USB drive, then press **Write to USB
-drive**. Closing the browser tab quits the program. It needs no installation
-and no extra libraries.
+Started without options it opens a window (Edge or Chrome as an app window
+when one is installed, otherwise your default browser). **Kobra S1** and the
+newest version are already selected: plug in the drive, pick it, and press
+**Write to USB drive**. Closing the window quits the program. Nothing is sent
+anywhere except to GitHub for the download. It needs no installation and no
+extra libraries; the Windows file has the Boomslang icon and opens no console
+window.
 
-Prefer the console? `--cli` asks the same questions in the terminal window.
+Prefer the console? `--cli` asks the same questions in the terminal. On
+Windows, run the `.exe` from a terminal with an option (`--cli`, `--list`,
+`--help`) and it prints there as usual.
 
 ## What it checks
 
@@ -60,6 +64,10 @@ go test ./...
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o boomslang-usb.exe .
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o boomslang-usb .
 ```
+
+`rsrc_windows_amd64.syso` is the Windows icon; `python3 make-resource.py`
+rebuilds it from `icon.png` (the Windows release is linked with
+`-H=windowsgui`, see `.github/workflows/auto-release.yml`).
 
 The window is a local web page (`index.html`, embedded in the program) served
 on 127.0.0.1 with a random token, so no web page you have open elsewhere can

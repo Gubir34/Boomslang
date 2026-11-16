@@ -57,7 +57,7 @@ func main() {
 	if len(os.Args) == 1 || o.gui {
 		fmt.Printf("Boomslang USB installer %s\n\n", version)
 		if err := runGUI(); err != nil {
-			fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+			showError(err.Error())
 			os.Exit(1)
 		}
 		return
