@@ -76,7 +76,9 @@ There are two options to install Boomslang:
 > [!NOTE]
 > Each release also has **update-*-compressed.swu** files. They are smaller downloads used by the printer's own updater (Updates screen, web portal and automatic updates) and can only be installed by a printer already running Boomslang. For a USB install, always use the file **without** `-compressed`.
 
-Either way, you'll need to:
+The easiest way is the **Boomslang USB installer** (`boomslang-usb-windows-x64.exe` or `boomslang-usb-linux-x64` on the [Releases](https://github.com/Gubir34/Boomslang/releases) page): it downloads the right package for your printer and puts it on the USB drive for you. See [tools/usb-installer](tools/usb-installer/README.md).
+
+To do it by hand instead, you'll need to:
 - Download the release / file you want from the [Releases](https://github.com/Gubir34/Boomslang/releases) page
 - Rename the downloaded SWU file as **update.swu**
 - Copy it in a directory named **aGVscF9zb3Nf** (or **update** for the Kobra 2 Pro in certain conditions) on a FAT32 USB drive (MBR, GPT is not supported)

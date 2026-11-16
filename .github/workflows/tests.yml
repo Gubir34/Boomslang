@@ -58,3 +58,26 @@ jobs:
 
       - name: go test
         run: go test ./...
+
+  usb-installer:
+    name: USB installer tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/usb-installer
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: tools/usb-installer/go.mod
+          cache: false
+
+      - name: go vet (Linux, Windows, others)
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+          GOOS=darwin go vet ./...
+
+      - name: go test
+        run: go test ./...

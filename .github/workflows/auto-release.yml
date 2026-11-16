@@ -127,6 +127,26 @@ jobs:
         cache-from: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache
         cache-to: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache,mode=max,ignore-error=true
 
+    - uses: actions/setup-go@v6
+      if: steps.tag.outputs.skip == ''
+      with:
+        go-version-file: tools/usb-installer/go.mod
+        cache: false
+
+    # The tool that puts a release on a USB drive (tools/usb-installer),
+    # attached to every release for Windows and Linux
+    - name: Build the USB installer
+      if: steps.tag.outputs.skip == ''
+      working-directory: tools/usb-installer
+      env:
+        CGO_ENABLED: '0'
+      run: |
+        flags="-s -w -X main.version=${{ steps.tag.outputs.name }}"
+        GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$flags" -o ../../build/dist/boomslang-usb-windows-x64.exe .
+        GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$flags" -o ../../build/dist/boomslang-usb-linux-x64 .
+        GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$flags" -o ../../build/dist/boomslang-usb-linux-arm64 .
+        ls -l ../../build/dist/boomslang-usb-*
+
     - name: Check the update packages
       if: steps.tag.outputs.skip == ''
       run: sh build/smoke-test-swu.sh build/dist "${{ steps.tag.outputs.name }}"
@@ -150,4 +170,5 @@ jobs:
             --generate-notes \
             $PRERELEASE \
             build/dist/*.swu \
-            build/dist/*.zip
+            build/dist/*.zip \
+            build/dist/boomslang-usb-*
