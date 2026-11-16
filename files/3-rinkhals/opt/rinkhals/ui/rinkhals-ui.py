@@ -2,6 +2,23 @@ import contextlib
 import os
 import time
 START_TIME = time.monotonic()   # for the startup timings in the log
+
+
+def seconds_since_launch():
+    """Seconds since rinkhals-ui.sh started this script, for the startup timings in the log.
+
+    It counts the shell, starting Python and importing, which START_TIME can't:
+    the shell leaves the printer's uptime in UI_LAUNCHED_UPTIME. Without it
+    (the simulator, a script started by hand) it is the time since this file began.
+    """
+    try:
+        launched = float(os.environ['UI_LAUNCHED_UPTIME'])
+        with open('/proc/uptime') as f:
+            return float(f.read().split()[0]) - launched
+    except (KeyError, ValueError, OSError):
+        return time.monotonic() - START_TIME
+
+
 import sys
 import json
 import re
@@ -664,7 +681,7 @@ class RinkhalsUiApp(BaseApp):
         # drawing are served in between.
         self.first_frame.wait(15)
         time.sleep(0.2)
-        logging.info(f'Startup: the home screen was drawn {time.monotonic() - START_TIME:.1f} s after the UI script started')
+        logging.info(f'Startup: the home screen was drawn {seconds_since_launch():.1f} s after the menu was launched')
 
         with self.build_step():
             self.screen_apps = lvr.panel(self.root_screen)
@@ -966,7 +983,7 @@ class RinkhalsUiApp(BaseApp):
 
         self.home_start_background()
         self.background_done = True
-        logging.info(f'Startup: every screen is built {time.monotonic() - START_TIME:.1f} s after the UI script started')
+        logging.info(f'Startup: every screen is built {seconds_since_launch():.1f} s after the menu was launched')
 
     def show_screen(self, screen):
         if screen is None:
@@ -2509,5 +2526,7 @@ class RinkhalsUiApp(BaseApp):
 
 
 if __name__ == '__main__':
+    logging.info(f'Startup: Python and the imports are done {seconds_since_launch():.1f} s after the menu was launched')
     app = RinkhalsUiApp()
+    logging.info(f'Startup: the home screen is built {seconds_since_launch():.1f} s after the menu was launched')
     app.run()

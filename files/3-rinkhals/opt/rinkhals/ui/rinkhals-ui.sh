@@ -9,6 +9,9 @@ kill_by_name() {
     done
 }
 
+# For the startup timings in the log (see seconds_since_launch in rinkhals-ui.py)
+export UI_LAUNCHED_UPTIME=$(cut -d' ' -f1 /proc/uptime)
+
 # Find where we are
 cd $(dirname $0)/../../..
 RINKHALS_ROOT=$(pwd)

@@ -7,6 +7,17 @@ export RINKHALS_VERSION=$(cat $RINKHALS_ROOT/.version)
 # Check Kobra model and firmware version
 check_compatibility
 
+# Seconds since start.sh began, shown on each step in the boot log, so it is
+# visible which one takes the time (grep "(+" in the log). /proc/uptime has
+# seconds with decimals; only the whole seconds are used.
+BOOT_T0=$(cut -d. -f1 /proc/uptime)
+elapsed() {
+    echo $(( $(cut -d. -f1 /proc/uptime) - BOOT_T0 ))
+}
+phase() {
+    log "> $1 (+$(elapsed)s)"
+}
+
 quit() {
     echo
     log "/!\\ Startup failed, stopping Boomslang..."
@@ -86,7 +97,7 @@ fi
 
 
 ################
-log "> Stopping Anycubic apps..."
+phase "Stopping Anycubic apps..."
 
 kill_by_name appCheck.sh
 kill_by_name K3SysUi
@@ -123,7 +134,7 @@ fi
 
 
 ################
-log "> Fixing permissions..."
+phase "Fixing permissions..."
 
 chmod +x ./*.sh 2> /dev/null
 chmod +x ./lib/ld-* 2> /dev/null
@@ -140,7 +151,7 @@ chmod +x ./opt/rinkhals/*/*.sh 2> /dev/null
 
 
 ################
-log "> Preparing overlay..."
+phase "Preparing overlay..."
 
 umount -l /userdata/app/gk/printer_data/gcodes 2> /dev/null
 umount -l /userdata/app/gk/printer_data 2> /dev/null
@@ -190,7 +201,7 @@ $RINKHALS_ROOT/opt/rinkhals/scripts/ntpclient.sh &
 
 
 ################
-log "> Trimming old logs..."
+phase "Trimming old logs..."
 
 for LOG_FILE in $RINKHALS_LOGS/*.log ; do
     tail -c 1048576 $LOG_FILE > $LOG_FILE.tmp
@@ -200,7 +211,7 @@ done
 
 
 ################
-log "> Starting SSH & ADB..."
+phase "Starting SSH & ADB..."
 
 if [ "$(get_by_port 22)" != "" ]; then
     log "/!\ SSH is already running"
@@ -222,7 +233,7 @@ fi
 
 
 ################
-log "> Preparing mounts..."
+phase "Preparing mounts..."
 
 umount -l /root 2> /dev/null
 mkdir -p "$ROOT_HOME"
@@ -258,7 +269,7 @@ fi
 
 
 ################
-log "> Restarting Anycubic apps..."
+phase "Restarting Anycubic apps..."
 
 # Generate the printer.cfg file
 sed '/-- SAVE_CONFIG --/,$d' /userdata/app/gk/printer.cfg > /tmp/rinkhals/printer.1.cfg
@@ -312,11 +323,13 @@ for TARGET in $TARGETS; do
     native_restore $TARGET
 done
 
+log "  gklib was started (+$(elapsed)s), waiting for it to listen"
 wait_for_socket /tmp/unix_uds1 30000 "/!\ Timeout waiting for gklib to start"
+log "  gklib is listening (+$(elapsed)s)"
 
 
 ################
-log "> Starting apps..."
+phase "Starting apps..."
 
 OLD_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/lib:/usr/lib:$LD_LIBRARY_PATH
@@ -362,13 +375,13 @@ export LD_LIBRARY_PATH=$OLD_LD_LIBRARY_PATH
 
 
 ################
-log "> Cleaning up..."
+phase "Cleaning up..."
 
 rm /useremain/rinkhals/.disable-rinkhals
 rm /useremain/rinkhals/.reboot-marker 2> /dev/null
 
 echo
-log "Boomslang started"
+log "Boomslang started (+$(elapsed)s since start.sh began, printer up for $(cut -d. -f1 /proc/uptime)s)"
 
 ta_da() {
     B=/sys/class/pwm/pwmchip0/pwm0
