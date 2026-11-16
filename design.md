@@ -58,6 +58,16 @@ Aero Home is `Aero.png`. Its Update pill opens `Updates.png`. LemSearch results 
 
 The LemSearch icon is a custom glyph, not part of Material Icons: a thick "L" stroke with a small magnifier in its inner corner. It is drawn as SVG in `html/LemSearch.html` and `html/Aero.html`. Export it to a PNG or an LVGL image for the printer.
 
+### Liquid Plastic (clear glass panes) — mockup only so far
+
+Our take on the "liquid glass" look: clear, curved panes that blur and tint what is behind them, lit from the top left, with a thin bright rim that fades around the edge. Capsules and circles, floating, no hard borders, white icons. Same layout and the same screens as Aero (`Liquid.png` is the Home screen), only the look differs. The mockup is `png/Liquid.png`, from `html/Liquid.html`.
+
+How it would be built on the printer (nothing of this exists yet):
+
+- LVGL can't blur what is behind a widget, and the printer's CPU is too slow to try. But the panes sit on a **fixed wallpaper**, so the panes are **drawn into the wallpaper image** at build time (blur, tint, rim and highlights rendered by a browser, like the mockup, then converted to the same raw RGB565 file Aero uses). On the printer, LVGL only adds what changes: the icons, the clock, the version, the Update pill and the badge, plus invisible touch areas over the baked panes.
+- A press is shown with a light translucent overlay on the touched pane.
+- Screens other than Home would need their own baked backgrounds, one image each (about 770 KB), or a shared plain wallpaper with simpler flat panes.
+
 ## Design tokens
 
 | Token | Value |
