@@ -461,7 +461,7 @@ class RinkhalsUiApp(BaseApp):
     def aero_orb(self, parent, x, glyph, callback):
         orb = lvr.button_icon(parent)
         orb.set_size(60, 60)
-        orb.set_pos(x, 410)
+        orb.set_pos(x, 408)            # the taskbar is 396..480: 408..468 is centred in it
         self.aero_light(orb, self.AERO_ORB, 30)
         top, bottom = self.AERO_ORB_PRESSED
         orb.set_style_bg_color(lv.color_make(*top), lv.STATE.PRESSED)
@@ -537,7 +537,7 @@ class RinkhalsUiApp(BaseApp):
         # Clock
         clock = self.aero_light(lvr.panel(main), self.AERO_ORB, 10)
         clock.set_size(92, 60)
-        clock.set_pos(694, 410)
+        clock.set_pos(694, 408)
         clock.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
         self.aero_label_time = lvr.title(clock)
         self.aero_label_time.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
@@ -600,13 +600,13 @@ class RinkhalsUiApp(BaseApp):
         tray = self.aero_glass(lvr.panel(main), 16)
         tray.set_size(90, 90)
         tray.set_pos(696, 14)
-        self.aero_wifi = self.aero_glyph(tray, '', 16, 14)
-        self.aero_glyph(tray, '', 52, 14)
-        self.aero_glyph(tray, '', 16, 50)
-        self.aero_glyph(tray, '', 52, 50)
+        self.aero_wifi = self.aero_glyph(tray, '', 16, 16)
+        self.aero_glyph(tray, '', 52, 16)
+        self.aero_glyph(tray, '', 16, 52)
+        self.aero_glyph(tray, '', 52, 52)
         self.aero_badge = self.aero_clear(lvr.panel(tray), 8)
         self.aero_badge.set_size(16, 16)
-        self.aero_badge.set_pos(30, 44)
+        self.aero_badge.set_pos(30, 46)
         self.aero_badge.set_style_bg_color(lv.color_make(*self.AERO_BADGE), lv.STATE.DEFAULT)
         self.aero_badge.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
         badge_text = lv.label(self.aero_badge)

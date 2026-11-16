@@ -119,11 +119,22 @@ class AeroHomeTests(unittest.TestCase):
         self.app.layout()
         orb = self.lvr.button_icon.return_value
         positions = [c.args for c in orb.set_pos.call_args_list]
-        self.assertEqual([p for p in positions if p[1] == 410], [(14, 410), (88, 410), (162, 410), (236, 410), (310, 410), (384, 410)])
+        self.assertEqual([p for p in positions if p[1] == 408], [(14, 408), (88, 408), (162, 408), (236, 408), (310, 408), (384, 408)])
         sizes = [c.args for c in orb.set_size.call_args_list]
         self.assertEqual(sizes.count((60, 60)), 7)              # six orbs and the back button
         glyphs = [c.args[0] for c in orb.set_text.call_args_list]
         self.assertEqual(glyphs, ['', '', '', '', '', '', ''])
+
+    def test_the_taskbar_parts_share_one_vertical_centre(self):
+        # The bar is 396..480 (centre 438). The orbs and the clock are 60 tall, so
+        # their top is 438 - 30. One part sitting lower than the others looked off-centre.
+        self.app.layout()
+        self.assertEqual(self.lvr.panel.return_value.set_size.call_args_list.count(mock.call(800, 84)), 1)
+        orb_tops = {p.args[1] for p in self.lvr.button_icon.return_value.set_pos.call_args_list if p.args[1] > 300}
+        clock_tops = {p.args[1] for p in self.lvr.panel.return_value.set_pos.call_args_list if p.args[1] in (408, 410)}
+        self.assertEqual(orb_tops, {408})
+        self.assertEqual(clock_tops, {408})
+        self.assertEqual(396 + 84 // 2, 408 + 60 // 2)
 
     def test_every_orb_leads_where_its_icon_says(self):
         self.app.layout()
