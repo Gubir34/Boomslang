@@ -11,7 +11,7 @@
 		Beaker
 	} from "lucide-svelte";
 	import { printerState } from "$lib/printerState";
-	import { firmwareStatus } from "$lib/firmwareStatus";
+	import { displayVersion, firmwareStatus } from "$lib/firmwareStatus";
 	import ReleaseNotesModal from "$lib/ReleaseNotesModal.svelte";
 	import InstallModal from "$lib/InstallModal.svelte";
 
@@ -92,8 +92,8 @@
 			source: "rinkhals",
 			version: r.tag,
 			assetUrl: r.asset_url,
-			title: r.current ? `Reinstall Boomslang ${r.tag}` : `Install Boomslang ${r.tag}`,
-			subtitle: r.name || r.tag
+			title: r.current ? `Reinstall Boomslang ${displayVersion(r.tag)}` : `Install Boomslang ${displayVersion(r.tag)}`,
+			subtitle: r.name || displayVersion(r.tag)
 		};
 	}
 
@@ -200,7 +200,7 @@
 
 	function openRinkhalsNotes(r: RinkhalsRelease) {
 		modalRelease = {
-			title: r.name || `Boomslang ${r.tag}`,
+			title: r.name || `Boomslang ${displayVersion(r.tag)}`,
 			subtitle: formatISO(r.published_at),
 			body: r.body,
 			url: r.url
@@ -271,11 +271,11 @@
 		<div>
 			<div class="text-xs uppercase tracking-wider text-ink-faint mb-1">Boomslang (installed)</div>
 			<div class="text-xl font-semibold text-ink">
-				{$firmwareStatus.current_rinkhals || "Unknown"}
+				{displayVersion($firmwareStatus.current_rinkhals) || "Unknown"}
 			</div>
 			{#if $firmwareStatus.latest_rinkhals}
 				<div class="mt-1 text-xs text-ink-muted">
-					Latest release: <span class="text-ink">{$firmwareStatus.latest_rinkhals}</span>
+					Latest release: <span class="text-ink">{displayVersion($firmwareStatus.latest_rinkhals)}</span>
 					{#if $firmwareStatus.rinkhals_update_available}
 						<span class="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-brand/10 text-brand text-[10px] font-semibold uppercase tracking-wider">
 							Update available
@@ -284,7 +284,7 @@
 							<button
 								class="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-brand text-white text-xs font-semibold hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
 								disabled={!canInstall}
-								title={canInstall ? `Download and install Boomslang ${latestRelease.tag}` : ($printerState.reason || "Disabled while printer is busy")}
+								title={canInstall ? `Download and install Boomslang ${displayVersion(latestRelease.tag)}` : ($printerState.reason || "Disabled while printer is busy")}
 								onclick={() => latestRelease && openRinkhalsInstall(latestRelease)}
 							>
 								Install now
@@ -370,7 +370,7 @@
 					<article class="bg-surface border border-line-soft rounded-xl p-4 flex items-start gap-4">
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2 flex-wrap">
-								<h3 class="text-base font-semibold text-ink truncate">{r.name || r.tag}</h3>
+								<h3 class="text-base font-semibold text-ink truncate">{r.name || displayVersion(r.tag)}</h3>
 								<code class="text-[11px] text-ink-muted">{r.tag}</code>
 								{#if r.current}
 									<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald/15 text-emerald text-[10px] font-semibold uppercase tracking-wider">

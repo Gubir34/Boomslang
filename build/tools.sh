@@ -13,6 +13,22 @@ prepare_tgz() {
 
     md5sum $SWU_DIR/update_swu/setup.tar.gz | awk '{ print $1 }' > $SWU_DIR/update_swu/setup.tar.gz.md5
 }
+# Like prepare_tgz, with an xz archive (setup.tar.xz) for the compressed OTA
+# package. The dictionary is capped at 16 MiB: unpacking then needs about
+# 17 MiB of RAM on the printer, which also has to keep printing (xz -9 alone
+# would use a 64 MiB dictionary).
+prepare_txz() {
+    UPDATE_DIRECTORY=${1:-/tmp/update_swu}
+    SWU_DIR=${2:-/build/dist}
+
+    mkdir -p $SWU_DIR/update_swu
+    rm -rf $SWU_DIR/update_swu/*
+
+    cd $UPDATE_DIRECTORY
+    tar -cf - --exclude='setup.tar' . | xz -T0 --lzma2=preset=9e,dict=16MiB > $SWU_DIR/update_swu/setup.tar.xz
+
+    md5sum $SWU_DIR/update_swu/setup.tar.xz | awk '{ print $1 }' > $SWU_DIR/update_swu/setup.tar.xz.md5
+}
 compress_swu() {
     KOBRA_MODEL_CODE=$1
     SWU_PATH=${2:-/build/dist/update.swu}

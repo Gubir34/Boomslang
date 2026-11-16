@@ -6,12 +6,15 @@ widgets. What this does not check is how the screen looks.
 """
 import ast
 import importlib.util
+import sys
 import logging
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 UI = Path(__file__).resolve().parents[1] / 'files/3-rinkhals/opt/rinkhals/ui'
+sys.path.insert(0, str(UI))   # reader imports reader_css
 spec = importlib.util.spec_from_file_location('testsupport.reader', UI / 'reader.py')
 reader = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reader)
@@ -30,7 +33,10 @@ def load_browser_class():
             wanted.append(ast.get_source_segment(source, node))
     code = 'class BrowserApp:\n' + '\n'.join('    ' + line for chunk in wanted for line in chunk.split('\n')) + '\n'
     lv, lvr = mock.MagicMock(name='lv'), mock.MagicMock(name='lvr')
-    namespace = {'lv': lv, 'lvr': lvr, 'reader': reader, 'logging': logging,
+    import home_tools
+    # Bookmarks go to a folder of this test run, not to the printer's path
+    home_tools.BOOKMARKS_PATH = str(Path(tempfile.mkdtemp()) / 'bookmarks.json')
+    namespace = {'lv': lv, 'lvr': lvr, 'reader': reader, 'logging': logging, 'home_tools': home_tools,
                  'ellipsis': lambda text, n: text if len(text) <= n else text[:n - 1] + '…',
                  'run_async': lambda fn: fn(), 'printer_ip': lambda: '192.168.1.5',
                  'RINKHALS_VERSION': 'test', 'KOBRA_MODEL': 'Kobra', 'KOBRA_VERSION': '1.0'}
@@ -168,12 +174,54 @@ class BrowserScreenTests(unittest.TestCase):
         self.open('https://a.example/')
 
         def slow_fetch(url):
-            self.app.browser_back()          # the user taps back while it loads
-            return page(url, 'Too late')
+            if url == 'https://slow.example/':
+                self.app.browser_back()      # the user taps back while it loads
+                return page(url, 'Too late')
+            return page(url, 'Page A')
         with mock.patch.object(reader, 'fetch', slow_fetch):
             self.app.browser_open('https://slow.example/')
         self.assertNotIn('Too late', self.titles())
-        self.assertNotEqual(self.app.browser_url, 'https://slow.example/')
+        # back returned to the page the link was tapped on, not past it
+        self.assertEqual(self.app.browser_url, 'https://a.example/')
+        self.assertEqual(self.titles()[-1], 'Page A')
+        self.assertEqual(self.app.browser_history, [])
+
+    def test_back_after_a_failed_link_returns_to_the_page_it_was_tapped_on(self):
+        self.open('https://a.example/')
+        self.open('https://b.example/')
+        self.pages['https://broken.example/'] = reader.BrowserError('The server answered 500')
+        self.open('https://broken.example/')
+        self.fetched.clear()
+        with mock.patch.object(reader, 'fetch', self.fetch):
+            self.app.browser_back()
+        self.assertEqual(self.fetched, ['https://b.example/'])   # not a.example, one page too far
+        self.assertEqual(self.app.browser_history, ['https://a.example/'])
+        with mock.patch.object(reader, 'fetch', self.fetch):
+            self.app.browser_back()
+        self.assertEqual(self.fetched[-1], 'https://a.example/')
+
+    def test_try_again_after_a_failed_link_keeps_the_history(self):
+        self.open('https://a.example/')
+        self.pages['https://flaky.example/'] = reader.BrowserError('Could not reach the page: Timeout')
+        self.open('https://flaky.example/')
+        retry = [c for c in LVR.button.return_value.add_event_cb.call_args_list][-1].args[0]
+        del self.pages['https://flaky.example/']
+        with mock.patch.object(reader, 'fetch', self.fetch):
+            retry(None)
+        self.assertEqual(self.app.browser_url, 'https://flaky.example/')
+        self.assertEqual(self.app.browser_history, ['https://a.example/'])
+
+    def test_a_render_that_lost_the_race_draws_nothing(self):
+        # The page arrived, then a tap started another navigation before the
+        # render thread got the lock: nothing may be added to the old panel
+        self.open('https://a.example/')
+        stale_gen = self.app.browser_gen
+        self.app.browser_gen += 1
+        labels_before = LVR.label.call_count
+        self.app.browser_render(page('https://late.example/', 'Late'), None, 'https://late.example/', True, stale_gen)
+        self.assertEqual(LVR.label.call_count, labels_before)
+        self.assertNotIn('Late', self.titles())
+        self.assertEqual(self.app.browser_url, 'https://a.example/')
 
     def test_the_newest_request_wins_when_two_are_started(self):
         order = []
@@ -193,7 +241,7 @@ class BrowserScreenTests(unittest.TestCase):
         self.pages['https://big.example/'] = page('https://big.example/', blocks=blocks)
         LVR.reset_mock()
         self.open('https://big.example/')
-        self.assertEqual(self.count_buttons(), BrowserApp.BROWSER_MAX_LINK_BUTTONS)
+        self.assertEqual(self.count_buttons(), BrowserApp.BROWSER_MAX_LINK_BUTTONS + 1)   # + the bookmark button
         notes = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
         self.assertTrue(any('50 more links' in text for text in notes), notes[-3:])
 
@@ -235,6 +283,99 @@ class BrowserScreenTests(unittest.TestCase):
         aligns = [c.args[0] for c in label.set_style_text_align.call_args_list]
         self.assertEqual(aligns, [LV.TEXT_ALIGN.CENTER, LV.TEXT_ALIGN.RIGHT])
 
+
+    # --- long pages, forms, bookmarks ---------------------------------------------
+    def button_texts(self):
+        return [c.args[0] for c in LVR.button.return_value.set_text.call_args_list]
+
+    def test_a_long_page_is_shown_in_parts(self):
+        per_part = BrowserApp.BROWSER_BLOCKS_PER_PART
+        blocks = [{'kind': 'p', 'text': f'paragraph {i}', 'links': []} for i in range(per_part * 2 + 10)]
+        self.pages['https://long.example/'] = page('https://long.example/', blocks=blocks)
+        LVR.reset_mock()
+        self.open('https://long.example/')
+        shown = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertIn('paragraph 0', shown)
+        self.assertNotIn(f'paragraph {per_part}', shown)                 # the next part is not drawn yet
+        self.assertIn('Continue reading (part 2 of 3)', self.button_texts())
+        self.assertNotIn('Bookmark this page', self.button_texts())      # that comes at the end of the page
+
+        LVR.reset_mock()
+        self.app.browser_show_part(per_part)
+        shown = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertIn(f'paragraph {per_part}', shown)
+        self.assertNotIn('paragraph 0', shown)
+        self.assertIn('Previous part (1 of 3)', self.button_texts())
+        self.assertIn('Continue reading (part 3 of 3)', self.button_texts())
+        self.assertEqual(self.app.browser_history, [])                   # moving inside a page is not history
+
+        LVR.reset_mock()
+        self.app.browser_show_part(per_part * 2)
+        self.assertIn('Bookmark this page', self.button_texts())
+        self.assertNotIn('Continue reading (part 4 of 3)', self.button_texts())
+
+    def test_a_search_form_asks_for_text_and_opens_the_result(self):
+        form = {'action': 'https://wiki.example/w/index.php', 'name': 'search', 'fields': [('title', 'Special:Search')]}
+        self.pages['https://wiki.example/'] = page('https://wiki.example/', blocks=[
+            {'kind': 'form', 'text': 'Search the wiki', 'links': [], 'form': form}, {'kind': 'p', 'text': 'x', 'links': []}])
+        self.open('https://wiki.example/')
+        self.assertIn('Search the wiki...', self.button_texts())
+        self.app.browser_form(form, 'Search the wiki')
+        title, initial, is_number, callback = self.app.show_input_text_dialog.call_args.args
+        self.assertEqual(title, 'Search the wiki')
+        with mock.patch.object(reader, 'fetch', self.fetch):
+            callback('pressure advance')
+            callback('')                                                 # nothing typed: nothing opened
+        self.assertEqual(self.fetched[-1], 'https://wiki.example/w/index.php?title=Special%3ASearch&search=pressure+advance')
+        self.assertEqual(len(self.fetched), 2)
+
+    def test_bookmarking_a_page_puts_it_on_the_start_page(self):
+        import home_tools
+        home_tools.save_bookmarks([])
+        self.pages['https://docs.example/'] = page('https://docs.example/', title='The docs')
+        self.open('https://docs.example/')
+        self.assertEqual(self.app.browser_bookmark_text('https://docs.example/'), 'Bookmark this page')
+        home_tools.toggle_bookmark('The docs', 'https://docs.example/')
+        self.assertEqual(self.app.browser_bookmark_text('https://docs.example/'), 'Remove bookmark')
+        LVR.reset_mock()
+        self.app.browser_start_page()
+        self.assertEqual(self.button_texts()[1], 'The docs')             # right after "Open an address"
+        self.assertEqual(self.count_buttons(), 2 + len(BrowserApp.BROWSER_BOOKMARKS))
+        home_tools.toggle_bookmark('The docs', 'https://docs.example/')
+        self.assertEqual(home_tools.load_bookmarks(), [])
+
+    def test_a_default_bookmark_saved_by_the_user_is_not_listed_twice(self):
+        import home_tools
+        name, url = BrowserApp.BROWSER_BOOKMARKS[0]
+        home_tools.save_bookmarks([(name, url)])
+        LVR.reset_mock()
+        self.app.browser_start_page()
+        self.assertEqual(self.count_buttons(), 1 + len(BrowserApp.BROWSER_BOOKMARKS))
+        home_tools.save_bookmarks([])
+
+    def test_pages_read_from_script_data_say_so(self):
+        data_page = page('https://app.example/')
+        data_page.from_data = True
+        self.pages['https://app.example/'] = data_page
+        LVR.reset_mock()
+        self.open('https://app.example/')
+        shown = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertTrue(any('JavaScript' in text for text in shown))
+
+    def test_page_styles_reach_the_label(self):
+        blocks = [{'kind': 'p', 'text': 'old price', 'links': [], 'decor': 'strike'},
+                  {'kind': 'p', 'text': 'notice', 'links': [], 'bg': (255, 243, 205)},
+                  {'kind': 'p', 'text': 'large', 'links': [], 'big': True}]
+        self.pages['https://styled.example/'] = page('https://styled.example/', blocks=blocks)
+        LVR.reset_mock()
+        LV.reset_mock()
+        self.open('https://styled.example/')
+        label = LVR.label.return_value
+        label.set_style_text_decor.assert_called_once_with(LV.TEXT_DECOR.STRIKETHROUGH, LV.STATE.DEFAULT)
+        label.set_style_bg_color.assert_called_once()
+        LV.color_make.assert_any_call(255, 243, 205)
+        LV.color_make.assert_any_call(0, 0, 0)                           # dark text on the light box
+        self.assertIn(mock.call('large'), LVR.title.return_value.set_text.call_args_list)
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,6 +16,25 @@ export interface FirmwareStatusResponse {
 
 const apiHost = import.meta.env.DEV ? "http://localhost:8090" : "";
 
+const channelNames: Record<string, string> = {
+	alpha: "Alpha",
+	beta: "Beta",
+	"release-preview": "Release Preview",
+	release: "Release"
+};
+
+/**
+ * Release tags are {YY}{M}-{N}-{channel} ("2611-3-alpha") because tags can't
+ * hold spaces; this shows them as the release name ("2611 3 Alpha"). Older
+ * dated tags (20261108_04) are shown as they are. Same rule as
+ * releaseDisplayName in firmware.go and display_version in the touch UI.
+ */
+export function displayVersion(tag: string | undefined | null): string {
+	const m = /^(\d{2})(1[0-2]|[1-9])-(\d{1,3})-(alpha|beta|release-preview|release)$/.exec((tag ?? "").trim().toLowerCase());
+	if (!m) return tag ?? "";
+	return `${m[1]}${m[2]} ${Number(m[3])} ${channelNames[m[4]]}`;
+}
+
 const initialStatus: FirmwareStatusResponse = {
 	model_code: "",
 	model_name: "",

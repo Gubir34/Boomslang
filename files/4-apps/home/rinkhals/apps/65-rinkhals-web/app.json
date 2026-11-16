@@ -3,5 +3,38 @@
   "$version": "1",
   "name": "Boomslang Web",
   "version": "1.0",
-  "description": "Web portal and system dashboard"
+  "description": "Web portal and system dashboard",
+
+  "properties": {
+    "auto_update": {
+      "display": "Automatic Boomslang updates",
+      "type": "enum",
+      "options": [ "off", "release", "release-preview", "beta", "alpha" ],
+      "default": "release"
+    },
+    "auto_update_hours": {
+      "display": "Update hours (printer clock)",
+      "type": "enum",
+      "options": [ "any", "00-06", "02-06", "22-06", "09-17" ],
+      "default": "any"
+    },
+    "ntfy_topic": {
+      "display": "Phone notifications (ntfy topic)",
+      "type": "text",
+      "default": ""
+    },
+    "ntfy_server": {
+      "display": "ntfy server",
+      "type": "text",
+      "default": "https://ntfy.sh",
+      "advanced": true
+    },
+    "ota_package": {
+      "display": "Update package",
+      "type": "enum",
+      "options": [ "compressed", "standard" ],
+      "default": "compressed",
+      "advanced": true
+    }
+  }
 }

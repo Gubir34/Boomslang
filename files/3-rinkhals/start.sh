@@ -263,7 +263,10 @@ log "> Restarting Anycubic apps..."
 # Generate the printer.cfg file
 sed '/-- SAVE_CONFIG --/,$d' /userdata/app/gk/printer.cfg > /tmp/rinkhals/printer.1.cfg
 sed -n '/-- SAVE_CONFIG --/,$p' /userdata/app/gk/printer.cfg > /tmp/rinkhals/printer.2.cfg
-python /opt/rinkhals/scripts/process-cfg.py /tmp/rinkhals/printer.1.cfg $RINKHALS_ROOT/home/rinkhals/printer_data/config/printer.rinkhals.cfg > /userdata/app/gk/printer_data/config/printer.generated.cfg
+# Macros for this printer model only (fans the other models don't have), when there are any
+MODEL_CFG=$RINKHALS_ROOT/home/rinkhals/printer_data/config/printer.rinkhals.$KOBRA_MODEL_CODE.cfg
+[ -f "$MODEL_CFG" ] || MODEL_CFG=
+python /opt/rinkhals/scripts/process-cfg.py /tmp/rinkhals/printer.1.cfg $MODEL_CFG $RINKHALS_ROOT/home/rinkhals/printer_data/config/printer.rinkhals.cfg > /userdata/app/gk/printer_data/config/printer.generated.cfg
 cat /tmp/rinkhals/printer.2.cfg >> /userdata/app/gk/printer_data/config/printer.generated.cfg
 rm /tmp/rinkhals/printer.1.cfg /tmp/rinkhals/printer.2.cfg
 

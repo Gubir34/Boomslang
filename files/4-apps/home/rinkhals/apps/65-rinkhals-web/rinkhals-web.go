@@ -105,6 +105,12 @@ func main() {
 	// Start Boomslang Web Portal HTTP Server
 	go startWebServer()
 
+	// Install newer Boomslang releases from GitHub (see autoupdate.go)
+	startAutoUpdater()
+
+	// Phone notifications for finished, failed and paused prints (notify.go)
+	startNotifier()
+
 	// Load environment variables from .env file
 	err := godotenv.Load(".env", "/useremain/home/rinkhals/apps/65-rinkhals-web/.env")
 	if err == nil {

@@ -2,7 +2,8 @@
 	import { onDestroy } from "svelte";
 	import { X, AlertTriangle, Download, ShieldAlert, CheckCircle2, Loader2 } from "lucide-svelte";
 
-	type Source = "rinkhals" | "anycubic";
+	// "upstream" is the original Rinkhals project (Switch to Rinkhals)
+	type Source = "rinkhals" | "anycubic" | "upstream";
 
 	interface Compatibility {
 		compatible: boolean;
@@ -43,10 +44,12 @@
 		assetUrl: string;
 		title: string;
 		subtitle?: string;
+		// The word the user typed, which the backend requires for "upstream"
+		confirm?: string;
 		onClose: () => void;
 	}
 
-	let { source, version, assetUrl, title, subtitle, onClose }: Props = $props();
+	let { source, version, assetUrl, title, subtitle, confirm, onClose }: Props = $props();
 
 	const apiHost = import.meta.env.DEV ? "http://localhost:8090" : "";
 
@@ -69,7 +72,7 @@
 			const res = await fetch(`${apiHost}/api/firmware/install/preflight`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ source, version, asset_url: assetUrl })
+				body: JSON.stringify({ source, version, asset_url: assetUrl, confirm })
 			});
 			if (!res.ok) {
 				preflightError = await res.text();
@@ -245,7 +248,7 @@
 				<div class="space-y-3 mb-4">
 					<div class="bg-surface border border-line-soft rounded-lg px-4 py-3">
 						<div class="text-xs uppercase tracking-wider text-ink-faint">Source</div>
-						<div class="text-ink mt-0.5">{source === "rinkhals" ? "Boomslang release" : "Anycubic stock firmware"}</div>
+						<div class="text-ink mt-0.5">{source === "rinkhals" ? "Boomslang release" : source === "upstream" ? "Original Rinkhals (replaces Boomslang)" : "Anycubic stock firmware"}</div>
 					</div>
 					<div class="bg-surface border border-line-soft rounded-lg px-4 py-3">
 						<div class="text-xs uppercase tracking-wider text-ink-faint">Version</div>

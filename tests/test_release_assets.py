@@ -55,6 +55,55 @@ class IsNewerReleaseTests(unittest.TestCase):
             self.assertFalse(newer('20261108_01', current))
         self.assertFalse(newer(None, '20261108_01'))
 
+    def test_named_releases(self):
+        newer = release_assets.is_newer_release
+        self.assertTrue(newer('2611-4-beta', '2611-3-alpha'))
+        self.assertTrue(newer('2612-1-alpha', '2611-999-release'))      # a new month starts again at 1
+        self.assertTrue(newer('271-1-alpha', '2612-40-release'))        # January of the next year
+        self.assertTrue(newer('2610-1-alpha', '269-5-release'))         # October after September
+        self.assertTrue(newer('2611-3-release', '2611-3-alpha'))        # same number, more stable channel
+        self.assertFalse(newer('2611-3-alpha', '2611-3-alpha'))
+        self.assertFalse(newer('2611-2-release', '2611-3-alpha'))       # no downgrade
+        self.assertFalse(newer('2611-1000-alpha', '2611-3-alpha'))      # not a valid name
+        self.assertFalse(newer('2613-1-alpha', '2611-3-alpha'))         # no 13th month
+
+    def test_named_releases_replace_dated_ones(self):
+        newer = release_assets.is_newer_release
+        self.assertTrue(newer('2611-1-alpha', '20261116_09_test'))
+        self.assertFalse(newer('20991231_01', '2611-1-alpha'))
+
+    def test_compressed_packages_are_preferred_when_asked(self):
+        assets = [{'name': n} for n in ('update-ks1.swu', 'update-ks1-compressed.swu', 'update-k2p-k3.swu',
+                                        'update-k2p-k3-compressed.swu', 'update-ks1m.swu')]
+        find = release_assets.find_update_asset
+        self.assertEqual(find(assets, 'KS1', compressed=True)['name'], 'update-ks1-compressed.swu')
+        self.assertEqual(find(assets, 'KS1')['name'], 'update-ks1.swu')       # standard by default
+        self.assertEqual(find(assets, 'K3V2', compressed=True)['name'], 'update-k2p-k3-compressed.swu')
+        # S1 Max: the KS1 compressed package (same content) beats a standard one
+        self.assertEqual(find(assets, 'KS1M', compressed=True)['name'], 'update-ks1-compressed.swu')
+        # older releases only have standard packages
+        self.assertEqual(find([{'name': 'update-k3m.swu'}], 'K3M', compressed=True)['name'], 'update-k3m.swu')
+
+    def test_firmware_is_looked_up_in_the_release_notes(self):
+        notes = '| Kobra S1 | `2.7.0.9` `2.7.2.7` |\n| Kobra 3 | 2.4.6.7 |'
+        listed = release_assets.firmware_listed
+        self.assertTrue(listed(notes, '2.7.2.7'))
+        self.assertTrue(listed(notes, '2.4.6.7'))
+        self.assertFalse(listed(notes, '2.7.3.7'))
+        self.assertFalse(listed(notes, '2.7.2'))           # not inside 2.7.2.7
+        self.assertFalse(listed('| K3 | 12.7.2.7 |', '2.7.2.7'))
+        self.assertFalse(listed(None, '2.7.2.7'))
+        self.assertIn('NOT listed', release_assets.switch_warning_text('20261101_01', notes, '2.7.3.7'))
+        self.assertIn('as supported', release_assets.switch_warning_text('20261101_01', notes, '2.7.2.7'))
+
+    def test_display_names(self):
+        show = release_assets.display_version
+        self.assertEqual(show('2611-3-alpha'), '2611 3 Alpha')
+        self.assertEqual(show('261-12-release-preview'), '261 12 Release Preview')
+        self.assertEqual(show('2611-0-release'), '2611 0 Release')
+        self.assertEqual(show('20261108_04_test'), '20261108_04_test')  # older tags as they are
+        self.assertEqual(show(None), '')
+
 
 if __name__ == '__main__':
     unittest.main()

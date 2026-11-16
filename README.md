@@ -73,6 +73,9 @@ There are two options to install Boomslang:
 1. Use the provided Boomslang installer (named **install-*.swu**)
 2. Install the raw swu directly (named **update-*.swu**)
 
+> [!NOTE]
+> Each release also has **update-*-compressed.swu** files. They are smaller downloads used by the printer's own updater (Updates screen, web portal and automatic updates) and can only be installed by a printer already running Boomslang. For a USB install, always use the file **without** `-compressed`.
+
 Either way, you'll need to:
 - Download the release / file you want from the [Releases](https://github.com/Gubir34/Boomslang/releases) page
 - Rename the downloaded SWU file as **update.swu**

@@ -91,7 +91,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN --mount=type=cache,sharing=locked,target=/var/cache/apt \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        wget sed rsync zip unzip ca-certificates && \
+        wget sed rsync zip unzip xz-utils ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 ###############################################################
@@ -242,11 +242,21 @@ RUN <<EOT
     set -e
     . /tools.sh
     mkdir -p /swu
+    # Standard packages (setup.tar.gz): install from USB and from any OTA
     prepare_tgz /bundle /swu
     compress_swu K3 /swu/update-k2p-k3.swu &
     compress_swu K3M /swu/update-k3m.swu &
     compress_swu KS1 /swu/update-ks1.swu &
     compress_swu KS1M /swu/update-ks1m.swu &
+    # Compressed packages (setup.tar.xz): smaller downloads for the OTA of a
+    # running Boomslang, which unpacks them (opt/rinkhals/ui/swu_setup.py).
+    # The stock USB updater can't read them. Staged outside /swu so the
+    # staging folder isn't exported.
+    prepare_txz /bundle /swu-xz
+    compress_swu K3 /swu/update-k2p-k3-compressed.swu /swu-xz &
+    compress_swu K3M /swu/update-k3m-compressed.swu /swu-xz &
+    compress_swu KS1 /swu/update-ks1-compressed.swu /swu-xz &
+    compress_swu KS1M /swu/update-ks1m-compressed.swu /swu-xz &
     wait $(jobs -p)
 EOT
 

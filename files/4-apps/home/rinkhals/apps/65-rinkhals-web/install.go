@@ -97,12 +97,12 @@ type installRunState struct {
 }
 
 var (
-	firmwareInstallMu       sync.Mutex
-	installCurrent  *installRunState
-	installLog      []string        // ring buffer of log lines, capped
-	installLogMax   = 500
-	installWaiters  []chan struct{} // SSE subscribers; signalled on each update
-	preflightTokens = map[string]*preflightToken{}
+	firmwareInstallMu sync.Mutex
+	installCurrent    *installRunState
+	installLog        []string // ring buffer of log lines, capped
+	installLogMax     = 500
+	installWaiters    []chan struct{} // SSE subscribers; signalled on each update
+	preflightTokens   = map[string]*preflightToken{}
 )
 
 type preflightToken struct {
@@ -112,6 +112,12 @@ type preflightToken struct {
 	Sha256    string // optional, for asset verification
 	ExpiresAt time.Time
 	Compat    *compatibilityReport
+
+	// BeforeApply, when set, runs after the download and extraction and
+	// before update.sh. An error stops the install with nothing changed. The
+	// automatic updater uses it to make sure no print started during the
+	// download, and to remember that this version was tried.
+	BeforeApply func() error
 }
 
 // compatibilityReport explains whether installing the target SWU is safe given
@@ -120,10 +126,10 @@ type preflightToken struct {
 // firmware version - if not, Boomslang will refuse to load on next boot and the
 // user will be on stock until they install a compatible Boomslang release.
 type compatibilityReport struct {
-	Compatible              bool     `json:"compatible"`
-	Warnings                []string `json:"warnings"`
-	RinkhalsPatchesForTarget bool    `json:"rinkhals_patches_for_target"`
-	TargetVersion           string   `json:"target_version,omitempty"`
+	Compatible               bool     `json:"compatible"`
+	Warnings                 []string `json:"warnings"`
+	RinkhalsPatchesForTarget bool     `json:"rinkhals_patches_for_target"`
+	TargetVersion            string   `json:"target_version,omitempty"`
 }
 
 // --- helpers ---
@@ -187,6 +193,11 @@ func validateAssetURL(source, assetURL string) error {
 		if host == "github.com" && !strings.HasPrefix(u.Path, "/Gubir34/Boomslang/releases/download/") {
 			return fmt.Errorf("rinkhals asset_url must point at this repo's release downloads")
 		}
+	case "upstream":
+		// The original Rinkhals project (see upstream.go)
+		if host != "github.com" || !strings.HasPrefix(u.Path, upstreamDownloadPrefix) {
+			return fmt.Errorf("upstream asset_url must point at rinkhals-community/Rinkhals release downloads")
+		}
 	case "anycubic":
 		// Anycubic publishes via cdn.cloud-universe.anycubic.com. We don't
 		// pin the path because the CDN paths look like opaque blob IDs.
@@ -249,6 +260,9 @@ type preflightRequest struct {
 	Source   string `json:"source"`
 	Version  string `json:"version"`
 	AssetURL string `json:"asset_url"`
+	// Confirm must be the word RINKHALS for source "upstream": replacing
+	// Boomslang is never one stray click or a replayed request away
+	Confirm string `json:"confirm,omitempty"`
 }
 
 type preflightResponse struct {
@@ -274,8 +288,12 @@ func handleInstallPreflight(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	if req.Source != "rinkhals" && req.Source != "anycubic" {
-		http.Error(w, "source must be 'rinkhals' or 'anycubic'", http.StatusBadRequest)
+	if req.Source != "rinkhals" && req.Source != "anycubic" && req.Source != "upstream" {
+		http.Error(w, "source must be 'rinkhals', 'anycubic' or 'upstream'", http.StatusBadRequest)
+		return
+	}
+	if req.Source == "upstream" && strings.TrimSpace(req.Confirm) != upstreamConfirmWord {
+		http.Error(w, "Switching to Rinkhals needs the word "+upstreamConfirmWord+" typed to confirm", http.StatusBadRequest)
 		return
 	}
 	if req.Version == "" || req.AssetURL == "" {
@@ -301,6 +319,9 @@ func handleInstallPreflight(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Source == "anycubic" {
 		token.Compat = checkAnycubicCompatibility(req.Version)
+	} else if req.Source == "upstream" {
+		token.Compat = &compatibilityReport{Compatible: true,
+			Warnings: []string{"This replaces Boomslang with the original Rinkhals."}}
 	} else {
 		token.Compat = &compatibilityReport{Compatible: true}
 	}
@@ -350,8 +371,7 @@ func handleInstallCommit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	firmwareInstallMu.Lock()
-	if installCurrent != nil && installCurrent.State != installStateIdle &&
-		installCurrent.State != installStateComplete && installCurrent.State != installStateFailed {
+	if installInProgressLocked() {
 		firmwareInstallMu.Unlock()
 		http.Error(w, "An install is already in progress", http.StatusConflict)
 		return
@@ -376,19 +396,7 @@ func handleInstallCommit(w http.ResponseWriter, r *http.Request) {
 	// "Confirm install" in the UI, they get a real flash.
 	dryRun := req.DryRun
 
-	// Reset state, clear ring buffer.
-	installCurrent = &installRunState{
-		State:     installStatePreparing,
-		Source:    token.Source,
-		Version:   token.Version,
-		AssetURL:  token.AssetURL,
-		DryRun:    dryRun,
-		StartedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		InstallID: req.InstallID,
-		Message:   "Preparing install",
-	}
-	installLog = installLog[:0]
+	beginInstallLocked(token, req.InstallID, dryRun)
 	firmwareInstallMu.Unlock()
 
 	go runInstall(token, dryRun)
@@ -398,6 +406,30 @@ func handleInstallCommit(w http.ResponseWriter, r *http.Request) {
 		"install_id": req.InstallID,
 		"dry_run":    dryRun,
 	})
+}
+
+// installInProgressLocked reports whether an install is running. Caller holds
+// firmwareInstallMu.
+func installInProgressLocked() bool {
+	return installCurrent != nil && installCurrent.State != installStateIdle &&
+		installCurrent.State != installStateComplete && installCurrent.State != installStateFailed
+}
+
+// beginInstallLocked resets the published install state for a new run. Caller
+// holds firmwareInstallMu and then runs runInstall(token, dryRun).
+func beginInstallLocked(token *preflightToken, installID string, dryRun bool) {
+	installCurrent = &installRunState{
+		State:     installStatePreparing,
+		Source:    token.Source,
+		Version:   token.Version,
+		AssetURL:  token.AssetURL,
+		DryRun:    dryRun,
+		StartedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		InstallID: installID,
+		Message:   "Preparing install",
+	}
+	installLog = installLog[:0]
 }
 
 // --- HTTP: state + progress SSE ---
@@ -544,6 +576,13 @@ func runInstall(token *preflightToken, dryRun bool) {
 		})
 		firmwareInstallMu.Unlock()
 		return
+	}
+
+	if token.BeforeApply != nil {
+		if err := token.BeforeApply(); err != nil {
+			failInstall("Install stopped before applying", err)
+			return
+		}
 	}
 
 	// --- 3. Patch update.sh to suppress self-cleanup + reboot ---
@@ -731,7 +770,17 @@ func extractSWU(swuPath string) error {
 		appendInstallLog("setup.tar.gz md5 verified")
 	}
 
-	if fileExists(filepath.Join(installExtractPath, "setup.tar.gz")) {
+	// A compressed package (setup.tar.xz) is unpacked by the touch UI's
+	// swu_setup.py with Boomslang's Python: the printer's tar has no xz, and
+	// Go's standard library has no xz decoder. It checks the md5 itself.
+	if fileExists(filepath.Join(installExtractPath, "setup.tar.xz")) {
+		cmd := exec.Command("python", swuSetupScript, installExtractPath)
+		cmd.Stdout = installLogWriter{}
+		cmd.Stderr = installLogWriter{}
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("unpacking setup.tar.xz: %w", err)
+		}
+	} else if fileExists(filepath.Join(installExtractPath, "setup.tar.gz")) {
 		cmd := exec.Command("tar", "-xzf", filepath.Join(installExtractPath, "setup.tar.gz"), "-C", installExtractPath)
 		cmd.Stdout = installLogWriter{}
 		cmd.Stderr = installLogWriter{}

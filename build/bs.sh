@@ -9,7 +9,7 @@
 #                                       patches and start/stop scripts
 #   sh build/bs.sh apps [name..] apps from this repo or ../Boomslang.Apps
 #                                       (restarts each one if it is enabled)
-#   sh build/bs.sh install <update-*.swu>
+#   sh build/bs.sh install <update-*.swu>     (standard or -compressed package)
 #                                       full update from this PC, like Updates > Install on
 #                                       the printer (asks to confirm, then reboots it)
 #   sh build/bs.sh status        versions, memory and Boomslang processes
@@ -135,10 +135,15 @@ case "$cmd" in
             rm -rf /useremain/update_swu
             unzip -P \"\$P\" /useremain/update.swu -d /useremain > /dev/null || { echo 'Wrong package for this printer model'; rm -f /useremain/update.swu; exit 1; }
             rm -f /useremain/update.swu
-            if [ -f /useremain/update_swu/setup.tar.gz.md5 ]; then
-                [ \"\$(md5sum /useremain/update_swu/setup.tar.gz | cut -d' ' -f1)\" = \"\$(tr -d ' \\n' < /useremain/update_swu/setup.tar.gz.md5)\" ] || { echo 'Package checksum does not match'; exit 1; }
+            if [ -f /useremain/update_swu/setup.tar.xz ]; then
+                # Compressed package: the printer's tar has no xz (see swu_setup.py)
+                python $CUR/opt/rinkhals/ui/swu_setup.py /useremain/update_swu || { echo 'Could not unpack the compressed package'; exit 1; }
+            else
+                if [ -f /useremain/update_swu/setup.tar.gz.md5 ]; then
+                    [ \"\$(md5sum /useremain/update_swu/setup.tar.gz | cut -d' ' -f1)\" = \"\$(tr -d ' \\n' < /useremain/update_swu/setup.tar.gz.md5)\" ] || { echo 'Package checksum does not match'; exit 1; }
+                fi
+                tar zxf /useremain/update_swu/setup.tar.gz -C /useremain/update_swu
             fi
-            tar zxf /useremain/update_swu/setup.tar.gz -C /useremain/update_swu
             chmod +x /useremain/update_swu/update.sh
             sed -i -e 's|rm -rf \${swu_path}/update.swu|echo|' -e 's|rm -f \$USB_PATH/update.swu||' -e 's|reboot|echo|' /useremain/update_swu/update.sh
             /useremain/update_swu/update.sh async

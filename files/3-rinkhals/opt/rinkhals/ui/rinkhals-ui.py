@@ -10,6 +10,7 @@ import lvgl_rinkhals as lvr
 
 from common import *
 import reader
+import home_tools
 
 
 cache_items = {}
@@ -169,6 +170,7 @@ def printer_ip():
 
 class RinkhalsUiApp(BaseApp):
     app_update_loop_key = 0
+    fullscreen = True
 
     def __init__(self):
         super().__init__()
@@ -225,38 +227,10 @@ class RinkhalsUiApp(BaseApp):
 
     def layout(self):
         super().layout()
-        
-        if self.screen_logo:
-            self.screen_logo.set_flex_flow(lv.FLEX_FLOW.COLUMN)
-            self.screen_logo.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
-            self.screen_logo.set_style_pad_row(-lv.dpx(3), lv.STATE.DEFAULT)
 
-            rinkhals_icon = lvr.image(self.screen_logo)
-            rinkhals_icon.set_src(ASSETS_PATH + '/icon.png')
-            rinkhals_icon.scale_to(lv.dpx(90))
-
-            label_rinkhals = lvr.title(self.screen_logo)
-            label_rinkhals.set_text('Boomslang')
-            label_rinkhals.set_style_pad_top(lv.dpx(20), lv.STATE.DEFAULT)
-            label_rinkhals.set_style_pad_bottom(lv.dpx(10), lv.STATE.DEFAULT)
-            
-            self.screen_logo.label_model = lvr.subtitle(self.screen_logo)
-            self.screen_logo.label_model.set_text('Model:')
-
-            self.screen_logo.label_firmware = lvr.subtitle(self.screen_logo)
-            self.screen_logo.label_firmware.set_text('Firmware:')
-
-            self.screen_logo.label_version = lvr.subtitle(self.screen_logo)
-            self.screen_logo.label_version.set_text('Version:')
-                        
-            self.screen_logo.label_disk = lvr.subtitle(self.screen_logo)
-            self.screen_logo.label_disk.set_text('Disk usage: ?')
-
-            button_exit = lvr.button_icon(self.screen_logo)
-            button_exit.add_flag(lv.OBJ_FLAG.IGNORE_LAYOUT)
-            button_exit.align(lv.ALIGN.TOP_LEFT, -lvr.get_global_margin(), -lvr.get_global_margin())
-            button_exit.set_text('')
-            button_exit.add_event_cb(lambda e: self.quit(), lv.EVENT_CODE.CLICKED, None)
+        # The home screen uses the whole display (fullscreen = True): the
+        # logo panel that used to fill the left half is hidden, its model and
+        # version are in the home header and its disk usage in the Info dialog.
 
         if self.screen_main:
             self.screen_main.set_flex_flow(lv.FLEX_FLOW.COLUMN)
@@ -302,7 +276,8 @@ class RinkhalsUiApp(BaseApp):
                 glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'Browser') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
                 glyph.center()
                 plain(lvr.title(button)).set_text(label)
-                plain(lvr.subtitle(button)).set_text(hint)
+                button.hint = plain(lvr.subtitle(button))
+                button.hint.set_text(hint)
                 button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
                 return button
 
@@ -365,15 +340,25 @@ class RinkhalsUiApp(BaseApp):
             pill.set_style_bg_color(PILL, lv.STATE.DEFAULT)
             pill.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
             pill_text = lv.label(pill)
-            pill_text.set_text(ellipsis(f'v{RINKHALS_VERSION}', 18))
+            pill_text.set_text(ellipsis(display_version(RINKHALS_VERSION), 24))
             pill_text.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+            # Back to the stock Anycubic screen (this used to sit on the logo panel)
+            button_exit = lvr.button_icon(header)
+            button_exit.set_size(lv.dpx(40), lv.dpx(40))
+            button_exit.set_text('')
+            button_exit.add_event_cb(lambda e: self.quit(), lv.EVENT_CODE.CLICKED, None)
+
+            # Live status: temperatures and what the printer is doing
+            self.home_label_status = lvr.subtitle(self.screen_main)
+            self.home_label_status.set_width(lv.pct(100))
+            self.home_label_status.set_text('')
 
             row = row_of(self.screen_main)
             row.set_flex_grow(1)
             row.set_style_min_height(0, lv.STATE.DEFAULT)
             card(row, '\ue5c3', 'Apps', 'Start, stop, configure', lambda: self.show_screen(self.screen_apps))
             card(row, '\ue8d1', 'App Store', 'Browse and install', lambda: self.show_screen(self.screen_store))
-            card(row, '\ue62a', 'Updates', 'Boomslang and firmware', lambda: self.show_screen(self.screen_ota))
+            self.home_card_updates = card(row, '\ue62a', 'Updates', 'Boomslang and firmware', lambda: self.show_screen(self.screen_ota))
 
             row = row_of(self.screen_main)
             row.set_flex_grow(1)
@@ -626,7 +611,41 @@ class RinkhalsUiApp(BaseApp):
                 button_disable.set_width(lv.pct(100))
                 button_disable.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
                 button_disable.set_text('Disable Boomslang')
-                button_disable.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto disable Boomslang?\n\nYou will need to reinstall\nRinkhals to start it again', action='Yes', action_color=lvr.COLOR_DANGER, callback=lambda: self.disable_rinkhals()), lv.EVENT_CODE.CLICKED, None)
+                button_disable.add_event_cb(lambda e: self.show_text_dialog('Are you sure you want\nto disable Boomslang?\n\nYou will need to reinstall\nBoomslang to start it again', action='Yes', action_color=lvr.COLOR_DANGER, callback=lambda: self.disable_rinkhals()), lv.EVENT_CODE.CLICKED, None)
+
+                def setting(label, key, options):
+                    # A button showing a Boomslang Web setting; a tap picks another value
+                    button = lvr.button(panel_buttons)
+                    button.set_width(lv.pct(100))
+
+                    def refresh():
+                        button.set_text(f'{label}: {get_app_property(self.WEB_APP, key) or options[0]}')
+
+                    def chosen(value):
+                        set_app_property(self.WEB_APP, key, value)
+                        refresh()
+                    button.add_event_cb(lambda e: self.show_selection_dialog(options, chosen), lv.EVENT_CODE.CLICKED, None)
+                    refresh()
+                    return button
+
+                setting('Automatic updates', 'auto_update', ['release', 'off', 'release-preview', 'beta', 'alpha'])
+                setting('Update hours', 'auto_update_hours', ['any', '00-06', '02-06', '22-06', '09-17'])
+
+                self.button_notifications = lvr.button(panel_buttons)
+                self.button_notifications.set_width(lv.pct(100))
+                self.button_notifications.add_event_cb(lambda e: self.notifications_tap(), lv.EVENT_CODE.CLICKED, None)
+                self.notifications_refresh()
+
+                button_previous = lvr.button(panel_buttons)
+                button_previous.set_width(lv.pct(100))
+                button_previous.set_text('Go back to previous version')
+                button_previous.add_event_cb(lambda e: self.previous_version_tap(), lv.EVENT_CODE.CLICKED, None)
+
+                button_switch = lvr.button(panel_buttons)
+                button_switch.set_width(lv.pct(100))
+                button_switch.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
+                button_switch.set_text('Switch to Rinkhals')
+                button_switch.add_event_cb(lambda e: self.switch_to_rinkhals_start(), lv.EVENT_CODE.CLICKED, None)
 
         with lvr.lock():
             self.layout_ota()
@@ -653,6 +672,8 @@ class RinkhalsUiApp(BaseApp):
                 self.modal_text_input.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
                 self.modal_text_input.panel_content = None
 
+        self.home_start_background()
+
     def show_screen(self, screen):
         if screen is None:
             return
@@ -662,18 +683,8 @@ class RinkhalsUiApp(BaseApp):
         elif screen == self.screen_apps: self.show_apps()
         elif screen == self.screen_store: self.show_app_store()
     def show_main(self):
-        self.screen_logo.label_model.set_text(f'Model: {KOBRA_MODEL}')
-        self.screen_logo.label_firmware.set_text(f'Firmware: {KOBRA_VERSION}')
-        self.screen_logo.label_version.set_text(f'Version: {RINKHALS_VERSION}')
-        self.screen_logo.label_disk.set_text(f'Disk usage: ?')
-
-        def update_disk_usage(result):
-            lv.lock()
-            self.screen_logo.label_disk.set_text(f'Disk usage: {result}')
-            lv.unlock()
-
-        if USING_SHELL:
-            shell_async(f'df -Ph {RINKHALS_ROOT} | tail -n 1 | awk \'{{print $3 " / " $2 " (" $5 ")"}}\'', update_disk_usage)
+        # The address can change while the UI is open (Wi-Fi reconnects)
+        self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} · {printer_ip() or "no network"}', 26))
     def show_apps(self):
         def toggle_app(app, checked):
             if checked:
@@ -1319,9 +1330,177 @@ class RinkhalsUiApp(BaseApp):
     # Info dialog (home screen and Settings)
     def show_info_dialog(self):
         ip = printer_ip() or 'not connected'
+        disk = '?'
+        if USING_SHELL:
+            disk = shell(f'df -Ph {RINKHALS_ROOT} | tail -n 1 | awk \'{{print $3 " / " $2 " (" $5 ")"}}\'') or '?'
         self.show_text_dialog(
-            f'Boomslang {RINKHALS_VERSION}\n{KOBRA_MODEL}\nFirmware {KOBRA_VERSION}\n\nAddress: {ip}\n'
-            f'Web portal: port 8090\nMainsail: port 4409')
+            f'Boomslang {display_version(RINKHALS_VERSION)}\n{KOBRA_MODEL}\nFirmware {KOBRA_VERSION}\n\nAddress: {ip}\n'
+            f'Web portal: port 8090\nMainsail: port 4409\nDisk usage: {disk}')
+
+    # Home screen background work: the message after an automatic update, the
+    # "update available" mark on the Updates card, and the live status line.
+    WEB_APP = '65-rinkhals-web'       # its properties hold the updater and notification settings
+    HOME_STATUS_SECONDS = 4
+
+    def home_start_background(self):
+        if USING_SIMULATOR:
+            return
+        notice = home_tools.take_update_notice(RINKHALS_VERSION)
+        if notice:
+            with lvr.lock():
+                self.show_text_dialog(notice)
+        run_async(self.home_check_update)
+        import threading
+        threading.Thread(target=self.home_status_loop, daemon=True).start()
+
+    def home_check_update(self):
+        try:
+            latest = Rinkhals.get_latest_version()
+            if not (latest and latest.url and is_newer_release(latest.version, RINKHALS_VERSION)):
+                return
+            self.cache_rinkhals_latest = latest      # the Updates screen need not ask again
+            with lvr.lock():
+                self.home_card_updates.hint.set_text(ellipsis(f'{display_version(latest.version)} available', 26))
+                self.home_card_updates.hint.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        except Exception:
+            logging.exception('Update check failed')
+
+    def home_status_loop(self):
+        shown = None
+        while True:
+            # Only while the home screen is what is on the display
+            on_home = self.screen_current in (self.screen_main, self.screen_composition)
+            if on_home and self.root_modal.has_flag(lv.OBJ_FLAG.HIDDEN):
+                text = home_tools.fetch_status()
+                if text != shown:
+                    shown = text
+                    with lvr.lock():
+                        self.home_label_status.set_text(text)
+            time.sleep(self.HOME_STATUS_SECONDS)
+
+    # Phone notifications (Settings). The web portal sends them (notify.go);
+    # here the topic is made and shown as a QR code for the ntfy app.
+    def notifications_refresh(self):
+        on = home_tools.valid_ntfy_topic(get_app_property(self.WEB_APP, 'ntfy_topic'))
+        self.button_notifications.set_text(f'Phone notifications: {"on" if on else "off"}')
+
+    def notifications_show_qr(self, topic):
+        link = home_tools.ntfy_link(get_app_property(self.WEB_APP, 'ntfy_server'), topic)
+        self.show_qr_dialog(link, 'Scan with the ntfy app to be\ntold when a print finishes,\nfails or pauses')
+
+    def notifications_tap(self):
+        topic = get_app_property(self.WEB_APP, 'ntfy_topic')
+        if not home_tools.valid_ntfy_topic(topic):
+            def turn_on():
+                topic = home_tools.new_ntfy_topic()
+                set_app_property(self.WEB_APP, 'ntfy_topic', topic)
+                self.notifications_refresh()
+                self.notifications_show_qr(topic)
+            self.show_text_dialog('Phone notifications\n\nThe printer will send the\nfile name and what happened\n'
+                                  'to ntfy.sh, a public service,\nunder a random secret topic.\n\nTurn them on?',
+                                  action='Turn on', callback=turn_on)
+            return
+
+        def chosen(option):
+            if option == 'Turn off':
+                remove_app_property(self.WEB_APP, 'ntfy_topic')
+                self.notifications_refresh()
+            else:
+                self.notifications_show_qr(topic)
+        self.show_selection_dialog(['Show QR code', 'Turn off'], chosen)
+
+    # Go back to the version that was installed before this one (Settings)
+    def previous_version_tap(self):
+        current_folder = ''
+        try:
+            with open(os.path.join(RINKHALS_BASE, '.version'), 'r') as f:
+                current_folder = f.read().strip()
+        except OSError:
+            pass
+        previous = home_tools.previous_install(RINKHALS_BASE, current_folder)
+        if not previous:
+            self.show_text_dialog('No previous version\nis installed.')
+            return
+        folder, version = previous
+
+        def go_back():
+            try:
+                home_tools.select_install(RINKHALS_BASE, folder)
+                # or the automatic updater would put this version straight back
+                home_tools.keep_from_auto_install(RINKHALS_VERSION)
+            except (OSError, ValueError) as e:
+                logging.error(f'Could not go back to {folder}: {e}')
+                self.show_text_dialog('Could not switch versions.\nNothing was changed.')
+                return
+            self.reboot_printer()
+        self.show_text_dialog(f'Go back to\n{display_version(version)}?\n\nThe printer reboots.\n'
+                              f'{display_version(RINKHALS_VERSION)}\nstays installed and will not\nbe installed again automatically.\n\n'
+                              'Not during a print.', action='Go back', callback=go_back)
+
+    # Switch to the original Rinkhals (Settings > Switch to Rinkhals).
+    # Five deliberate steps before anything changes: two warning dialogs,
+    # typing RINKHALS, a dialog with the release and a firmware check, and
+    # the Download / Switch buttons of the install dialog. Nothing is written
+    # until that last tap; the install itself is the normal OTA install of
+    # the Rinkhals update package.
+    SWITCH_CONFIRM_WORD = 'RINKHALS'
+    switch_search = 0
+
+    def switch_to_rinkhals_start(self):
+        self.show_text_dialog(
+            'WARNING\n'
+            'Switch to Rinkhals?\n\n'
+            'This removes Boomslang and\n'
+            'installs the original Rinkhals\n'
+            '(rinkhals-community on GitHub).\n\n'
+            'You lose the Boomslang home\n'
+            'screen, the browser, automatic\n'
+            'updates, the Boomslang app\n'
+            'store and the support for\n'
+            'newer firmware Boomslang adds.',
+            action='I understand', action_color=lvr.COLOR_DANGER,
+            callback=self.switch_to_rinkhals_second)
+
+    def switch_to_rinkhals_second(self):
+        self.show_text_dialog(
+            'ARE YOU SURE?\n\n'
+            'Rinkhals may not support\n'
+            f'firmware {KOBRA_VERSION}. If it does not,\n'
+            'the printer starts with the\n'
+            'stock Anycubic software only.\n\n'
+            'There is no button to come back.\n'
+            'To return, install a Boomslang\n'
+            'update.swu from a USB drive.\n\n'
+            'Never do this during a print.',
+            action='Continue', action_color=lvr.COLOR_DANGER,
+            callback=lambda: self.show_input_text_dialog(
+                f'Type {self.SWITCH_CONFIRM_WORD} to confirm', '', False, self.switch_to_rinkhals_typed))
+
+    def switch_to_rinkhals_typed(self, text):
+        if (text or '').strip().upper() != self.SWITCH_CONFIRM_WORD:
+            self.show_text_dialog('Not confirmed.\nBoomslang was not changed.')
+            return
+
+        self.switch_search += 1
+        search = self.switch_search
+        self.show_text_dialog('Looking for the latest\nRinkhals release...', action='Cancel',
+                              callback=lambda: setattr(self, 'switch_search', self.switch_search + 1))
+
+        def find_release():
+            versions = Rinkhals.get_available_versions(include_test=False, limit=1,
+                                                       repo=RINKHALS_REPO, compressed=False)
+            with lvr.lock():
+                # Cancelled, or the dialog was tapped away while GitHub answered
+                if search != self.switch_search or self.root_modal.has_flag(lv.OBJ_FLAG.HIDDEN):
+                    return
+                if not versions:
+                    self.show_text_dialog('No Rinkhals release for this\nprinter was found, or GitHub\n'
+                                          'could not be reached.\n\nBoomslang was not changed.')
+                    return
+                version = versions[0]
+                version.switch_warning = switch_warning_text(version.version, version.changes, KOBRA_VERSION)
+                self.show_ota_rinkhals_modal(version)
+        run_async(find_release)
 
     # Web browser (reader mode: text, headings and links, no JavaScript)
     BROWSER_BOOKMARKS = [
@@ -1332,11 +1511,14 @@ class RinkhalsUiApp(BaseApp):
         ('Printables search', 'https://html.duckduckgo.com/html/?q=printables+3d+models'),
     ]
     BROWSER_BLOCKS_PER_STEP = 20     # widgets created per lock hold, so the screen keeps responding
+    BROWSER_BLOCKS_PER_PART = 300    # a long page is shown in parts: widgets are what costs memory
     BROWSER_MAX_LINK_BUTTONS = 100   # each button costs memory on a printer with little of it
 
     screen_browser = None
     browser_history = None
-    browser_url = None
+    browser_url = None            # last page that loaded
+    browser_showing_url = False   # whether that page is what is on screen
+    browser_page = None           # the page on screen, for moving between its parts
     browser_gen = 0   # bumped by every navigation; a slow page that is no longer wanted is dropped
 
     def layout_browser(self):
@@ -1386,7 +1568,11 @@ class RinkhalsUiApp(BaseApp):
 
     def browser_back(self):
         self.browser_gen += 1
-        if self.browser_history:
+        if self.browser_url and not self.browser_showing_url:
+            # A link is still loading or failed: go back to the page it was
+            # opened from, which browser_url still names
+            self.browser_open(self.browser_url, push=False)
+        elif self.browser_history:
             self.browser_open(self.browser_history.pop(), push=False)
         elif self.browser_url:
             self.browser_url = None
@@ -1394,8 +1580,8 @@ class RinkhalsUiApp(BaseApp):
         else:
             self.show_screen(self.screen_main)
 
-    def browser_label(self, parent, text, kind='p', color=None, align=None):
-        if kind == 'h1':
+    def browser_label(self, parent, text, kind='p', color=None, align=None, decor=None, bg=None, big=False):
+        if kind == 'h1' or big:
             label = lvr.title(parent)
         else:
             label = lvr.label(parent)
@@ -1405,8 +1591,20 @@ class RinkhalsUiApp(BaseApp):
                 label.set_style_text_color(lvr.COLOR_SUBTITLE, lv.STATE.DEFAULT)
         # Colour and alignment from the page's own CSS (reader.py already
         # dropped colours that would be unreadable on the dark screen)
+        if bg:
+            # A highlighted box (a notice, a marked passage): the page's own
+            # background, with black or white text, whichever reads on it
+            label.set_style_bg_color(lv.color_make(*bg), lv.STATE.DEFAULT)
+            label.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+            label.set_style_pad_all(lv.dpx(6), lv.STATE.DEFAULT)
+            label.set_style_radius(lv.dpx(6), lv.STATE.DEFAULT)
+            color = (0, 0, 0) if (0.2126 * bg[0] + 0.7152 * bg[1] + 0.0722 * bg[2]) / 255 > 0.5 else (255, 255, 255)
         if color:
             label.set_style_text_color(lv.color_make(*color), lv.STATE.DEFAULT)
+        if decor == 'strike':
+            label.set_style_text_decor(lv.TEXT_DECOR.STRIKETHROUGH, lv.STATE.DEFAULT)
+        elif decor == 'underline':
+            label.set_style_text_decor(lv.TEXT_DECOR.UNDERLINE, lv.STATE.DEFAULT)
         if align == 'center':
             label.set_style_text_align(lv.TEXT_ALIGN.CENTER, lv.STATE.DEFAULT)
         elif align == 'right':
@@ -1429,14 +1627,34 @@ class RinkhalsUiApp(BaseApp):
 
     def browser_start_page(self):
         self.browser_gen += 1
+        self.browser_showing_url = False
         self.screen_browser.label_title.set_text('Browser')
         panel = self.browser_new_content()
         self.browser_label(panel, 'Tap the magnifier at the top right to type a web address, or words to search for. '
                                   'Pages are shown as text with links; there is no JavaScript, so some sites will not work.', 'quote')
         self.browser_link(panel, 'Open an address or search...', None).add_event_cb(
             lambda e: self.browser_ask_address(), lv.EVENT_CODE.CLICKED, None)
-        for name, url in self.BROWSER_BOOKMARKS:
+        saved = home_tools.load_bookmarks()
+        for name, url in saved:
             self.browser_link(panel, name, url)
+        for name, url in self.BROWSER_BOOKMARKS:
+            if not any(url == u for _, u in saved):
+                self.browser_link(panel, name, url)
+
+    def browser_form(self, form, label):
+        self.show_input_text_dialog(label, '', False,
+                                    lambda text: self.browser_open(reader.submit_url(form, text)) if text else None)
+
+    def browser_bookmark_text(self, url):
+        return 'Remove bookmark' if home_tools.is_bookmarked(url) else 'Bookmark this page'
+
+    def browser_show_part(self, start):
+        page = self.browser_page
+        if not page:
+            return
+        self.browser_gen += 1
+        gen = self.browser_gen
+        run_async(lambda: self.browser_render(page, None, page.url, False, gen, start))
 
     def browser_open(self, target, push=True):
         if not target:
@@ -1448,6 +1666,7 @@ class RinkhalsUiApp(BaseApp):
             return
         self.browser_gen += 1
         gen = self.browser_gen
+        self.browser_showing_url = False
         self.screen_browser.label_title.set_text('Loading...')
         panel = self.browser_new_content()
         self.browser_label(panel, ellipsis(url, 90), 'quote')
@@ -1461,38 +1680,63 @@ class RinkhalsUiApp(BaseApp):
             except Exception as e:
                 logging.exception('Browser failed')
                 error = f'Unexpected error: {type(e).__name__}'
-            if gen != self.browser_gen:
-                return  # the user went somewhere else while it loaded
             self.browser_render(page, error, url, push, gen)
         run_async(load)
 
-    def browser_render(self, page, error, url, push, gen):
+    def browser_render(self, page, error, url, push, gen, start=0):
+        # Every "is this page still wanted" check is made while holding the
+        # LVGL lock. Taps run inside lv.timer_handler(), which holds the same
+        # lock, so a navigation can't delete the panel between the check and
+        # the widgets being added to it.
         with lvr.lock():
+            if gen != self.browser_gen:
+                return  # the user went somewhere else while it loaded
             panel = self.browser_new_content()
             if error:
                 self.screen_browser.label_title.set_text('Cannot open page')
                 self.browser_label(panel, error, 'p')
                 self.browser_label(panel, ellipsis(url, 90), 'quote')
                 self.browser_link(panel, 'Try again', None).add_event_cb(
-                    lambda e, u=url: self.browser_open(u, push=False), lv.EVENT_CODE.CLICKED, None)
+                    lambda e, u=url, p=push: self.browser_open(u, push=p), lv.EVENT_CODE.CLICKED, None)
                 return
             if push and self.browser_url:
                 self.browser_history.append(self.browser_url)
                 del self.browser_history[:-30]
             self.browser_url = page.url
+            self.browser_page = page
+            self.browser_showing_url = True
             self.screen_browser.label_title.set_text(ellipsis(page.title, 24))
 
+            # A long page is shown in parts; each part is its own set of widgets
+            per_part = self.BROWSER_BLOCKS_PER_PART
+            parts = max(1, -(-len(page.blocks) // per_part))
+            part = start // per_part + 1
+            if start > 0:
+                self.browser_link(panel, f'Previous part ({part - 1} of {parts})', None).add_event_cb(
+                    lambda e, s=start - per_part: self.browser_show_part(max(0, s)), lv.EVENT_CODE.CLICKED, None)
+            elif getattr(page, 'from_data', False):
+                self.browser_label(panel, 'This page is drawn by JavaScript, which is not run here. '
+                                          'Below is the text found in the data it carries.', 'quote')
+
+        blocks = page.blocks[start:start + per_part]
         links_left = self.BROWSER_MAX_LINK_BUTTONS
         hidden_links = 0
         step = self.BROWSER_BLOCKS_PER_STEP
-        for i in range(0, len(page.blocks), step):
-            if gen != self.browser_gen:
-                return
+        for i in range(0, len(blocks), step):
             with lvr.lock():
-                for block in page.blocks[i:i + step]:
+                if gen != self.browser_gen:
+                    return
+                for block in blocks[i:i + step]:
+                    if block['kind'] == 'form':
+                        label = block['text'] or 'Search'
+                        caption = f'{label}...' if label.lower().startswith('search') else f'Search: {label}...'
+                        self.browser_link(panel, caption, None).add_event_cb(
+                            lambda e, f=block['form'], l=label: self.browser_form(f, l), lv.EVENT_CODE.CLICKED, None)
+                        continue
                     if block['text']:
                         self.browser_label(panel, block['text'], block['kind'],
-                                           block.get('color'), block.get('align'))
+                                           block.get('color'), block.get('align'),
+                                           block.get('decor'), block.get('bg'), block.get('big', False))
                     for text, link in block['links']:
                         if links_left > 0:
                             self.browser_link(panel, text, link)
@@ -1503,14 +1747,25 @@ class RinkhalsUiApp(BaseApp):
             if gen != self.browser_gen:
                 return
             notes = []
-            if page.truncated:
-                notes.append('The page is long: only the first part is shown.')
+            last_part = start + per_part >= len(page.blocks)
             if hidden_links:
                 notes.append(f'{hidden_links} more links are not shown.')
+            if page.truncated and last_part:
+                notes.append('The page is very long: the end of it is not shown.')
             if not page.blocks:
                 notes.append('This page has no readable text. It probably needs JavaScript.')
             for note in notes:
                 self.browser_label(panel, note, 'quote')
+            if not last_part:
+                self.browser_link(panel, f'Continue reading (part {part + 1} of {parts})', None).add_event_cb(
+                    lambda e: self.browser_show_part(start + per_part), lv.EVENT_CODE.CLICKED, None)
+            else:
+                bookmark = self.browser_link(panel, self.browser_bookmark_text(page.url), None)
+
+                def toggle(e):
+                    home_tools.toggle_bookmark(page.title, page.url)
+                    bookmark.set_text(self.browser_bookmark_text(page.url))
+                bookmark.add_event_cb(toggle, lv.EVENT_CODE.CLICKED, None)
 
     # App Store
     APP_STORE_REPO = 'Gubir34/Boomslang.Apps'

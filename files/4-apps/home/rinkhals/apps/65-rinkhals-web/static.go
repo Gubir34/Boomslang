@@ -125,10 +125,20 @@ func isCompressible(ctype string) bool {
 
 func acceptsGzip(r *http.Request) bool {
 	for _, part := range strings.Split(r.Header.Get("Accept-Encoding"), ",") {
-		token := strings.TrimSpace(strings.SplitN(part, ";", 2)[0])
-		if token == "gzip" && !strings.Contains(part, "q=0") {
-			return true
+		fields := strings.Split(part, ";")
+		if strings.TrimSpace(fields[0]) != "gzip" {
+			continue
 		}
+		// "gzip;q=0" refuses gzip; "gzip;q=0.5" only lowers its preference
+		for _, param := range fields[1:] {
+			param = strings.TrimSpace(param)
+			if strings.HasPrefix(param, "q=") {
+				if q, err := strconv.ParseFloat(param[2:], 64); err == nil && q <= 0 {
+					return false
+				}
+			}
+		}
+		return true
 	}
 	return false
 }

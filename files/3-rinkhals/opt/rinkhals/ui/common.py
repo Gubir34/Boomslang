@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import lvgl as lv
 import lvgl_rinkhals as lvr
 
-from release_assets import find_update_asset, is_newer_release
+from release_assets import display_version, find_update_asset, is_newer_release, switch_warning_text
 
 
 class JSONWithCommentsDecoder(json.JSONDecoder):
@@ -222,15 +222,41 @@ class ScreenInfo:
 ################
 # Boomslang update management
 
+BOOMSLANG_REPO = 'Gubir34/Boomslang'
+RINKHALS_REPO = 'rinkhals-community/Rinkhals'   # the original project, for "Switch to Rinkhals"
+
+
+def ota_package_compressed():
+    """Whether the OTA downloads the compressed package (the default).
+
+    Not when Boomslang Web's ota_package property says "standard", and not
+    when this Python can't decompress xz (the USB installer tool doesn't
+    bundle liblzma).
+    """
+    try:
+        import lzma  # noqa: F401
+    except ImportError:
+        return False
+    try:
+        with open('/useremain/home/rinkhals/apps/65-rinkhals-web.config', 'r') as f:
+            value = json.load(f).get('ota_package')
+        if str(value).strip().lower() == 'standard':
+            return False
+    except Exception:
+        pass
+    return True
+
+
 class RinkhalsVersion:
     version: str
     path: str
     test: bool
     date: int
     changes: str
-    sha256: str
+    sha256: str = None   # unset when GitHub gave no digest; download_version reads it
     url: str
     supported_firmwares: list[str]
+    product: str = 'Boomslang'   # or 'Rinkhals' for the original project
 
 class Rinkhals:
     def get_current_path():
@@ -277,14 +303,21 @@ class Rinkhals:
                     version.path = f.path
                     versions.append(version)
         return versions
-    def get_available_versions(include_test=False, limit=10):
+    def get_available_versions(include_test=False, limit=10, repo=BOOMSLANG_REPO, compressed=None):
+        """Releases of repo with a package for this printer, newest first.
+
+        compressed: prefer the compressed package (see release_assets);
+        None follows ota_package_compressed().
+        """
         printer_info = PrinterInfo.get()
         if not printer_info or not printer_info.model_code:
             return None
-        
+        if compressed is None:
+            compressed = ota_package_compressed()
+
         try:
             import requests
-            response = requests.get(f'https://api.github.com/repos/Gubir34/Boomslang/releases?per_page=20', timeout=5)
+            response = requests.get(f'https://api.github.com/repos/{repo}/releases?per_page=20', timeout=5)
             if response.status_code == 200:
                 releases = response.json()
                 releases.sort(key=lambda r: r.get('published_at', ''), reverse=True)
@@ -296,7 +329,9 @@ class Rinkhals:
 
                     version = RinkhalsVersion()
                     version.version = tag
-                    version.test = bool(release.get('prerelease')) or 'test' in tag.lower() or 'beta' in tag.lower()
+                    # Alpha, Beta and Release Preview are pre-releases; only Release is not
+                    version.test = (bool(release.get('prerelease')) or
+                                    any(word in tag.lower() for word in ('test', 'alpha', 'beta', 'preview')))
                     if release.get('draft'):
                         continue
                     version.changes = release.get('body', '')
@@ -321,7 +356,7 @@ class Rinkhals:
                         # Match the exact package name. A substring test let a K3
                         # pick update-k3m.swu (another password, so the install
                         # failed) whenever GitHub listed it first.
-                        asset = find_update_asset(assets, printer_info.model_code)
+                        asset = find_update_asset(assets, printer_info.model_code, compressed)
                         if asset:
                             asset_url = asset.get('browser_download_url', '')
                             asset_digest = asset.get('digest', '')
@@ -332,6 +367,7 @@ class Rinkhals:
                         if asset_digest and 'sha256' in asset_digest:
                             version.sha256 = asset_digest.replace('sha256:', '') if asset_digest else None
 
+                    version.product = 'Rinkhals' if repo == RINKHALS_REPO else 'Boomslang'
                     versions.append(version)
                     if len(versions) >= limit:
                         break
@@ -696,6 +732,12 @@ class BaseApp:
 
     last_screen_check = 0
     modal_current = None
+
+    # False: the logo panel (logo, model, firmware) shares the screen with the
+    # menu, beside it on wide screens and above it on tall ones. True: the
+    # logo panel is hidden and every screen uses the whole display; the app
+    # then draws its own header and exit button.
+    fullscreen = False
     
     # Cache
     cache_rinkhals_latest = None
@@ -781,6 +823,11 @@ class BaseApp:
 
             self.screen_main.set_size(lv.pct(100), lv.pct(100))
 
+            if self.fullscreen:
+                self.screen_logo.add_flag(lv.OBJ_FLAG.HIDDEN)
+                self.root_screen.set_align(lv.ALIGN.CENTER)
+                self.root_screen.set_size(lv.pct(100), lv.pct(100))
+
         # Vertical composition for tall screens
         else:
             self.screen_composition = lvr.panel(self.root_screen)
@@ -796,6 +843,10 @@ class BaseApp:
             self.screen_main.set_align(lv.ALIGN.BOTTOM_MID)
             self.screen_main.set_size(lv.pct(100), lv.pct(50))
             self.screen_main.remove_flag(lv.OBJ_FLAG.HIDDEN)
+
+            if self.fullscreen:
+                self.screen_logo.add_flag(lv.OBJ_FLAG.HIDDEN)
+                self.screen_main.set_size(lv.pct(100), lv.pct(100))
 
         # Create the modal target
         self.root_modal = lvr.panel(modal_parent)
@@ -941,9 +992,11 @@ class BaseApp:
 
     def show_text_dialog(self, text, action='OK', action_color=None, callback=None):
         def action_callback(callback=callback):
+            # Hide first, so a callback can open the next dialog (the switch
+            # to Rinkhals asks several times) without it being hidden again
+            self.hide_modal()
             if callback:
                 callback()
-            self.hide_modal()
 
         self.modal_dialog.message.set_text(text)
         self.modal_dialog.message.remove_flag(lv.OBJ_FLAG.HIDDEN)
@@ -1371,7 +1424,7 @@ class BaseApp:
 
             lv.lock()
             if rinkhals_current:
-                self.screen_ota.label_rinkhals_current_value.set_text(rinkhals_current.version)
+                self.screen_ota.label_rinkhals_current_value.set_text(display_version(rinkhals_current.version))
             else:
                 self.screen_ota.label_rinkhals_current_value.set_text('Not found')
             lv.unlock()
@@ -1387,7 +1440,7 @@ class BaseApp:
 
             lv.lock()
             if latest:
-                self.screen_ota.label_rinkhals_latest_value.set_text(latest.version)
+                self.screen_ota.label_rinkhals_latest_value.set_text(display_version(latest.version))
             else:
                 self.screen_ota.label_rinkhals_latest_value.set_text('?')
             self.screen_ota.label_rinkhals_latest_value.set_style_text_color(
@@ -1478,7 +1531,7 @@ class BaseApp:
 
                 label_version = lvr.label(panel_version)
                 label_version.set_align(lv.ALIGN.LEFT_MID)
-                label_version.set_text(v.version)
+                label_version.set_text(display_version(v.version))
 
                 if rinkhals_current and v.version == rinkhals_current.version:
                     if v.version != 'dev':
@@ -1615,7 +1668,8 @@ class BaseApp:
 
         run_async(lambda: refresh_available(False))
     def show_ota_rinkhals_modal(self, version: RinkhalsVersion):
-        self.modal_ota_rinkhals.label_title.set_text(f'Boomslang {version.version}')
+        switching = getattr(version, 'product', 'Boomslang') == 'Rinkhals'
+        self.modal_ota_rinkhals.label_title.set_text(f'{getattr(version, "product", "Boomslang")} {display_version(version.version)}')
 
         changes = version.changes or ''
         changes = changes.replace('\r\n', '\n')
@@ -1658,6 +1712,15 @@ class BaseApp:
             warning_text = 'This version is older than the currently installed one'
         elif rinkhals_current and version.version > rinkhals_current.version:
             action_text = 'Upgrade'
+
+        if switching:
+            # Replacing Boomslang with the original Rinkhals (Settings >
+            # Switch to Rinkhals): never offer to delete a folder from here,
+            # and keep the warning on screen up to the last tap
+            action_text = 'Switch to Rinkhals'
+            action_uninstall = False
+            warning_text = getattr(version, 'switch_warning', None) or \
+                'This replaces Boomslang with Rinkhals. Boomslang features and automatic updates stop.'
 
         if warning_text:
             self.modal_ota_rinkhals.label_warning.set_text(warning_text)
@@ -2026,16 +2089,13 @@ class BaseApp:
         if system('rm /useremain/update.swu') != 0:
             return False
 
-        if os.path.isfile('/useremain/update_swu/setup.tar.gz.md5'):
-            with open('/useremain/update_swu/setup.tar.gz.md5', 'r') as f:
-                theoritical_hash = f.read().strip()
-
-            file_hash = hash_md5('/useremain/update_swu/setup.tar.gz')
-            if file_hash.lower() != theoritical_hash.lower():
-                logging.error('setup.tar.gz md5 doesn\'t match. Failing install.')
-                return False
-
-        if system('tar zxf /useremain/update_swu/setup.tar.gz -C /useremain/update_swu') != 0:
+        # Checks the md5 and unpacks setup.tar.gz, or setup.tar.xz for a
+        # compressed package (see swu_setup.py)
+        import swu_setup
+        try:
+            logging.info(f'Unpacked {swu_setup.unpack_setup("/useremain/update_swu")}')
+        except (swu_setup.SetupError, OSError) as e:
+            logging.error(f'Could not unpack the update: {e}')
             return False
         if system('chmod +x /useremain/update_swu/update.sh') != 0:
             return False

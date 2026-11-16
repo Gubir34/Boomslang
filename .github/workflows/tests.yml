@@ -1,0 +1,60 @@
+name: Tests
+
+# The Python and Go test suites, as one reusable workflow: pull requests run
+# it (pr-checks.yml) and so does every release build (auto-release.yml,
+# develop-test-build.yml) before anything is published.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Keep in step with the printer's Python (buildroot, 3.11)
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Release names
+        run: |
+          test "$(printf 'x\trefs/tags/2611-3-alpha\ny\trefs/tags/2611-12-release^{}\n' | sh build/release-name.sh next beta 2611)" = 2611-13-beta
+          test "$(sh build/release-name.sh title 2611-13-release-preview)" = "2611 13 Release Preview"
+
+  go:
+    name: Web portal backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: files/4-apps/home/rinkhals/apps/65-rinkhals-web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: files/4-apps/home/rinkhals/apps/65-rinkhals-web/go.mod
+          cache-dependency-path: files/4-apps/home/rinkhals/apps/65-rinkhals-web/go.sum
+
+      # The portal embeds the built web UI (ui/); the tests only need the
+      # folder to exist
+      - name: Placeholder web UI
+        run: mkdir -p ui && echo '<html></html>' > ui/index.html
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...

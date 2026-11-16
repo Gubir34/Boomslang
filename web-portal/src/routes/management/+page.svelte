@@ -1,7 +1,8 @@
 <script lang="ts">
     import { RefreshCw, Download, Server, Trash2, AlertTriangle, ShieldAlert, Terminal, Lock, Cpu, CheckCircle2, ArrowUpCircle } from 'lucide-svelte';
-    import { firmwareStatus } from "$lib/firmwareStatus";
+    import { displayVersion, firmwareStatus } from "$lib/firmwareStatus";
     import PatchesCard from "$lib/PatchesCard.svelte";
+    import SwitchToRinkhals from "$lib/SwitchToRinkhals.svelte";
 
     let loadingAction = $state<string | null>(null);
     let logs = $state<string>('');
@@ -204,10 +205,10 @@
             </div>
             <div class="rounded-lg border border-line-soft bg-surface px-4 py-3">
                 <div class="text-xs uppercase tracking-wider text-ink-faint mb-1">Boomslang</div>
-                <div class="text-lg font-semibold text-ink">{$firmwareStatus.current_rinkhals || "Unknown"}</div>
+                <div class="text-lg font-semibold text-ink">{displayVersion($firmwareStatus.current_rinkhals) || "Unknown"}</div>
                 {#if $firmwareStatus.latest_rinkhals}
                     <div class="mt-1 text-xs text-ink-muted flex items-center gap-1.5 flex-wrap">
-                        <span>Latest: <span class="text-ink">{$firmwareStatus.latest_rinkhals}</span></span>
+                        <span>Latest: <span class="text-ink">{displayVersion($firmwareStatus.latest_rinkhals)}</span></span>
                         {#if $firmwareStatus.rinkhals_update_available}
                             <span class="inline-flex items-center gap-1 text-brand">
                                 <ArrowUpCircle size={12} /> Update available
@@ -278,6 +279,8 @@
             </button>
         </div>
     </div>
+
+    <SwitchToRinkhals />
 
     <!-- Output Logs -->
     <div class="flex-1 mt-2 bg-canvas rounded-xl border border-line-soft flex flex-col min-h-64 overflow-hidden">

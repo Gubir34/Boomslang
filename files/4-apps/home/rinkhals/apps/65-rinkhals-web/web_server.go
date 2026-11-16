@@ -30,8 +30,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type FileInfo struct {
-	Name     string `json:"name"`
-	Path     string `json:"path"`
+	Name string `json:"name"`
+	Path string `json:"path"`
 	// Type is one of "file", "folder", "link". A symlink reports type "link"
 	// regardless of what it points at; the UI decides navigation behaviour
 	// based on TargetType (see below).
@@ -492,6 +492,7 @@ func startWebServer() {
 	mux.HandleFunc("/api/firmware/patches", handlePatchesList)
 	mux.HandleFunc("/api/firmware/install/preflight", handleInstallPreflight)
 	mux.HandleFunc("/api/firmware/install/commit", handleInstallCommit)
+	mux.HandleFunc("/api/firmware/upstream", handleFirmwareUpstream)
 	mux.HandleFunc("/api/firmware/install/state", handleInstallState)
 	mux.HandleFunc("/api/firmware/install/progress", handleInstallProgress)
 

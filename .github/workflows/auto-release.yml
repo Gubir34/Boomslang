@@ -1,12 +1,28 @@
 name: Auto release on tag
 
+# Release names are {YY}{M} {N} {Channel}, for example "2611 3 Alpha", with
+# the tag 2611-3-alpha (see build/release-name.sh).
+#
+#   - every push to master builds the next Alpha
+#   - Beta, Release Preview and Release are made by hand from master:
+#       gh workflow run auto-release.yml -f channel=release
+#     (or Actions > Auto release > Run workflow, and pick the channel)
+#   - pushing a tag in that format builds exactly that release
+
 on:
-  # Forks don't run push-triggered workflows until enabled in the Actions
-  # tab; a release can also be started by hand on a tag:
-  #   gh workflow run auto-release.yml --ref <tag>
   workflow_dispatch:
+    inputs:
+      channel:
+        description: "Channel of the release to build from this commit"
+        required: true
+        default: alpha
+        type: choice
+        options:
+          - alpha
+          - beta
+          - release-preview
+          - release
   push:
-    # Every push to master builds a new test release (YYYYMMDD_NN_test).
     # Documentation, branding and local firmware copies do not trigger one.
     branches:
       - master
@@ -16,9 +32,10 @@ on:
       - 'firmware/**'
       - 'design.md'
     tags:
-      # Release tags only (YYYYMMDD_NN, optionally _test). A bare '*' meant any
-      # stray tag published a draft release with all 12 SWU assets attached.
-      - '20*'
+      # Release tags only. A bare '*' meant any stray tag published a release
+      # with all 12 SWU assets attached.
+      - '[0-9][0-9]*-*-*'   # 2611-3-alpha
+      - '20*'               # dated tags from before the names (20261108_04)
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -29,7 +46,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Printers install releases on their own, so nothing is built or published
+  # unless the tests pass
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   build:
+    needs: tests
 
     runs-on: ubuntu-latest
     permissions:
@@ -45,22 +68,36 @@ jobs:
       id: tag
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CHANNEL: ${{ inputs.channel || 'alpha' }}
       run: |
         if [ "$GITHUB_REF_TYPE" = tag ]; then
+          if ! sh build/release-name.sh check "$GITHUB_REF_NAME" && ! echo "$GITHUB_REF_NAME" | grep -Eq '^[0-9]{8}_[0-9]+'; then
+            echo "$GITHUB_REF_NAME is not a release name like 2611-3-alpha" >&2
+            exit 1
+          fi
+          # develop-test-build.yml pushes its Beta tag after making the release
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "$GITHUB_REF_NAME already has a release, skipping"
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "name=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
           echo "skip=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
         # A push to master: skip when this commit already has a release tag
-        # (a tag pushed together with the branch builds it on its own)
-        if git ls-remote --tags origin | grep -E "^$GITHUB_SHA\s+refs/tags/20" > /dev/null; then
+        # (a tag pushed together with the branch builds it on its own). A
+        # hand-started run always builds: it may promote the same commit to
+        # another channel.
+        if [ "$GITHUB_EVENT_NAME" = push ] &&
+            git ls-remote --tags origin | grep -E "^$GITHUB_SHA\s+refs/tags/[0-9]" > /dev/null; then
           echo "This commit already has a release tag, skipping"
           echo "skip=1" >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        day=$(date -u +%Y%m%d)
-        count=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq "[.[] | select(.tagName | startswith(\"${day}_\"))] | length")
-        echo "name=${day}_$(printf '%02d' $((count + 1)))_test" >> "$GITHUB_OUTPUT"
+        name=$(git ls-remote --tags origin | sh build/release-name.sh next "$CHANNEL")
+        echo "Next release: $name ($(sh build/release-name.sh title "$name"))"
+        echo "name=$name" >> "$GITHUB_OUTPUT"
         echo "skip=" >> "$GITHUB_OUTPUT"
 
     - name: Set up QEMU
@@ -90,22 +127,26 @@ jobs:
         cache-from: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache
         cache-to: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache,mode=max,ignore-error=true
 
+    - name: Check the update packages
+      if: steps.tag.outputs.skip == ''
+      run: sh build/smoke-test-swu.sh build/dist "${{ steps.tag.outputs.name }}"
+
     - name: Create release
       if: steps.tag.outputs.skip == ''
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ steps.tag.outputs.name }}
       # Published, not a draft: the printer's updater (touch UI and web portal)
-      # reads the public releases API, which never lists drafts. Tags with
-      # "_test" are published as pre-releases, which the updater only shows
-      # when test versions are enabled.
+      # reads the public releases API, which never lists drafts. Alpha, Beta
+      # and Release Preview are published as pre-releases, which the updater
+      # only offers when test versions or that channel are enabled.
       run: |
         PRERELEASE=
-        case "$tag" in *_test*|*beta*) PRERELEASE=--prerelease ;; esac
+        if sh build/release-name.sh prerelease "$tag"; then PRERELEASE=--prerelease; fi
         gh release create "$tag" \
             --repo="$GITHUB_REPOSITORY" \
             --target="$GITHUB_SHA" \
-            --title="Boomslang ${tag}" \
+            --title="Boomslang $(sh build/release-name.sh title "$tag")" \
             --generate-notes \
             $PRERELEASE \
             build/dist/*.swu \

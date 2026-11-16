@@ -54,6 +54,7 @@ type FirmwareStatus struct {
 	RinkhalsUpdateAvailable bool      `json:"rinkhals_update_available"`
 	FetchedAt               time.Time `json:"fetched_at"`
 	Notice                  string    `json:"notice,omitempty"`
+	AutoUpdate              string    `json:"auto_update"` // off, stable or test (autoupdate.go)
 }
 
 // AnycubicFirmwareVersion mirrors one entry in the model's manifest. We expose
@@ -338,7 +339,7 @@ func fetchRinkhalsCatalog() (*RinkhalsCatalog, error) {
 		// Pick the update-<group>.swu asset for this printer. Installers and
 		// tools zips are surfaced separately when we add the install flow.
 		if group != "" {
-			if a := pickUpdateAsset(r.Assets, model, group); a != nil {
+			if a := pickUpdateAssetPreferring(r.Assets, model, group, otaPackageCompressed()); a != nil {
 				entry.AssetURL = a.BrowserDownloadURL
 				entry.AssetSize = a.Size
 			}
@@ -394,6 +395,7 @@ func buildFirmwareStatus(force bool) (*FirmwareStatus, error) {
 		CurrentFirmware: currentKobraVersion(),
 		CurrentRinkhals: currentRinkhalsVersion(),
 		FetchedAt:       time.Now().UTC(),
+		AutoUpdate:      autoUpdateMode(),
 	}
 
 	if anycubic, err := getAnycubicCatalog(model, force); err == nil && len(anycubic.Versions) > 0 {
@@ -583,9 +585,26 @@ func handleFirmwareRefresh(w http.ResponseWriter, r *http.Request) {
 // Releases now ship update-ks1m.swu as well; an S1 Max prefers it and falls
 // back to update-ks1.swu (same content and password) on older releases.
 func pickUpdateAsset(assets []ghReleaseAsset, model, group string) *ghReleaseAsset {
-	names := []string{"update-" + group + ".swu"}
+	return pickUpdateAssetPreferring(assets, model, group, false)
+}
+
+// pickUpdateAssetPreferring is pickUpdateAsset that, with compressed set,
+// first looks for the compressed packages (update-ks1-compressed.swu, with
+// setup.tar.xz inside, unpacked by opt/rinkhals/ui/swu_setup.py) and falls
+// back to the standard ones, which older releases only have.
+func pickUpdateAssetPreferring(assets []ghReleaseAsset, model, group string, compressed bool) *ghReleaseAsset {
+	groups := []string{group}
 	if strings.EqualFold(strings.TrimSpace(model), "KS1M") {
-		names = append([]string{"update-ks1m.swu"}, names...)
+		groups = append([]string{"ks1m"}, groups...)
+	}
+	names := []string{}
+	if compressed {
+		for _, g := range groups {
+			names = append(names, "update-"+g+"-compressed.swu")
+		}
+	}
+	for _, g := range groups {
+		names = append(names, "update-"+g+".swu")
 	}
 	for _, name := range names {
 		for i := range assets {
@@ -597,22 +616,82 @@ func pickUpdateAsset(assets []ghReleaseAsset, model, group string) *ghReleaseAss
 	return nil
 }
 
-var releaseTagPattern = regexp.MustCompile(`^(\d{8})_(\d+)`)
+// Release names: {YY}{M} {N} {Channel}, for example "2611 3 Alpha": year 2026,
+// November (months 1 to 12, not zero padded), the 3rd release of that month
+// (0 to 999, counted across all channels), Alpha channel. Tags can't hold
+// spaces, so the tag is 2611-3-alpha. Keep in step with release_assets.py in
+// the touch UI and auto-release.yml.
+var (
+	releaseNamePattern = regexp.MustCompile(`^(\d{2})(1[0-2]|[1-9])-(\d{1,3})-(alpha|beta|release-preview|release)$`)
+	releaseTagPattern  = regexp.MustCompile(`^(\d{8})_(\d+)`) // dated tags used before the names
+)
+
+// releaseChannels lists the channels from least to most stable.
+var releaseChannels = []string{"alpha", "beta", "release-preview", "release"}
+
+var releaseChannelNames = map[string]string{
+	"alpha": "Alpha", "beta": "Beta", "release-preview": "Release Preview", "release": "Release",
+}
+
+func channelRank(channel string) int {
+	for i, c := range releaseChannels {
+		if c == channel {
+			return i
+		}
+	}
+	return -1
+}
+
+// releaseTagKey is a sortable key for a tag, or nil when the tag is not a
+// release (a dev build, a commit id). Every named release sorts after every
+// dated one, which is how the names replaced the dates.
+func releaseTagKey(tag string) []int {
+	if m := releaseNamePattern.FindStringSubmatch(strings.ToLower(strings.TrimSpace(tag))); m != nil {
+		year, _ := strconv.Atoi(m[1])
+		month, _ := strconv.Atoi(m[2])
+		number, _ := strconv.Atoi(m[3])
+		return []int{1, year, month, number, channelRank(m[4])}
+	}
+	if m := releaseTagPattern.FindStringSubmatch(tag); m != nil {
+		date, _ := strconv.Atoi(m[1])
+		number, _ := strconv.Atoi(m[2])
+		return []int{0, date, number, 0, 0}
+	}
+	return nil
+}
+
+// releaseTagChannel is the channel of a named release, else "".
+func releaseTagChannel(tag string) string {
+	if m := releaseNamePattern.FindStringSubmatch(strings.ToLower(strings.TrimSpace(tag))); m != nil {
+		return m[4]
+	}
+	return ""
+}
+
+// releaseDisplayName turns 2611-3-alpha into "2611 3 Alpha"; other tags are
+// returned as they are.
+func releaseDisplayName(tag string) string {
+	m := releaseNamePattern.FindStringSubmatch(strings.ToLower(strings.TrimSpace(tag)))
+	if m == nil {
+		return tag
+	}
+	year, _ := strconv.Atoi(m[1])
+	number, _ := strconv.Atoi(m[3])
+	return fmt.Sprintf("%02d%s %d %s", year, m[2], number, releaseChannelNames[m[4]])
+}
 
 // releaseTagNewer reports whether latest is a strictly later release than
-// current. Tags look like 20261108_04 or 20261108_04_test; the channel suffix
-// is ignored and anything that is not a dated tag (a dev build, a commit id)
-// never gets an update offered. The touch UI uses the same rule
-// (release_assets.is_newer_release).
+// current. Anything that is not a release tag never gets an update offered.
+// The touch UI uses the same rule (release_assets.is_newer_release).
 func releaseTagNewer(latest, current string) bool {
-	a, b := releaseTagPattern.FindStringSubmatch(latest), releaseTagPattern.FindStringSubmatch(current)
+	a, b := releaseTagKey(latest), releaseTagKey(current)
 	if a == nil || b == nil {
 		return false
 	}
-	if a[1] != b[1] {
-		return a[1] > b[1]
+	for i := range a {
+		if a[i] != b[i] {
+			return a[i] > b[i]
+		}
 	}
-	an, _ := strconv.Atoi(a[2])
-	bn, _ := strconv.Atoi(b[2])
-	return an > bn
+	return false
 }
