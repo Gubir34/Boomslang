@@ -9,8 +9,8 @@
     "auto_update": {
       "display": "Automatic Boomslang updates",
       "type": "enum",
-      "options": [ "off", "release", "release-preview", "beta", "alpha" ],
-      "default": "release"
+      "options": [ "auto", "off", "release", "release-preview", "beta", "alpha" ],
+      "default": "auto"
     },
     "auto_update_hours": {
       "display": "Update hours (printer clock)",

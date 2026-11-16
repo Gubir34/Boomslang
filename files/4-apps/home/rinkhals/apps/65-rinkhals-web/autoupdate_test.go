@@ -51,7 +51,31 @@ func TestPickAutoUpdateChannels(t *testing.T) {
 		{"old test means alpha", "2611-1-alpha", "test", "", "2611-5-alpha"},
 		{"dated install moves to the names", "20261116_01_test", "release", "", "2611-2-release"},
 		{"nothing newer", "2611-5-alpha", "alpha", "", ""},
+
+		// "auto" follows the channel of the installed version
+		{"auto on an alpha takes alphas", "2611-1-alpha", "auto", "", "2611-5-alpha"},
+		{"auto on a beta takes betas, not alphas", "2611-1-beta", "auto", "", "2611-4-beta"},
+		{"auto on a release preview", "2611-1-release-preview", "auto", "", "2611-3-release-preview"},
+		{"auto on a release takes releases only", "2611-1-release", "auto", "", "2611-2-release"},
+		{"auto on a dated version means release", "20261116_01_test", "auto", "", "2611-2-release"},
+		{"an unset setting is auto", "2611-1-beta", "", "", "2611-4-beta"},
+		{"auto on a dev build still never updates", "abc1234", "auto", "", ""},
+		{"an explicit choice beats the installed channel", "2611-1-alpha", "release", "", "2611-2-release"},
+		{"off is off on any channel", "2611-1-alpha", "off", "", ""},
 	})
+}
+
+func TestAutoUpdateModeFollowsTheInstalledChannelByDefault(t *testing.T) {
+	stubAutoUpdate(t, []bool{true}, nil)
+	for version, want := range map[string]string{
+		"2611-3-alpha": "alpha", "2611-3-beta": "beta", "2611-3-release-preview": "release-preview",
+		"2611-3-release": "release", "20261116_01_test": "release", "dev": "release",
+	} {
+		autoUpdateCurrent = func() string { return version }
+		if got := autoUpdateMode(); got != want {
+			t.Errorf("installed %s: mode %q, want %q", version, got, want)
+		}
+	}
 }
 
 func check(t *testing.T, releases []RinkhalsRelease, cases []struct{ name, current, mode, tried, want string }) {

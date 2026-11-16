@@ -628,7 +628,7 @@ class RinkhalsUiApp(BaseApp):
                     refresh()
                     return button
 
-                setting('Automatic updates', 'auto_update', ['release', 'off', 'release-preview', 'beta', 'alpha'])
+                setting('Automatic updates', 'auto_update', ['auto', 'off', 'release', 'release-preview', 'beta', 'alpha'])
                 setting('Update hours', 'auto_update_hours', ['any', '00-06', '02-06', '22-06', '09-17'])
 
                 self.button_notifications = lvr.button(panel_buttons)

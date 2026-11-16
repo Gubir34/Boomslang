@@ -24,8 +24,11 @@ import (
 // The "auto_update" property of this app chooses what is installed (set it
 // in Boomslang > Apps > Boomslang Web, or in the portal's Apps page):
 //
+//	auto             the channel of the installed version (the default): on an
+//	                 Alpha every release, on a Beta Beta and more stable, on a
+//	                 Release only Releases
 //	off              never update automatically
-//	release          Release only (the default)
+//	release          Release only
 //	release-preview  Release Preview and Release
 //	beta             Beta and everything more stable
 //	alpha            every release (every push to master makes an Alpha)
@@ -55,7 +58,6 @@ import (
 const (
 	autoUpdateAppID       = "65-rinkhals-web"
 	autoUpdateProperty    = "auto_update"
-	autoUpdateDefault     = "release"
 	autoUpdateFirstCheck  = 10 * time.Minute
 	autoUpdateInterval    = 6 * time.Hour
 	autoUpdateIdleRecheck = 2 * time.Minute
@@ -111,7 +113,7 @@ func webAppSetting(key string) string {
 }
 
 func autoUpdateMode() string {
-	return normalizeAutoUpdateMode(webAppSetting(autoUpdateProperty))
+	return normalizeAutoUpdateMode(webAppSetting(autoUpdateProperty), autoUpdateCurrent())
 }
 
 // autoUpdateWait is returned while a release is waiting for the update hours.
@@ -179,11 +181,21 @@ func writeUpdateNotice(from, to string) error {
 	return os.WriteFile(autoUpdateNoticePath, data, 0644)
 }
 
-func normalizeAutoUpdateMode(mode string) string {
+// normalizeAutoUpdateMode turns the setting into "off" or a channel name.
+// "auto" (the default) follows the channel of the version that is installed:
+// a printer on an Alpha gets every release, one on a Beta gets Beta and
+// anything more stable, one on a Release only Releases. Whoever installed a
+// test version asked for test versions; nobody on a Release is moved to one.
+// A version that is not a named release (a dated tag, a dev build) counts as
+// Release.
+func normalizeAutoUpdateMode(mode, current string) string {
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	switch mode {
-	case "":
-		return autoUpdateDefault
+	case "", "auto":
+		if channel := releaseTagChannel(current); channel != "" {
+			return channel
+		}
+		return "release"
 	case "stable": // before the channel names
 		return "release"
 	case "test":
@@ -234,7 +246,7 @@ func writeTriedTag(tag string) error {
 // updated), only channels at least as stable as the mode, never the tag that
 // was already tried, and only releases with a package for this printer.
 func pickAutoUpdate(releases []RinkhalsRelease, current, mode, tried string) *RinkhalsRelease {
-	mode = normalizeAutoUpdateMode(mode)
+	mode = normalizeAutoUpdateMode(mode, current)
 	if mode == "off" {
 		return nil
 	}
