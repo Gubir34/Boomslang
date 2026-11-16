@@ -220,23 +220,45 @@ def toggle_bookmark(name, url, path=None):
 
 # --- the look of the home screen ------------------------------------------------
 
+THEME_FILE = '/useremain/rinkhals/.ui-theme'
+THEMES = ('classic', 'aero', 'liquid')
+THEME_NAMES = {'classic': 'Classic', 'aero': 'Aero', 'liquid': 'Liquid Plastic'}
+DEFAULT_THEME = 'aero'
+
+
 def aero_possible(width, height):
-    """Aero is drawn for an 800x480 screen; any other screen keeps the Classic look."""
+    """Aero and Liquid Plastic are drawn for an 800x480 screen; any other screen keeps the Classic look."""
     return (width, height) == AERO_SIZE
 
 
-def use_aero(width, height, flag=None):
-    """Aero is the default. Settings > Switch to Classic UI leaves a flag file."""
-    return aero_possible(width, height) and not os.path.exists(flag or CLASSIC_UI_FLAG)
+def theme_for(width, height, path=None, legacy=None):
+    """Which look the home screen has: 'classic', 'aero' or 'liquid'.
+
+    The choice is the name in THEME_FILE. Before there were three looks,
+    Settings > Switch to Classic UI left an empty flag file (CLASSIC_UI_FLAG);
+    that still means Classic. With neither file, Aero. A screen the other looks
+    are not drawn for is always Classic.
+    """
+    if not aero_possible(width, height):
+        return 'classic'
+    try:
+        with open(path or THEME_FILE) as f:
+            chosen = f.read().strip().lower()
+        if chosen in THEMES:
+            return chosen
+    except OSError:
+        pass
+    if os.path.exists(legacy or CLASSIC_UI_FLAG):
+        return 'classic'
+    return DEFAULT_THEME
 
 
-def set_aero(enabled, flag=None):
-    flag = flag or CLASSIC_UI_FLAG
-    if enabled:
-        try:
-            os.remove(flag)
-        except FileNotFoundError:
-            pass
-    else:
-        with open(flag, 'w') as f:
-            f.write('Boomslang shows the Classic home screen while this file exists\n')
+def set_theme(name, path=None, legacy=None):
+    if name not in THEMES:
+        raise ValueError(f'unknown look {name!r}')
+    with open(path or THEME_FILE, 'w') as f:
+        f.write(name + '\n')
+    try:
+        os.remove(legacy or CLASSIC_UI_FLAG)   # the old flag must not be read next to the new choice
+    except FileNotFoundError:
+        pass

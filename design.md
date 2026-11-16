@@ -30,7 +30,7 @@ The Home header shows the logo, "Boomslang", the printer model and IP, and a ver
 
 - **Classic** is complete for the Home screen (`layout_classic_home` in `rinkhals-ui.py`).
 - **Aero** is the default on 800×480 screens (Kobra S1 and S1 Max); every other screen keeps Classic, because the mockups exist for that size only. It covers the **Home screen**: wallpaper, back button, title tab with the Update pill, tray, taskbar with the six orbs and the clock (`layout_aero_home`). The orbs open the existing screens (Settings, App Store, Apps, Web portal QR, browser, Power), which still look Classic: re-skinning them, and showing the taskbar on every screen, is not done yet.
-- Settings has **Switch to Classic UI / Switch to Aero UI**. The choice is the file `/useremain/rinkhals/.classic-ui` (present = Classic). If building the Aero home fails for any reason the UI falls back to Classic by itself, so the printer is never left without a menu.
+- Settings has **Look**: Classic, Aero or Liquid Plastic, kept in `/useremain/rinkhals/.ui-theme`. (The older `.classic-ui` flag still means Classic.) If building the Aero or Liquid home fails for any reason the UI falls back to Classic by itself, so the printer is never left without a menu.
 - The wallpaper is `assets/aero-wallpaper.bin`, a raw RGB565 LVGL image made by `branding/make-aero-wallpaper.py` from `branding/aero-wallpaper.png`. It is not a PNG on purpose: a PNG is decoded again on every redraw when LVGL's image cache is off.
 - Aero is drawn in real pixels (the mockups are 800×480), not in `lv.dpx()` units.
 
@@ -58,15 +58,17 @@ Aero Home is `Aero.png`. Its Update pill opens `Updates.png`. LemSearch results 
 
 The LemSearch icon is a custom glyph, not part of Material Icons: a thick "L" stroke with a small magnifier in its inner corner. It is drawn as SVG in `html/LemSearch.html` and `html/Aero.html`. Export it to a PNG or an LVGL image for the printer.
 
-### Liquid Plastic (clear glass panes) — mockup only so far
+### Liquid Plastic (clear glass panes)
 
-Our take on the "liquid glass" look: clear, curved panes that blur and tint what is behind them, lit from the top left, with a thin bright rim that fades around the edge. Capsules and circles, floating, no hard borders, white icons. Same layout and the same screens as Aero (`Liquid.png` is the Home screen), only the look differs. The mockup is `png/Liquid.png`, from `html/Liquid.html`.
+Our take on the "liquid glass" look: clear, curved panes that blur and tint what is behind them, lit from the top left, with a thin bright rim that fades around the edge. Capsules and circles, floating, no hard borders, white icons. Same layout as Aero; the look differs, and the tab opens a **quick settings** panel (`Liquid.png`, `LiquidPanel.png`, from `html/Liquid.html` and `html/LiquidPanel.html`).
 
-How it would be built on the printer (nothing of this exists yet):
+Where the code is: **Home and the quick settings panel are done**; the other screens (Apps, Store, Settings, Browser) still look Classic when opened from it.
 
-- LVGL can't blur what is behind a widget, and the printer's CPU is too slow to try. But the panes sit on a **fixed wallpaper**, so the panes are **drawn into the wallpaper image** at build time (blur, tint, rim and highlights rendered by a browser, like the mockup, then converted to the same raw RGB565 file Aero uses). On the printer, LVGL only adds what changes: the icons, the clock, the version, the Update pill and the badge, plus invisible touch areas over the baked panes.
-- A press is shown with a light translucent overlay on the touched pane.
-- Screens other than Home would need their own baked backgrounds, one image each (about 770 KB), or a shared plain wallpaper with simpler flat panes.
+- **Quick settings** (tap the tab): a brightness **slider** (never below 15 %, so the screen can't be set to black), two **toggles** (Sounds, Auto update) and two **buttons** (Web portal, Settings). Tapping outside the panel or its handle closes it. The widgets are in `liquid_ui.py` (`Glass.touch`, `Glass.slider`, `Toggle`, `DropPanel`) and are meant to be reused for the other screens.
+- **How it is drawn:** LVGL can't blur what is behind a widget and the printer's CPU could not do it every frame. The panes sit on a fixed wallpaper, so `branding/make-liquid.py` draws them into two pictures with a browser (`assets/liquid-home.bin`, and `liquid-panel.bin` with the panel open), in the same raw RGB565 format as the Aero wallpaper. The printer only shows the picture; the icons, text, clock, slider and a pressed pane's light are live, on top.
+- **One set of numbers:** `liquid_layout.py` has every position. The picture generator and the live parts both read it. `tests/test_liquid.py` reads the pictures back and checks that the panes' edges are where the layout says, so a changed layout with old pictures fails the tests.
+- The look is chosen in Settings > Look (Classic, Aero, Liquid Plastic; a file, `/useremain/rinkhals/.ui-theme`). Aero is still the default. A look that fails to build falls back to Classic.
+- To change the look: edit `liquid_layout.py` or `make-liquid.py`, run `python3 branding/make-liquid.py` (needs Pillow and Firefox), commit the pictures it writes.
 
 ## Design tokens
 

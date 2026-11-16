@@ -175,30 +175,49 @@ class BookmarkTests(unittest.TestCase):
 class ThemeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.flag = os.path.join(self.tmp.name, 'classic-ui')
+        self.theme = os.path.join(self.tmp.name, 'ui-theme')
+        self.legacy = os.path.join(self.tmp.name, 'classic-ui')
 
     def tearDown(self):
         self.tmp.cleanup()
 
+    def look(self, width=800, height=480):
+        return home_tools.theme_for(width, height, self.theme, self.legacy)
+
     def test_aero_is_the_default_on_the_screen_it_is_drawn_for(self):
-        self.assertTrue(home_tools.use_aero(800, 480, self.flag))
+        self.assertEqual(self.look(), 'aero')
         self.assertTrue(home_tools.aero_possible(800, 480))
 
-    def test_other_screens_keep_the_classic_look(self):
+    def test_other_screens_keep_the_classic_look_whatever_was_chosen(self):
+        home_tools.set_theme('liquid', self.theme, self.legacy)
         for size in ((480, 272), (272, 480), (800, 600), (1024, 600)):
-            self.assertFalse(home_tools.use_aero(*size, self.flag), size)
+            self.assertEqual(self.look(*size), 'classic', size)
             self.assertFalse(home_tools.aero_possible(*size), size)
 
-    def test_switching_to_classic_and_back(self):
-        home_tools.set_aero(False, self.flag)
-        self.assertTrue(os.path.exists(self.flag))
-        self.assertFalse(home_tools.use_aero(800, 480, self.flag))
-        home_tools.set_aero(True, self.flag)
-        self.assertFalse(os.path.exists(self.flag))
-        self.assertTrue(home_tools.use_aero(800, 480, self.flag))
-        home_tools.set_aero(True, self.flag)       # already Aero: nothing to remove, no error
-        home_tools.set_aero(False, self.flag)
-        home_tools.set_aero(False, self.flag)      # already Classic: no error either
+    def test_every_look_can_be_chosen_and_is_remembered(self):
+        for name in home_tools.THEMES:
+            home_tools.set_theme(name, self.theme, self.legacy)
+            self.assertEqual(self.look(), name)
+        self.assertEqual(set(home_tools.THEMES), {'classic', 'aero', 'liquid'})
+        self.assertEqual(home_tools.THEME_NAMES['liquid'], 'Liquid Plastic')
+
+    def test_an_unknown_look_is_refused_and_a_damaged_file_is_ignored(self):
+        with self.assertRaises(ValueError):
+            home_tools.set_theme('neon', self.theme, self.legacy)
+        self.assertFalse(os.path.exists(self.theme))
+        for content in ('', 'neon\n', '\x00\x01'):
+            with open(self.theme, 'w') as f:
+                f.write(content)
+            self.assertEqual(self.look(), 'aero', repr(content))      # falls back to the default
+
+    def test_the_old_classic_flag_still_means_classic(self):
+        # Before there were three looks, "Switch to Classic UI" left an empty file
+        open(self.legacy, 'w').close()
+        self.assertEqual(self.look(), 'classic')
+        # a choice made since then wins, and removes the old flag so the two never disagree
+        home_tools.set_theme('liquid', self.theme, self.legacy)
+        self.assertFalse(os.path.exists(self.legacy))
+        self.assertEqual(self.look(), 'liquid')
 
 
 
