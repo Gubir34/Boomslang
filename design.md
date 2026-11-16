@@ -26,6 +26,14 @@ The user picks a theme in Settings ("Switch to Aero UI" / "Switch to Classic UI"
 
 The Home header shows the logo, "Boomslang", the printer model and IP, and a version pill. Every other screen has a 56 px header with a back arrow and a title. Restart and Reboot open a confirm dialog, as the code does today.
 
+### Where the code is today
+
+- **Classic** is complete for the Home screen (`layout_classic_home` in `rinkhals-ui.py`).
+- **Aero** is the default on 800×480 screens (Kobra S1 and S1 Max); every other screen keeps Classic, because the mockups exist for that size only. It covers the **Home screen**: wallpaper, back button, title tab with the Update pill, tray, taskbar with the six orbs and the clock (`layout_aero_home`). The orbs open the existing screens (Settings, App Store, Apps, Web portal QR, browser, Power), which still look Classic: re-skinning them, and showing the taskbar on every screen, is not done yet.
+- Settings has **Switch to Classic UI / Switch to Aero UI**. The choice is the file `/useremain/rinkhals/.classic-ui` (present = Classic). If building the Aero home fails for any reason the UI falls back to Classic by itself, so the printer is never left without a menu.
+- The wallpaper is `assets/aero-wallpaper.bin`, a raw RGB565 LVGL image made by `branding/make-aero-wallpaper.py` from `branding/aero-wallpaper.png`. It is not a PNG on purpose: a PNG is decoded again on every redraw when LVGL's image cache is off.
+- Aero is drawn in real pixels (the mockups are 800×480), not in `lv.dpx()` units.
+
 ### Aero (glass, Windows 7–style)
 
 Every Aero screen shares the same chrome:

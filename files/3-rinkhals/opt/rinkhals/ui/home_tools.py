@@ -5,6 +5,7 @@
 - the status line on the home screen
 - the topic for phone notifications
 - the browser's bookmarks
+- which look (theme) the home screen uses
 """
 import json
 import os
@@ -14,6 +15,8 @@ import time
 
 from release_assets import display_version
 
+CLASSIC_UI_FLAG = '/useremain/rinkhals/.classic-ui'
+AERO_SIZE = (800, 480)   # the Aero mockups are drawn for exactly this screen (Kobra S1 and S1 Max)
 UPDATE_NOTICE_PATH = '/useremain/rinkhals/.auto-update-notice'
 BOOKMARKS_PATH = '/useremain/home/rinkhals/browser-bookmarks.json'
 MAX_BOOKMARKS = 30
@@ -213,3 +216,27 @@ def toggle_bookmark(name, url, path=None):
     bookmarks.append(((name or url)[:80], url))
     save_bookmarks(bookmarks[-MAX_BOOKMARKS:], path)
     return True
+
+
+# --- the look of the home screen ------------------------------------------------
+
+def aero_possible(width, height):
+    """Aero is drawn for an 800x480 screen; any other screen keeps the Classic look."""
+    return (width, height) == AERO_SIZE
+
+
+def use_aero(width, height, flag=None):
+    """Aero is the default. Settings > Switch to Classic UI leaves a flag file."""
+    return aero_possible(width, height) and not os.path.exists(flag or CLASSIC_UI_FLAG)
+
+
+def set_aero(enabled, flag=None):
+    flag = flag or CLASSIC_UI_FLAG
+    if enabled:
+        try:
+            os.remove(flag)
+        except FileNotFoundError:
+            pass
+    else:
+        with open(flag, 'w') as f:
+            f.write('Boomslang shows the Classic home screen while this file exists\n')

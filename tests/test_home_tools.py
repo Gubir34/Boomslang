@@ -171,5 +171,36 @@ class BookmarkTests(unittest.TestCase):
             self.assertEqual(home_tools.load_bookmarks(self.path), [])
 
 
+
+class ThemeTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.flag = os.path.join(self.tmp.name, 'classic-ui')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_aero_is_the_default_on_the_screen_it_is_drawn_for(self):
+        self.assertTrue(home_tools.use_aero(800, 480, self.flag))
+        self.assertTrue(home_tools.aero_possible(800, 480))
+
+    def test_other_screens_keep_the_classic_look(self):
+        for size in ((480, 272), (272, 480), (800, 600), (1024, 600)):
+            self.assertFalse(home_tools.use_aero(*size, self.flag), size)
+            self.assertFalse(home_tools.aero_possible(*size), size)
+
+    def test_switching_to_classic_and_back(self):
+        home_tools.set_aero(False, self.flag)
+        self.assertTrue(os.path.exists(self.flag))
+        self.assertFalse(home_tools.use_aero(800, 480, self.flag))
+        home_tools.set_aero(True, self.flag)
+        self.assertFalse(os.path.exists(self.flag))
+        self.assertTrue(home_tools.use_aero(800, 480, self.flag))
+        home_tools.set_aero(True, self.flag)       # already Aero: nothing to remove, no error
+        home_tools.set_aero(False, self.flag)
+        home_tools.set_aero(False, self.flag)      # already Classic: no error either
+
+
+
 if __name__ == '__main__':
     unittest.main()

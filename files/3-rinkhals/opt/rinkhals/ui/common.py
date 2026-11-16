@@ -746,6 +746,11 @@ class BaseApp:
     cache_firmware_available = None
 
     def __init__(self):
+        import threading
+        # Set by the main loop once the first frame is on the screen, so that
+        # work that does not have to block it can wait for it (see run())
+        self.first_frame = threading.Event()
+
         lv.init()
 
         self.screen_info = ScreenInfo.get()
@@ -922,6 +927,8 @@ class BaseApp:
                     lv.tick_inc(elapsed)
                     last += elapsed / 1000
                 next_ms = lv.timer_handler()
+                if not self.first_frame.is_set():
+                    self.first_frame.set()
                 if not isinstance(next_ms, int) or next_ms < 0 or next_ms > 30:
                     next_ms = 30
                 time.sleep(max(next_ms, 5) / 1000)

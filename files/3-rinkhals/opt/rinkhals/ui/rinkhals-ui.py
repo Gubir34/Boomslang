@@ -1,5 +1,7 @@
+import contextlib
 import os
 import time
+START_TIME = time.monotonic()   # for the startup timings in the log
 import sys
 import json
 import re
@@ -233,144 +235,17 @@ class RinkhalsUiApp(BaseApp):
         # version are in the home header and its disk usage in the Info dialog.
 
         if self.screen_main:
-            self.screen_main.set_flex_flow(lv.FLEX_FLOW.COLUMN)
-            self.screen_main.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
-            self.screen_main.set_style_pad_row(lv.dpx(10), lv.STATE.DEFAULT)
-            self.screen_main.set_style_pad_all(lv.dpx(10), lv.STATE.DEFAULT)
-
-            # Home screen after branding/ui-mockups/png/Main.png (Classic theme):
-            # header, a 3x2 grid of cards, and a row of three plain buttons.
-            SURFACE = lv.color_make(22, 29, 23)
-            BORDER = lv.color_make(36, 48, 38)
-            ICON_BOX = lv.color_make(31, 42, 33)
-            ICON_GREEN = lv.color_make(201, 234, 127)
-            PILL = lv.color_make(30, 62, 32)
-
-            def plain(widget):
-                widget.remove_flag(lv.OBJ_FLAG.CLICKABLE)
-                return widget
-
-            def card(parent, icon, label, hint, callback):
-                button = lvr.button(parent)
-                button.set_flex_grow(1)
-                button.set_height(lv.pct(100))
-                button.set_style_min_height(0, lv.STATE.DEFAULT)
-                button.set_flex_flow(lv.FLEX_FLOW.COLUMN)
-                button.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START)
-                button.set_style_pad_all(lv.dpx(10), lv.STATE.DEFAULT)
-                button.set_style_pad_row(lv.dpx(2), lv.STATE.DEFAULT)
-                button.set_style_radius(lv.dpx(14), lv.STATE.DEFAULT)
-                button.set_style_bg_color(SURFACE, lv.STATE.DEFAULT)
-                button.set_style_border_color(BORDER, lv.STATE.DEFAULT)
-                button.set_icon('')
-                button.set_text('')
-                box = plain(lvr.panel(button))
-                box.set_size(lv.dpx(40), lv.dpx(40))
-                box.set_style_pad_all(0, lv.STATE.DEFAULT)
-                box.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
-                box.set_style_bg_color(ICON_BOX, lv.STATE.DEFAULT)
-                box.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
-                glyph = lv.label(box)
-                glyph.set_text(icon)
-                glyph.set_style_text_font(lvr.get_font_icon(), lv.STATE.DEFAULT)
-                glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'Browser') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
-                glyph.center()
-                plain(lvr.title(button)).set_text(label)
-                button.hint = plain(lvr.subtitle(button))
-                button.hint.set_text(hint)
-                button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
-                return button
-
-            def flat(parent, icon, label, callback, color=None):
-                button = lvr.button(parent)
-                button.set_flex_grow(1)
-                button.set_height(lv.dpx(44))
-                button.set_style_min_height(0, lv.STATE.DEFAULT)
-                button.set_flex_flow(lv.FLEX_FLOW.ROW)
-                button.set_style_pad_column(lv.dpx(10), lv.STATE.DEFAULT)
-                button.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
-                button.set_style_bg_color(SURFACE, lv.STATE.DEFAULT)
-                button.set_style_border_color(BORDER, lv.STATE.DEFAULT)
-                button.set_icon(icon)
-                button.set_text(label)
-                if color:
-                    button.set_style_text_color(color, lv.STATE.DEFAULT)
-                button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
-                return button
-
-            def row_of(parent, height=None):
-                row = lvr.panel(parent, flex_flow=lv.FLEX_FLOW.ROW)
-                row.set_width(lv.pct(100))
-                row.set_style_pad_column(lv.dpx(10), lv.STATE.DEFAULT)
-                row.set_style_pad_all(0, lv.STATE.DEFAULT)
-                if height:
-                    row.set_height(height)
-                return row
-
-            def show_link(port, name):
-                ip = printer_ip()
-                if not ip:
-                    self.show_text_dialog('The printer has no network\naddress right now.')
-                    return
-                self.show_qr_dialog(f'http://{ip}:{port}', f'{name}\nhttp://{ip}:{port}')
-
-            def confirm(text, action):
-                self.show_text_dialog(text, action='Yes', callback=action)
-
-            # Header: logo, name, model and address, version pill
-            header = row_of(self.screen_main, lv.dpx(40))
-            header.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
-            logo = lvr.image(header)
-            logo.set_src(ASSETS_PATH + '/icon.png')
-            logo.scale_to(lv.dpx(32))
-            title = lvr.title(header)
-            title.set_width(lv.SIZE_CONTENT)
-            title.set_text('Boomslang')
-            gap = plain(lvr.panel(header))
-            gap.set_flex_grow(1)
-            gap.set_height(1)
-            gap.set_style_pad_all(0, lv.STATE.DEFAULT)
-            self.home_label_device = lvr.subtitle(header)
-            self.home_label_device.set_width(lv.SIZE_CONTENT)
-            self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} \u00b7 {printer_ip() or "no network"}', 26))
-            pill = plain(lvr.panel(header))
-            pill.set_style_pad_hor(lv.dpx(12), lv.STATE.DEFAULT)
-            pill.set_style_pad_ver(lv.dpx(4), lv.STATE.DEFAULT)
-            pill.set_style_radius(lv.dpx(20), lv.STATE.DEFAULT)
-            pill.set_style_bg_color(PILL, lv.STATE.DEFAULT)
-            pill.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
-            pill_text = lv.label(pill)
-            pill_text.set_text(ellipsis(display_version(RINKHALS_VERSION), 24))
-            pill_text.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
-            # Back to the stock Anycubic screen (this used to sit on the logo panel)
-            button_exit = lvr.button_icon(header)
-            button_exit.set_size(lv.dpx(40), lv.dpx(40))
-            button_exit.set_text('')
-            button_exit.add_event_cb(lambda e: self.quit(), lv.EVENT_CODE.CLICKED, None)
-
-            # Live status: temperatures and what the printer is doing
-            self.home_label_status = lvr.subtitle(self.screen_main)
-            self.home_label_status.set_width(lv.pct(100))
-            self.home_label_status.set_text('')
-
-            row = row_of(self.screen_main)
-            row.set_flex_grow(1)
-            row.set_style_min_height(0, lv.STATE.DEFAULT)
-            card(row, '\ue5c3', 'Apps', 'Start, stop, configure', lambda: self.show_screen(self.screen_apps))
-            card(row, '\ue8d1', 'App Store', 'Browse and install', lambda: self.show_screen(self.screen_store))
-            self.home_card_updates = card(row, '\ue62a', 'Updates', 'Boomslang and firmware', lambda: self.show_screen(self.screen_ota))
-
-            row = row_of(self.screen_main)
-            row.set_flex_grow(1)
-            row.set_style_min_height(0, lv.STATE.DEFAULT)
-            card(row, '\ue00b', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
-            card(row, '\ue894', 'Mainsail', 'Klipper web interface', lambda: show_link(4409, 'Mainsail'))
-            card(row, '\ue80b', 'Browser', 'Reader-mode web', self.browser_show)
-
-            row = row_of(self.screen_main)
-            flat(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
-            flat(row, '\ue8ac', 'Reboot', lambda: confirm('Are you sure you want\nto reboot your printer?', self.reboot_printer))
-            flat(row, '\ue8b8', 'Settings', lambda: self.show_screen(self.screen_advanced), lvr.COLOR_DANGER)
+            self.home_theme = 'classic'
+            if home_tools.use_aero(self.screen_info.width, self.screen_info.height):
+                try:
+                    self.layout_aero_home()
+                    self.home_theme = 'aero'
+                except Exception:
+                    # A theme that fails to build must never leave the printer without a menu
+                    logging.exception('Aero home failed, using Classic')
+                    self.screen_main.clean()
+            if self.home_theme == 'classic':
+                self.layout_classic_home()
 
         # fireworks_shown = get_app_property('rinkhals_ui', 'fireworks_shown')
         # if not fireworks_shown or fireworks_shown.lower() != 'true':
@@ -379,8 +254,419 @@ class RinkhalsUiApp(BaseApp):
 
         self.show_screen(self.screen_main)
         run_async(self.layout_async)
-    def layout_async(self):
+    def layout_classic_home(self):
+        """Classic theme: the flat home screen after branding/ui-mockups/png/Main.png."""
+        self.screen_main.set_flex_flow(lv.FLEX_FLOW.COLUMN)
+        self.screen_main.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        self.screen_main.set_style_pad_row(lv.dpx(10), lv.STATE.DEFAULT)
+        self.screen_main.set_style_pad_all(lv.dpx(10), lv.STATE.DEFAULT)
+
+        # Home screen after branding/ui-mockups/png/Main.png (Classic theme):
+        # header, a 3x2 grid of cards, and a row of three plain buttons.
+        SURFACE = lv.color_make(22, 29, 23)
+        BORDER = lv.color_make(36, 48, 38)
+        ICON_BOX = lv.color_make(31, 42, 33)
+        ICON_GREEN = lv.color_make(201, 234, 127)
+        PILL = lv.color_make(30, 62, 32)
+
+        def plain(widget):
+            widget.remove_flag(lv.OBJ_FLAG.CLICKABLE)
+            return widget
+
+        def card(parent, icon, label, hint, callback):
+            button = lvr.button(parent)
+            button.set_flex_grow(1)
+            button.set_height(lv.pct(100))
+            button.set_style_min_height(0, lv.STATE.DEFAULT)
+            button.set_flex_flow(lv.FLEX_FLOW.COLUMN)
+            button.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START)
+            button.set_style_pad_all(lv.dpx(10), lv.STATE.DEFAULT)
+            button.set_style_pad_row(lv.dpx(2), lv.STATE.DEFAULT)
+            button.set_style_radius(lv.dpx(14), lv.STATE.DEFAULT)
+            button.set_style_bg_color(SURFACE, lv.STATE.DEFAULT)
+            button.set_style_border_color(BORDER, lv.STATE.DEFAULT)
+            button.set_icon('')
+            button.set_text('')
+            box = plain(lvr.panel(button))
+            box.set_size(lv.dpx(40), lv.dpx(40))
+            box.set_style_pad_all(0, lv.STATE.DEFAULT)
+            box.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
+            box.set_style_bg_color(ICON_BOX, lv.STATE.DEFAULT)
+            box.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+            glyph = lv.label(box)
+            glyph.set_text(icon)
+            glyph.set_style_text_font(lvr.get_font_icon(), lv.STATE.DEFAULT)
+            glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'Browser') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+            glyph.center()
+            plain(lvr.title(button)).set_text(label)
+            button.hint = plain(lvr.subtitle(button))
+            button.hint.set_text(hint)
+            button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
+            return button
+
+        def flat(parent, icon, label, callback, color=None):
+            button = lvr.button(parent)
+            button.set_flex_grow(1)
+            button.set_height(lv.dpx(44))
+            button.set_style_min_height(0, lv.STATE.DEFAULT)
+            button.set_flex_flow(lv.FLEX_FLOW.ROW)
+            button.set_style_pad_column(lv.dpx(10), lv.STATE.DEFAULT)
+            button.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
+            button.set_style_bg_color(SURFACE, lv.STATE.DEFAULT)
+            button.set_style_border_color(BORDER, lv.STATE.DEFAULT)
+            button.set_icon(icon)
+            button.set_text(label)
+            if color:
+                button.set_style_text_color(color, lv.STATE.DEFAULT)
+            button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
+            return button
+
+        def row_of(parent, height=None):
+            row = lvr.panel(parent, flex_flow=lv.FLEX_FLOW.ROW)
+            row.set_width(lv.pct(100))
+            row.set_style_pad_column(lv.dpx(10), lv.STATE.DEFAULT)
+            row.set_style_pad_all(0, lv.STATE.DEFAULT)
+            if height:
+                row.set_height(height)
+            return row
+
+        def show_link(port, name):
+            ip = printer_ip()
+            if not ip:
+                self.show_text_dialog('The printer has no network\naddress right now.')
+                return
+            self.show_qr_dialog(f'http://{ip}:{port}', f'{name}\nhttp://{ip}:{port}')
+
+        def confirm(text, action):
+            self.show_text_dialog(text, action='Yes', callback=action)
+
+        # Header: logo, name, model and address, version pill
+        header = row_of(self.screen_main, lv.dpx(40))
+        header.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        logo = lvr.image(header)
+        logo.set_src(ASSETS_PATH + '/icon.png')
+        logo.scale_to(lv.dpx(32))
+        title = lvr.title(header)
+        title.set_width(lv.SIZE_CONTENT)
+        title.set_text('Boomslang')
+        gap = plain(lvr.panel(header))
+        gap.set_flex_grow(1)
+        gap.set_height(1)
+        gap.set_style_pad_all(0, lv.STATE.DEFAULT)
+        self.home_label_device = lvr.subtitle(header)
+        self.home_label_device.set_width(lv.SIZE_CONTENT)
+        self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} \u00b7 {printer_ip() or "no network"}', 26))
+        pill = plain(lvr.panel(header))
+        pill.set_style_pad_hor(lv.dpx(12), lv.STATE.DEFAULT)
+        pill.set_style_pad_ver(lv.dpx(4), lv.STATE.DEFAULT)
+        pill.set_style_radius(lv.dpx(20), lv.STATE.DEFAULT)
+        pill.set_style_bg_color(PILL, lv.STATE.DEFAULT)
+        pill.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+        pill_text = lv.label(pill)
+        pill_text.set_text(ellipsis(display_version(RINKHALS_VERSION), 24))
+        pill_text.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        # Back to the stock Anycubic screen (this used to sit on the logo panel)
+        button_exit = lvr.button_icon(header)
+        button_exit.set_size(lv.dpx(40), lv.dpx(40))
+        button_exit.set_text('')
+        button_exit.add_event_cb(lambda e: self.quit(), lv.EVENT_CODE.CLICKED, None)
+
+        # Live status: temperatures and what the printer is doing
+        self.home_label_status = lvr.subtitle(self.screen_main)
+        self.home_label_status.set_width(lv.pct(100))
+        self.home_label_status.set_text('')
+
+        row = row_of(self.screen_main)
+        row.set_flex_grow(1)
+        row.set_style_min_height(0, lv.STATE.DEFAULT)
+        card(row, '\ue5c3', 'Apps', 'Start, stop, configure', lambda: self.show_screen(self.screen_apps))
+        card(row, '\ue8d1', 'App Store', 'Browse and install', lambda: self.show_screen(self.screen_store))
+        self.home_card_updates = card(row, '\ue62a', 'Updates', 'Boomslang and firmware', lambda: self.show_screen(self.screen_ota))
+
+        row = row_of(self.screen_main)
+        row.set_flex_grow(1)
+        row.set_style_min_height(0, lv.STATE.DEFAULT)
+        card(row, '\ue00b', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
+        card(row, '\ue894', 'Mainsail', 'Klipper web interface', lambda: show_link(4409, 'Mainsail'))
+        card(row, '\ue80b', 'Browser', 'Reader-mode web', self.browser_show)
+
+        row = row_of(self.screen_main)
+        flat(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
+        flat(row, '\ue8ac', 'Reboot', lambda: confirm('Are you sure you want\nto reboot your printer?', self.reboot_printer))
+        flat(row, '\ue8b8', 'Settings', lambda: self.show_screen(self.screen_advanced), lvr.COLOR_DANGER)
+
+    # --- Aero theme (branding/ui-mockups/png/Aero.png, design.md) -------------------
+    # Glass chrome on a green wallpaper: a back button, a tab with the name and
+    # version, a tray, and a taskbar with six orbs and the clock. Drawn for an
+    # 800x480 screen, in real pixels (not dpx): the mockups are that size.
+    AERO_INK = (20, 58, 24)           # dark green on the light orbs
+    AERO_ORB = ((238, 247, 232), (190, 218, 182))
+    AERO_ORB_PRESSED = ((176, 208, 168), (150, 186, 142))
+    AERO_PILL = ((201, 234, 127), (126, 196, 78))
+    AERO_BADGE = (224, 83, 63)
+
+    def aero_clear(self, widget, radius=0):
+        """No background, border or padding of the default panel style."""
+        widget.set_style_bg_opa(lv.OPA.TRANSP, lv.STATE.DEFAULT)
+        widget.set_style_border_width(0, lv.STATE.DEFAULT)
+        widget.set_style_pad_all(0, lv.STATE.DEFAULT)
+        widget.set_style_radius(radius, lv.STATE.DEFAULT)
+        widget.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+        return widget
+
+    def aero_glass(self, widget, radius=16):
+        """A frosted pane: translucent white with a light edge."""
+        widget.set_style_bg_color(lv.color_white(), lv.STATE.DEFAULT)
+        widget.set_style_bg_opa(46, lv.STATE.DEFAULT)
+        widget.set_style_border_width(1, lv.STATE.DEFAULT)
+        widget.set_style_border_color(lv.color_white(), lv.STATE.DEFAULT)
+        widget.set_style_border_opa(80, lv.STATE.DEFAULT)
+        widget.set_style_radius(radius, lv.STATE.DEFAULT)
+        widget.set_style_pad_all(0, lv.STATE.DEFAULT)
+        widget.set_style_shadow_width(0, lv.STATE.DEFAULT)
+        widget.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+        return widget
+
+    def aero_light(self, widget, colors, radius):
+        """A light, rounded, slightly shaded surface (the orbs, the clock)."""
+        top, bottom = colors
+        widget.set_style_bg_color(lv.color_make(*top), lv.STATE.DEFAULT)
+        widget.set_style_bg_grad_color(lv.color_make(*bottom), lv.STATE.DEFAULT)
+        widget.set_style_bg_grad_dir(lv.GRAD_DIR.VER, lv.STATE.DEFAULT)
+        widget.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+        widget.set_style_border_width(2, lv.STATE.DEFAULT)
+        widget.set_style_border_color(lv.color_white(), lv.STATE.DEFAULT)
+        widget.set_style_border_opa(150, lv.STATE.DEFAULT)
+        widget.set_style_radius(radius, lv.STATE.DEFAULT)
+        widget.set_style_shadow_width(0, lv.STATE.DEFAULT)
+        return widget
+
+    def aero_orb(self, parent, x, glyph, callback):
+        orb = lvr.button_icon(parent)
+        orb.set_size(60, 60)
+        orb.set_pos(x, 410)
+        self.aero_light(orb, self.AERO_ORB, 30)
+        top, bottom = self.AERO_ORB_PRESSED
+        orb.set_style_bg_color(lv.color_make(*top), lv.STATE.PRESSED)
+        orb.set_style_bg_grad_color(lv.color_make(*bottom), lv.STATE.PRESSED)
+        orb.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
+        orb.set_text(glyph)
+        orb.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
+        return orb
+
+    def aero_glyph(self, parent, glyph, x, y, color=(242, 248, 238)):
+        label = lv.label(parent)
+        label.set_text(glyph)
+        label.set_style_text_font(lvr.get_font_icon_small(), lv.STATE.DEFAULT)
+        label.set_style_text_color(lv.color_make(*color), lv.STATE.DEFAULT)
+        label.set_pos(x, y)
+        return label
+
+    def home_show_link(self, port, name):
+        ip = printer_ip()
+        if not ip:
+            self.show_text_dialog('The printer has no network\naddress right now.')
+            return
+        self.show_qr_dialog(f'http://{ip}:{port}', f'{name}\nhttp://{ip}:{port}')
+
+    def aero_power(self):
+        options = ['Restart Boomslang', 'Reboot printer', 'Switch to stock']
+        if not getattr(self, 'modal_selection', None):
+            self.show_text_dialog('Still loading,\ntry again in a moment.')
+            return
+
+        def chosen(option):
+            if option == options[0]:
+                self.show_text_dialog('Are you sure you want\nto restart Boomslang?', action='Yes', callback=self.restart_rinkhals)
+            elif option == options[1]:
+                self.show_text_dialog('Are you sure you want\nto reboot your printer?', action='Yes', callback=self.reboot_printer)
+            else:
+                self.show_text_dialog('Are you sure you want\nto switch to stock firmware?\n\nYou can reboot your printer\nto start Boomslang again',
+                                      action='Yes', callback=self.stop_rinkhals)
+        self.show_selection_dialog(options, chosen)
+
+    def layout_aero_home(self):
+        main = self.screen_main
+        self.aero_clear(main)
+        main.set_style_bg_color(lv.color_make(12, 36, 16), lv.STATE.DEFAULT)   # what shows if the wallpaper can't be read
+        main.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+
+        # Wallpaper: a raw RGB565 LVGL image, so nothing is decoded on redraw
+        # (see branding/make-aero-wallpaper.py)
+        wallpaper = lvr.image(main)
+        wallpaper.set_src(ASSETS_PATH + '/aero-wallpaper.bin')
+        wallpaper.set_pos(0, 0)
+        wallpaper.remove_flag(lv.OBJ_FLAG.CLICKABLE)
+
+        # Taskbar
+        bar = self.aero_clear(lvr.panel(main))
+        bar.set_size(800, 84)
+        bar.set_pos(0, 396)
+        bar.set_style_bg_color(lv.color_black(), lv.STATE.DEFAULT)
+        bar.set_style_bg_opa(90, lv.STATE.DEFAULT)
+        bar.set_style_border_side(lv.BORDER_SIDE.TOP, lv.STATE.DEFAULT)
+        bar.set_style_border_width(1, lv.STATE.DEFAULT)
+        bar.set_style_border_color(lv.color_white(), lv.STATE.DEFAULT)
+        bar.set_style_border_opa(60, lv.STATE.DEFAULT)
+
+        # Orbs: Settings, App Store, Apps, Web portal, LemSearch (the browser), Power
+        self.aero_orb(main, 14, '', lambda: self.show_screen(self.screen_advanced))
+        self.aero_orb(main, 88, '', lambda: self.show_screen(self.screen_store))
+        self.aero_orb(main, 162, '', lambda: self.show_screen(self.screen_apps))
+        self.aero_orb(main, 236, '', lambda: self.home_show_link(8090, 'Boomslang web portal'))
+        self.aero_orb(main, 310, '', self.browser_show)
+        self.aero_orb(main, 384, '', self.aero_power)
+
+        # Clock
+        clock = self.aero_light(lvr.panel(main), self.AERO_ORB, 10)
+        clock.set_size(92, 60)
+        clock.set_pos(694, 410)
+        clock.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+        self.aero_label_time = lvr.title(clock)
+        self.aero_label_time.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
+        self.aero_label_time.align(lv.ALIGN.TOP_MID, 0, 5)
+        self.aero_label_date = lvr.subtitle(clock)
+        self.aero_label_date.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
+        self.aero_label_date.align(lv.ALIGN.BOTTOM_MID, 0, -5)
+        self.aero_tick_clock()
+
+        # Back: leaves Boomslang for the stock screen (the other screens have
+        # their own back buttons, which lead here)
+        back = lvr.button_icon(main)
+        back.set_size(60, 60)
+        back.set_pos(14, 14)
+        self.aero_glass(back, 16)
+        back.set_style_text_color(lv.color_make(242, 248, 238), lv.STATE.DEFAULT)
+        back.set_text('')
+        back.add_event_cb(lambda e: self.quit(), lv.EVENT_CODE.CLICKED, None)
+
+        # Tab: logo, name, version and, when there is one, the Update pill
+        tab = self.aero_glass(lvr.panel(main), 24)
+        tab.set_size(320, 114)
+        tab.set_pos(240, -24)
+
+        line = self.aero_clear(lvr.panel(tab, flex_flow=lv.FLEX_FLOW.ROW))
+        line.set_size(320, 40)
+        line.set_pos(0, 32)
+        line.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        line.set_style_pad_column(10, lv.STATE.DEFAULT)
+        logo = lvr.image(line)
+        logo.set_src(ASSETS_PATH + '/icon.png')
+        logo.scale_to(30)
+        title = lvr.title(line)
+        title.set_width(lv.SIZE_CONTENT)
+        title.set_text('Boomslang')
+
+        line = self.aero_clear(lvr.panel(tab, flex_flow=lv.FLEX_FLOW.ROW))
+        line.set_size(320, 34)
+        line.set_pos(0, 72)
+        line.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        line.set_style_pad_column(10, lv.STATE.DEFAULT)
+        version = lvr.subtitle(line)
+        version.set_width(lv.SIZE_CONTENT)
+        version.set_text(ellipsis(display_version(RINKHALS_VERSION), 24))
+        self.aero_pill = lvr.button(line)
+        self.aero_pill.set_height(26)
+        self.aero_pill.set_width(lv.SIZE_CONTENT)
+        self.aero_pill.set_style_min_height(0, lv.STATE.DEFAULT)
+        self.aero_pill.set_style_pad_hor(14, lv.STATE.DEFAULT)
+        self.aero_pill.set_style_pad_ver(0, lv.STATE.DEFAULT)
+        self.aero_light(self.aero_pill, self.AERO_PILL, 13)
+        self.aero_pill.set_style_border_width(0, lv.STATE.DEFAULT)
+        self.aero_pill.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
+        self.aero_pill.set_icon('')
+        self.aero_pill.set_text('Update')
+        self.aero_pill.add_event_cb(lambda e: self.show_screen(self.screen_ota), lv.EVENT_CODE.CLICKED, None)
+        self.aero_pill.add_flag(lv.OBJ_FLAG.HIDDEN)
+
+        # Tray: network, activity, notifications (an update) and the printer
+        tray = self.aero_glass(lvr.panel(main), 16)
+        tray.set_size(90, 90)
+        tray.set_pos(696, 14)
+        self.aero_wifi = self.aero_glyph(tray, '', 16, 14)
+        self.aero_glyph(tray, '', 52, 14)
+        self.aero_glyph(tray, '', 16, 50)
+        self.aero_glyph(tray, '', 52, 50)
+        self.aero_badge = self.aero_clear(lvr.panel(tray), 8)
+        self.aero_badge.set_size(16, 16)
+        self.aero_badge.set_pos(30, 44)
+        self.aero_badge.set_style_bg_color(lv.color_make(*self.AERO_BADGE), lv.STATE.DEFAULT)
+        self.aero_badge.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+        badge_text = lv.label(self.aero_badge)
+        badge_text.set_text('1')
+        badge_text.set_style_text_color(lv.color_white(), lv.STATE.DEFAULT)
+        badge_text.center()
+        self.aero_badge.add_flag(lv.OBJ_FLAG.HIDDEN)
+
+        # What the printer is doing, in the open middle of the screen
+        self.home_label_status = lvr.subtitle(main)
+        self.home_label_status.set_width(420)
+        self.home_label_status.set_style_text_align(lv.TEXT_ALIGN.CENTER, lv.STATE.DEFAULT)
+        self.home_label_status.set_pos(190, 250)
+        self.home_label_status.set_text('')
+        self.aero_refresh()
+
+    def aero_tick_clock(self):
+        now = time.localtime()
+        self.aero_label_time.set_text(time.strftime('%H:%M', now))
+        self.aero_label_date.set_text(time.strftime('%d/%m/%Y', now))
+
+    def aero_refresh(self):
+        """What changes while the UI is open: the clock and whether there is a network."""
+        self.aero_tick_clock()
+        online = printer_ip() is not None
+        self.aero_wifi.set_style_text_color(lv.color_make(242, 248, 238) if online else lv.color_make(120, 140, 120), lv.STATE.DEFAULT)
+
+    def home_show_update(self, latest):
+        """There is a newer release: mark it on whichever home screen is showing."""
+        text = ellipsis(f'{display_version(latest.version)} available', 26)
+        if self.home_theme == 'aero':
+            self.aero_pill.remove_flag(lv.OBJ_FLAG.HIDDEN)
+            self.aero_badge.remove_flag(lv.OBJ_FLAG.HIDDEN)
+        else:
+            self.home_card_updates.hint.set_text(text)
+            self.home_card_updates.hint.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+
+    def home_clock_loop(self):
+        while True:
+            time.sleep(20)
+            if self.screen_current in (self.screen_main, self.screen_composition):
+                with lvr.lock():
+                    self.aero_tick_clock()
+
+    # Settings > Switch to Classic UI / Aero UI. Takes effect when Boomslang opens next.
+    def switch_theme(self):
+        to_aero = self.home_theme != 'aero'
+        try:
+            home_tools.set_aero(to_aero)
+        except OSError as e:
+            logging.error(f'Could not save the look: {e}')
+            self.show_text_dialog('Could not save the choice.\nNothing was changed.')
+            return
+        name = 'Aero' if to_aero else 'Classic'
+        self.show_text_dialog(f'The {name} look is used\nthe next time Boomslang opens.\n\nBoomslang closes now.',
+                              callback=self.quit)
+
+    BUILD_PAUSE = 0.05            # seconds before each background build step
+    background_done = False
+
+    @contextlib.contextmanager
+    def build_step(self):
+        time.sleep(self.BUILD_PAUSE)
         with lvr.lock():
+            yield
+
+    def layout_async(self):
+        # Everything below used to be built before the first frame, one screen
+        # after the other under the LVGL lock, which held the home screen back.
+        # Now the home screen is drawn first, and each of these is built in a
+        # step of its own with a short pause before it, so that touches and
+        # drawing are served in between.
+        self.first_frame.wait(15)
+        time.sleep(0.2)
+        logging.info(f'Startup: the home screen was drawn {time.monotonic() - START_TIME:.1f} s after the UI script started')
+
+        with self.build_step():
             self.screen_apps = lvr.panel(self.root_screen)
             if self.screen_apps:
                 self.screen_apps.add_flag(lv.OBJ_FLAG.HIDDEN)
@@ -407,7 +693,7 @@ class RinkhalsUiApp(BaseApp):
 
                 self.screen_apps.panel_apps = None
 
-        with lvr.lock():
+        with self.build_step():
             self.screen_app = lvr.panel(self.root_screen)
             if self.screen_app:
                 self.screen_app.add_flag(lv.OBJ_FLAG.HIDDEN)
@@ -509,7 +795,7 @@ class RinkhalsUiApp(BaseApp):
                 self.screen_app.button_toggle_started.set_text('Start/Stop app')
                 self.screen_app.button_toggle_started.set_width(lv.pct(100))
 
-        with lvr.lock():
+        with self.build_step():
             self.screen_app_settings = lvr.panel(self.root_screen)
             if self.screen_app_settings:
                 self.screen_app_settings.add_flag(lv.OBJ_FLAG.HIDDEN)
@@ -533,7 +819,7 @@ class RinkhalsUiApp(BaseApp):
 
                 self.screen_app_settings.panel_properties = None
 
-        with lvr.lock():
+        with self.build_step():
             self.screen_advanced = lvr.panel(self.root_screen)
             if self.screen_advanced:
                 self.screen_advanced.add_flag(lv.OBJ_FLAG.HIDDEN)
@@ -636,6 +922,12 @@ class RinkhalsUiApp(BaseApp):
                 self.button_notifications.add_event_cb(lambda e: self.notifications_tap(), lv.EVENT_CODE.CLICKED, None)
                 self.notifications_refresh()
 
+                if home_tools.aero_possible(self.screen_info.width, self.screen_info.height):
+                    button_theme = lvr.button(panel_buttons)
+                    button_theme.set_width(lv.pct(100))
+                    button_theme.set_text('Switch to Classic UI' if self.home_theme == 'aero' else 'Switch to Aero UI')
+                    button_theme.add_event_cb(lambda e: self.switch_theme(), lv.EVENT_CODE.CLICKED, None)
+
                 button_previous = lvr.button(panel_buttons)
                 button_previous.set_width(lv.pct(100))
                 button_previous.set_text('Go back to previous version')
@@ -647,18 +939,18 @@ class RinkhalsUiApp(BaseApp):
                 button_switch.set_text('Switch to Rinkhals')
                 button_switch.add_event_cb(lambda e: self.switch_to_rinkhals_start(), lv.EVENT_CODE.CLICKED, None)
 
-        with lvr.lock():
+        with self.build_step():
             self.layout_ota()
-        with lvr.lock():
+        with self.build_step():
             self.layout_ota_rinkhals()
-        with lvr.lock():
+        with self.build_step():
             self.layout_ota_firmware()
-        with lvr.lock():
+        with self.build_step():
             self.layout_app_store()
-        with lvr.lock():
+        with self.build_step():
             self.layout_browser()
 
-        with lvr.lock():
+        with self.build_step():
             self.modal_selection = lvr.modal(self.root_modal)
             if self.modal_selection:
                 self.modal_selection.panel_selection = None
@@ -673,9 +965,14 @@ class RinkhalsUiApp(BaseApp):
                 self.modal_text_input.panel_content = None
 
         self.home_start_background()
+        self.background_done = True
+        logging.info(f'Startup: every screen is built {time.monotonic() - START_TIME:.1f} s after the UI script started')
 
     def show_screen(self, screen):
         if screen is None:
+            # The other screens are built in the background after the home
+            # screen is up (layout_async); this one is not ready yet
+            self.show_text_dialog('Still loading,\ntry again in a moment.')
             return
         super().show_screen(screen)
 
@@ -684,7 +981,10 @@ class RinkhalsUiApp(BaseApp):
         elif screen == self.screen_store: self.show_app_store()
     def show_main(self):
         # The address can change while the UI is open (Wi-Fi reconnects)
-        self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} · {printer_ip() or "no network"}', 26))
+        if self.home_theme == 'aero':
+            self.aero_refresh()
+        else:
+            self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} · {printer_ip() or "no network"}', 26))
     def show_apps(self):
         def toggle_app(app, checked):
             if checked:
@@ -1352,6 +1652,8 @@ class RinkhalsUiApp(BaseApp):
         run_async(self.home_check_update)
         import threading
         threading.Thread(target=self.home_status_loop, daemon=True).start()
+        if self.home_theme == 'aero':
+            threading.Thread(target=self.home_clock_loop, daemon=True).start()
 
     def home_check_update(self):
         try:
@@ -1360,8 +1662,7 @@ class RinkhalsUiApp(BaseApp):
                 return
             self.cache_rinkhals_latest = latest      # the Updates screen need not ask again
             with lvr.lock():
-                self.home_card_updates.hint.set_text(ellipsis(f'{display_version(latest.version)} available', 26))
-                self.home_card_updates.hint.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+                self.home_show_update(latest)
         except Exception:
             logging.exception('Update check failed')
 
@@ -1550,6 +1851,9 @@ class RinkhalsUiApp(BaseApp):
             self.screen_browser.panel_content = None
 
     def browser_show(self):
+        if not self.screen_browser:
+            self.show_screen(None)
+            return
         self.show_screen(self.screen_browser)
         if not self.screen_browser.panel_content:
             self.browser_start_page()
