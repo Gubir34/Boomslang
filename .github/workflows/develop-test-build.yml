@@ -73,7 +73,7 @@ jobs:
           context: .
           build-args: version=${{ steps.version.outputs.version }}
           outputs: type=local,dest=./build/dist
-          cache-from: type=registry,ref=ghcr.io/rinkhals-community/rinkhals:buildcache
+          cache-from: type=registry,ref=ghcr.io/gubir34/boomslang:buildcache
 
       - name: Check the update packages
         run: sh build/smoke-test-swu.sh build/dist "${{ steps.version.outputs.version }}"

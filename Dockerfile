@@ -26,7 +26,7 @@
 # Seeding cache for Github Actions:
 # - docker login ghcr.io <etc...>
 # - docker buildx create --name rinkhals-builder --driver docker-container
-# - docker build --builder rinkhals-builder --cache-to type=registry,mode=max,ref=ghcr.io/rinkhals-community/rinkhals:buildcache --output type=cacheonly .
+# - docker build --builder rinkhals-builder --cache-to type=registry,mode=max,ref=ghcr.io/gubir34/boomslang:buildcache --output type=cacheonly .
 # - Note: Using a different builder requires a full rebuild, so make it default for development if you want to avoid that.
 #
 # Note: On Windows, all files copied to Docker will have +x set by default (due to WSL). To avoid inconsistency in cache keys between Windows and

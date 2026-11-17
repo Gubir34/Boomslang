@@ -711,7 +711,7 @@ class Diagnostic:
 # Apps management
 
 appsRepositories = [
-    'https://raw.githubusercontent.com/rinkhals-community/Rinkhals.apps/refs/heads/master/manifest.json'
+    'https://raw.githubusercontent.com/Gubir34/Boomslang.Apps/refs/heads/develop/manifest.json'
 ]
 
 
