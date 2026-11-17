@@ -7,6 +7,9 @@
 
 Boomslang is a fork of [Rinkhals](https://github.com/rinkhals-community/Rinkhals). It keeps Rinkhals' on-printer layout (`/useremain/rinkhals`), so apps and tools made for Rinkhals keep working, and adds support for newer firmware such as Kobra S1 `2.7.3.7`.
 
+> [!NOTE]
+> Boomslang is young: the current releases are **alpha** builds. Please report bugs on the [issue tracker](https://github.com/Gubir34/Boomslang/issues), not to the upstream Rinkhals community.
+
 Boomslang is a custom firmware for some Anycubic Kobra 3D printers (specifically the ones running Kobra OS, see below for the details).
 
 The goal of this project is to expand existing Anycubic features with better compatibility, apps and more.
@@ -49,13 +52,13 @@ In addition, the SWU update flow requires a trusted certificate for package acce
 
 In case you're wondering: Rinkhals is named after the rinkhals, a sub-species of Cobras ... Kobra ... Rinkhals 👏 Boomslang keeps the snake theme with another South African snake, the boomslang.
 
-You can join the Rinkhals community on Discord: https://discord.gg/bQcrsteFGU
+You can join the upstream Rinkhals community on Discord (the Discord badge above is theirs too): https://discord.gg/bQcrsteFGU
 
 Since people have been asking, donations are accepted, but please remember this project is built for fun and not for the money. Donations will not be accepted to work on specific bugs or features. The donation link is the Sponsor button at the top of the page.
 
 
 <p align="center">
-    <img width="48" src="https://github.com/rinkhals-community/Rinkhals/blob/master/icon.png?raw=true" />
+    <img width="48" src="./icon.png" />
 </p>
 
 
@@ -90,7 +93,7 @@ For more information about installation, firmware updates and details about spec
 
 
 <p align="center">
-    <img width="48" src="https://github.com/rinkhals-community/Rinkhals/blob/master/icon.png?raw=true" />
+    <img width="48" src="./icon.png" />
 </p>
 
 
@@ -127,7 +130,7 @@ An apps system is provided in Boomslang. It allows for the users to easily add s
 - https://github.com/Gubir34/Boomslang.Apps, the Boomslang app store (Print notifications, Automatic backup, Timelapse viewer, System monitor, Boomslang Hop, Quick links, Tailscale, Cloudflare Tunnel, OctoApp, OctoEverywhere, NFS mount, stunnel, and more)
 - https://github.com/basvd/Rinkhals.WebUI (a web interface for Boomslang)
 
-The default apps are listed in detail under [Features and built-in apps](https://rinkhals-community.github.io/Rinkhals/about/#features-and-built-in-apps) in the documentation. Instructions on how to install or develop apps live in the Rinkhals.Apps repository.
+The default apps are listed in detail under [Features and built-in apps](https://rinkhals-community.github.io/Rinkhals/about/#features-and-built-in-apps) in the documentation. Instructions on how to install or develop apps live in the [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) repository.
 
 ### App Store
 
@@ -142,7 +145,7 @@ To use it, open the Boomslang Touch UI and tap **App Store**. The store will fet
 
 
 <p align="center">
-    <img width="48" src="https://github.com/rinkhals-community/Rinkhals/blob/master/icon.png?raw=true" />
+    <img width="48" src="./icon.png" />
 </p>
 
 
@@ -155,17 +158,15 @@ To use it, open the Boomslang Touch UI and tap **App Store**. The store will fet
 More and more contributors help this project move faster. Thank you everyone!
 If you want to help and contribute, whether it's code, documentation or sharing good ideas, the upstream Rinkhals community is on Discord!
 
-<a href="https://github.com/rinkhals-community/Rinkhals/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=rinkhals-community/Rinkhals" />
+<a href="https://github.com/Gubir34/Boomslang/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Gubir34/Boomslang" />
 </a>
 <br /><br />
 
-Current maintainers:
-- **jbatonnet**
-- **martinbogo**
-- **antirad**
-- **basvd**
-  
+Boomslang is maintained by **Gubir34**.
+
+Boomslang is built on the work of the upstream Rinkhals maintainers: **jbatonnet**, **martinbogo**, **antirad** and **basvd**. Thank you!
+
 Special thanks to those people for providing the base research and helping support for more printers:
 - **utkabobr** (https://github.com/utkabobr/DuckPro-Kobra3)
 - **systemik** (https://github.com/systemik/Kobra3-Firmware)
