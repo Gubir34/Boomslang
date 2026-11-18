@@ -246,6 +246,24 @@ for _name in ('get_font_text', 'get_font_title', 'get_font_subtitle', 'get_font_
               'get_style_checkbox', 'get_style_tag', 'get_style_tag_pressed', 'get_style_modal'):
     globals()[_name] = _cached(globals()[_name])
 
+_scaled_fonts = {}
+_FONT_SIZES = {'text': 19, 'title': 22, 'subtitle': 16}
+
+
+def get_font_scaled(kind, scale):
+    """The text, title or subtitle font at a size times scale (LemSearch Lite's A- / A+).
+
+    Each size is loaded once and kept: a font costs memory and loading it takes time.
+    Scale 1 is the shared font.
+    """
+    if scale == 1.0:
+        return {'text': get_font_text, 'title': get_font_title, 'subtitle': get_font_subtitle}[kind]()
+    key = (kind, scale)
+    if key not in _scaled_fonts:
+        _scaled_fonts[key] = lv.tiny_ttf_create_file(ASSETS_PATH + '/AlibabaSans-Regular.ttf',
+                                                     int(lv.dpx(_FONT_SIZES[kind]) * scale))
+    return _scaled_fonts[key]
+
 # Styled objects
 def screen(tag=None):
     result = lv.obj(None)

@@ -34,9 +34,11 @@ def load_browser_class():
     code = 'class BrowserApp:\n' + '\n'.join('    ' + line for chunk in wanted for line in chunk.split('\n')) + '\n'
     lv, lvr = mock.MagicMock(name='lv'), mock.MagicMock(name='lvr')
     import home_tools
+    import browser_tools
     # Bookmarks go to a folder of this test run, not to the printer's path
     home_tools.BOOKMARKS_PATH = str(Path(tempfile.mkdtemp()) / 'bookmarks.json')
     namespace = {'lv': lv, 'lvr': lvr, 'reader': reader, 'logging': logging, 'home_tools': home_tools,
+                 'browser_tools': browser_tools,
                  'ellipsis': lambda text, n: text if len(text) <= n else text[:n - 1] + '…',
                  'run_async': lambda fn: fn(), 'printer_ip': lambda: '192.168.1.5',
                  'RINKHALS_VERSION': 'test', 'KOBRA_MODEL': 'Kobra', 'KOBRA_VERSION': '1.0'}
@@ -45,6 +47,9 @@ def load_browser_class():
 
 
 BrowserApp, LVR, LV = load_browser_class()
+import browser_tools  # noqa: E402
+QUICK = len(browser_tools.QUICK_SEARCHES)     # the quick search buttons on the start page
+TOOLBAR = 4                                   # Find, A-, A+, Phone on every page
 
 
 def page(url, title='T', blocks=None, truncated=False):
@@ -55,6 +60,9 @@ class BrowserScreenTests(unittest.TestCase):
     def setUp(self):
         LVR.reset_mock()
         LV.reset_mock()
+        import browser_tools
+        # history, text size and refusing sites of this test only
+        browser_tools.SETTINGS_PATH = str(Path(tempfile.mkdtemp()) / 'lemsearch.json')
         self.app = BrowserApp()
         self.app.root_screen = mock.MagicMock()
         self.app.screen_main = object()
@@ -96,7 +104,7 @@ class BrowserScreenTests(unittest.TestCase):
         self.app.browser_show()
         self.app.show_screen.assert_called_once_with(self.app.screen_browser)
         # the "open an address" button plus one per bookmark
-        self.assertEqual(self.count_buttons(), 1 + len(BrowserApp.BROWSER_BOOKMARKS))
+        self.assertEqual(self.count_buttons(), 1 + QUICK + len(BrowserApp.BROWSER_BOOKMARKS))
 
     def test_the_start_page_is_not_rebuilt_when_returning_to_a_page(self):
         self.app.browser_show()
@@ -135,7 +143,7 @@ class BrowserScreenTests(unittest.TestCase):
 
         with mock.patch.object(reader, 'fetch', self.fetch):
             self.app.browser_back()
-        self.assertEqual(self.fetched[-1], 'https://b.example/')
+        self.assertEqual(self.fetched[-1], 'https://c.example/')   # b came from memory, not downloaded again
         self.assertEqual(self.app.browser_history, ['https://a.example/'])  # going back does not push
         self.assertEqual(self.app.browser_url, 'https://b.example/')
 
@@ -191,7 +199,7 @@ class BrowserScreenTests(unittest.TestCase):
         self.assertNotIn('Too late', self.titles())
         # back returned to the page the link was tapped on, not past it
         self.assertEqual(self.app.browser_url, 'https://a.example/')
-        self.assertEqual(self.titles()[-1], 'Page A')
+        self.assertEqual(self.titles()[-1], 'T')        # a.example as it was loaded first, from memory
         self.assertEqual(self.app.browser_history, [])
 
     def test_back_after_a_failed_link_returns_to_the_page_it_was_tapped_on(self):
@@ -202,11 +210,12 @@ class BrowserScreenTests(unittest.TestCase):
         self.fetched.clear()
         with mock.patch.object(reader, 'fetch', self.fetch):
             self.app.browser_back()
-        self.assertEqual(self.fetched, ['https://b.example/'])   # not a.example, one page too far
+        self.assertEqual(self.app.browser_url, 'https://b.example/')   # not a.example, one page too far
+        self.assertEqual(self.fetched, [])                             # from memory
         self.assertEqual(self.app.browser_history, ['https://a.example/'])
         with mock.patch.object(reader, 'fetch', self.fetch):
             self.app.browser_back()
-        self.assertEqual(self.fetched[-1], 'https://a.example/')
+        self.assertEqual(self.app.browser_url, 'https://a.example/')
 
     def test_try_again_after_a_failed_link_keeps_the_history(self):
         self.open('https://a.example/')
@@ -249,7 +258,7 @@ class BrowserScreenTests(unittest.TestCase):
         self.pages['https://big.example/'] = page('https://big.example/', blocks=blocks)
         LVR.reset_mock()
         self.open('https://big.example/')
-        self.assertEqual(self.count_buttons(), BrowserApp.BROWSER_MAX_LINK_BUTTONS + 1)   # + the bookmark button
+        self.assertEqual(self.count_buttons(), BrowserApp.BROWSER_MAX_LINK_BUTTONS + 1 + TOOLBAR)   # + bookmark, toolbar
         notes = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
         self.assertTrue(any('50 more links' in text for text in notes), notes[-3:])
 
@@ -347,8 +356,9 @@ class BrowserScreenTests(unittest.TestCase):
         self.assertEqual(self.app.browser_bookmark_text('https://docs.example/'), 'Remove bookmark')
         LVR.reset_mock()
         self.app.browser_start_page()
-        self.assertEqual(self.button_texts()[1], 'The docs')             # right after "Open an address"
-        self.assertEqual(self.count_buttons(), 2 + len(BrowserApp.BROWSER_BOOKMARKS))
+        self.assertEqual(self.button_texts()[1 + QUICK], 'The docs')     # right after the search box and quick searches
+        # + the page under "Recently read" and the button that clears it
+        self.assertEqual(self.count_buttons(), 2 + QUICK + len(BrowserApp.BROWSER_BOOKMARKS) + 2)
         home_tools.toggle_bookmark('The docs', 'https://docs.example/')
         self.assertEqual(home_tools.load_bookmarks(), [])
 
@@ -358,7 +368,7 @@ class BrowserScreenTests(unittest.TestCase):
         home_tools.save_bookmarks([(name, url)])
         LVR.reset_mock()
         self.app.browser_start_page()
-        self.assertEqual(self.count_buttons(), 1 + len(BrowserApp.BROWSER_BOOKMARKS))
+        self.assertEqual(self.count_buttons(), 1 + QUICK + len(BrowserApp.BROWSER_BOOKMARKS))
         home_tools.save_bookmarks([])
 
     def test_pages_read_from_script_data_say_so(self):
@@ -425,3 +435,50 @@ if __name__ == '__main__':
             callback(None)
         self.app.show_qr_dialog.assert_called()
         self.assertEqual(self.app.show_qr_dialog.call_args.args[0], 'https://www.printables.com/')
+
+    # --- remembering, finding, text size, quick searches -----------------------------------
+    def test_a_refusing_site_is_marked_in_later_results_and_opens_on_the_phone(self):
+        self.pages['https://www.printables.com/model/1'] = reader.BlockedError('refused (403).')
+        self.open('https://www.printables.com/model/1')
+        url = reader.SEARCH_URL + 'benchy'
+        self.pages[url] = [{'title': 'Benchy', 'url': 'https://printables.com/model/2', 'domain': 'printables.com',
+                            'snippet': ''}]
+        LVR.reset_mock()
+        self.app.show_qr_dialog.reset_mock()
+        self.open('benchy')
+        texts = [c.args[0] for c in LVR.subtitle.return_value.set_text.call_args_list]
+        self.assertTrue(any('opens on your phone' in t for t in texts), texts)
+        LVR.button.return_value.add_event_cb.call_args_list[-1].args[0](None)
+        self.app.show_qr_dialog.assert_called_once()
+        self.assertEqual(self.app.show_qr_dialog.call_args.args[0], 'https://printables.com/model/2')
+
+    def test_find_in_page_jumps_to_the_match_and_then_the_next(self):
+        blocks = [{'kind': 'p', 'text': t, 'links': []} for t in ('intro', 'other', 'pressure advance', 'x', 'PRESSURE again')]
+        self.pages['https://docs.example/'] = page('https://docs.example/', blocks=blocks)
+        self.open('https://docs.example/')
+        self.app.browser_find('pressure', again=False)
+        self.assertEqual(self.app.browser_start, 2)
+        notes = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertTrue(any('Found "pressure" (2 in this page)' in n for n in notes), notes)
+        self.app.browser_find('pressure')
+        self.assertEqual(self.app.browser_start, 4)
+        self.app.browser_find('nowhere', again=False)
+        self.app.show_text_dialog.assert_called_once()
+
+    def test_text_size_is_kept_and_used(self):
+        self.open('https://a.example/')
+        LVR.reset_mock()
+        self.app.browser_text_size(+1)
+        self.assertEqual(self.app.browser_settings().text_scale(), browser_tools.TEXT_SCALES[2])
+        LVR.get_font_scaled.assert_called()
+        self.assertEqual(LVR.get_font_scaled.call_args.args[1], browser_tools.TEXT_SCALES[2])
+
+    def test_a_quick_search_searches_inside_the_site(self):
+        self.app.browser_start_page()
+        chip_callbacks = [c.args[0] for c in LVR.button.return_value.add_event_cb.call_args_list][1:1 + QUICK]
+        chip_callbacks[0](None)                                   # Klipper docs
+        title, initial, is_number, callback = self.app.show_input_text_dialog.call_args.args
+        self.assertEqual(title, 'Search in Klipper docs')
+        with mock.patch.object(reader, 'search', self.search):
+            callback('pressure advance')
+        self.assertEqual(self.fetched[-1], reader.SEARCH_URL + 'site%3Aklipper3d.org+pressure+advance')

@@ -30,6 +30,7 @@ import lvgl_rinkhals as lvr
 from common import *
 import reader
 import app_settings
+import browser_tools
 import home_tools
 import liquid_layout
 import liquid_ui
@@ -2163,9 +2164,20 @@ class RinkhalsUiApp(BaseApp):
     browser_showing_url = False   # whether that page is what is on screen
     browser_page = None           # the page on screen, for moving between its parts
     browser_gen = 0   # bumped by every navigation; a slow page that is no longer wanted is dropped
+    browser_cache = None          # browser_tools.PageCache: Back shows pages from memory
+    browser_store = None          # browser_tools.Settings: text size, history, sites that refuse simple browsers
+    browser_start = 0             # first block of the part on screen
+    browser_find_words = ''       # what Find in page looks for, and the block it last found
+    browser_find_at = -1
+
+    def browser_settings(self):
+        if self.browser_store is None:
+            self.browser_store = browser_tools.Settings()
+        return self.browser_store
 
     def layout_browser(self):
         self.browser_history = []
+        self.browser_cache = browser_tools.PageCache()
         self.screen_browser = lvr.panel(self.root_screen, tag='screen_browser')
         if self.screen_browser:
             self.screen_browser.add_flag(lv.OBJ_FLAG.HIDDEN)
@@ -2231,6 +2243,9 @@ class RinkhalsUiApp(BaseApp):
             label = lvr.title(parent)
         else:
             label = lvr.label(parent)
+        scale = self.browser_settings().text_scale()
+        if scale != 1.0:
+            label.set_style_text_font(lvr.get_font_scaled('title' if kind == 'h1' or big else 'text', scale), lv.STATE.DEFAULT)
             if kind in ('h2', 'h3'):
                 label.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
             elif kind in ('quote', 'pre'):
@@ -2303,6 +2318,40 @@ class RinkhalsUiApp(BaseApp):
         self.browser_search_field(panel)
         self.browser_label(panel, 'Pages are shown as text with links. Sites that need a full browser '
                                   'can be opened on your phone with a QR code.', 'quote')
+
+        # Searches inside the sites a printer owner reads most
+        row = lvr.panel(panel)
+        row.set_width(lv.pct(100))
+        row.set_style_pad_all(0, lv.STATE.DEFAULT)
+        row.set_flex_flow(lv.FLEX_FLOW.ROW_WRAP)
+        row.set_style_pad_column(lv.dpx(8), lv.STATE.DEFAULT)
+        row.set_style_pad_row(lv.dpx(8), lv.STATE.DEFAULT)
+        for name, site in browser_tools.QUICK_SEARCHES:
+            chip = lvr.button(row)
+            chip.set_height(lv.dpx(52))
+            chip.set_text(name)
+            chip.add_event_cb(lambda e, n=name, st=site: self.show_input_text_dialog(
+                f'Search in {n}', '', False,
+                lambda words, st=st: self.browser_open(browser_tools.quick_search_words(st, words)) if words.strip() else None),
+                lv.EVENT_CODE.CLICKED, None)
+
+        settings = self.browser_settings()
+        searches, history = settings.searches()[:4], settings.history()[:5]
+        if searches:
+            self.browser_label(panel, 'Recent searches', 'h2')
+            for words in searches:
+                self.browser_link(panel, words, None).add_event_cb(
+                    lambda e, w=words: self.browser_open(w), lv.EVENT_CODE.CLICKED, None)
+        if history:
+            self.browser_label(panel, 'Recently read', 'h2')
+            for title, url in history:
+                self.browser_link(panel, title, url)
+        if searches or history:
+            def clear(e):
+                settings.clear_history()
+                self.browser_start_page()
+            self.browser_link(panel, 'Clear recent searches and pages', None).add_event_cb(clear, lv.EVENT_CODE.CLICKED, None)
+        self.browser_label(panel, 'Bookmarks', 'h2')
         saved = home_tools.load_bookmarks()
         for name, url in saved:
             self.browser_link(panel, name, url)
@@ -2326,8 +2375,9 @@ class RinkhalsUiApp(BaseApp):
         card.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START)
         card.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)   # buttons centre their text
         card.set_style_radius(lv.dpx(16), lv.STATE.DEFAULT)              # not a capsule: cards are tall
+        blocked = self.browser_settings().is_blocked(result['url'])
         site = lvr.subtitle(card)
-        site.set_text(ellipsis(result['domain'], 48))
+        site.set_text(ellipsis(result['domain'], 34) + ('  \u00b7  opens on your phone' if blocked else ''))
         title = lvr.label(card)
         title.set_width(lv.pct(100))
         title.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
@@ -2338,7 +2388,12 @@ class RinkhalsUiApp(BaseApp):
             words.set_width(lv.pct(100))
             words.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
             words.set_text(ellipsis(result['snippet'], 160))
-        card.add_event_cb(lambda e, u=result['url']: self.browser_open(u), lv.EVENT_CODE.CLICKED, None)
+        if blocked:
+            # Known to refuse simple browsers: straight to the phone
+            card.add_event_cb(lambda e, u=result['url']: self.show_qr_dialog(u, 'Scan to open this page\non your phone'),
+                              lv.EVENT_CODE.CLICKED, None)
+        else:
+            card.add_event_cb(lambda e, u=result['url']: self.browser_open(u), lv.EVENT_CODE.CLICKED, None)
         return card
 
     def browser_render_results(self, results, error, url, push, gen):
@@ -2361,6 +2416,8 @@ class RinkhalsUiApp(BaseApp):
             self.browser_page = None
             self.browser_showing_url = True
             self.screen_browser.label_title.set_text(self.BROWSER_NAME)
+            if push:
+                self.browser_settings().add_search(query)
             if not results:
                 self.browser_label(panel, 'Nothing found. Try other words.', 'quote')
         for i in range(0, len(results), 5):
@@ -2369,6 +2426,46 @@ class RinkhalsUiApp(BaseApp):
                     return
                 for result in results[i:i + 5]:
                     self.browser_result_card(panel, result)
+
+    def browser_toolbar(self, panel, page):
+        """Find in page, smaller and larger text, and the page on the phone."""
+        row = lvr.panel(panel)
+        row.set_width(lv.pct(100))
+        row.set_style_pad_all(0, lv.STATE.DEFAULT)
+        row.set_flex_flow(lv.FLEX_FLOW.ROW)
+        row.set_style_pad_column(lv.dpx(8), lv.STATE.DEFAULT)
+        tools = (('Find', lambda: self.show_input_text_dialog('Find in page', self.browser_find_words, False,
+                                                             lambda words: self.browser_find(words, again=False))),
+                 ('A\u2212', lambda: self.browser_text_size(-1)),
+                 ('A+', lambda: self.browser_text_size(+1)),
+                 ('Phone', lambda u=page.url: self.show_qr_dialog(u, 'Scan to open this page\non your phone')))
+        for text, action in tools:
+            button = lvr.button(row)
+            button.set_height(lv.dpx(50))
+            button.set_flex_grow(1)
+            button.set_text(text)
+            button.add_event_cb(lambda e, a=action: a(), lv.EVENT_CODE.CLICKED, None)
+        return row
+
+    def browser_find(self, words, again=True):
+        """Show the part of the page from the next block with the words."""
+        page = self.browser_page
+        words = (words or '').strip()
+        if not page or not words:
+            return
+        if not again or words != self.browser_find_words:
+            self.browser_find_words, self.browser_find_at = words, -1
+        found = browser_tools.find_block(page.blocks, words, self.browser_find_at)
+        if found is None:
+            self.show_text_dialog(f'"{words}" is not in this page.')
+            return
+        self.browser_find_at = found
+        self.browser_show_part(found)
+
+    def browser_text_size(self, step):
+        self.browser_settings().change_text_scale(step)
+        if self.browser_page:
+            self.browser_show_part(self.browser_start)
 
     def browser_form(self, form, label):
         self.show_input_text_dialog(label, '', False,
@@ -2396,16 +2493,25 @@ class RinkhalsUiApp(BaseApp):
         self.browser_gen += 1
         gen = self.browser_gen
         self.browser_showing_url = False
+        self.browser_find_words, self.browser_find_at = '', -1    # Find starts over on another page
         self.screen_browser.label_title.set_text('Loading...')
         panel = self.browser_new_content()
         self.browser_label(panel, ellipsis(url, 90), 'quote')
 
+        # Back (push=False) shows the page from memory when it is there
+        cached = self.browser_cache.get(url) if (not push and self.browser_cache is not None) else None
+
         def load():
             page, error = None, None
             if reader.is_search(url):
+                if cached is not None:
+                    self.browser_render_results(cached, None, url, push, gen)
+                    return
                 results = []
                 try:
                     results = reader.search(url)
+                    if self.browser_cache is not None:
+                        self.browser_cache.put(url, results)
                 except reader.BrowserError as e:
                     error = str(e)
                 except Exception as e:
@@ -2413,9 +2519,18 @@ class RinkhalsUiApp(BaseApp):
                     error = f'Unexpected error: {type(e).__name__}'
                 self.browser_render_results(results, error, url, push, gen)
                 return
+            if cached is not None:
+                self.browser_render(cached, None, url, push, gen)
+                return
             try:
                 page = reader.fetch(url)
+                if self.browser_cache is not None:
+                    self.browser_cache.put(url, page)
+                    self.browser_cache.put(page.url, page)
+                if self.browser_settings().is_blocked(url):
+                    self.browser_settings().forget_blocked(url)    # it opened after all
             except reader.BlockedError as e:
+                self.browser_settings().remember_blocked(url)
                 error = (str(e), True)
             except reader.BrowserError as e:
                 error = str(e)
@@ -2451,7 +2566,16 @@ class RinkhalsUiApp(BaseApp):
             self.browser_url = page.url
             self.browser_page = page
             self.browser_showing_url = True
+            self.browser_start = start
             self.screen_browser.label_title.set_text(ellipsis(page.title, 24))
+            if start == 0 and push:
+                self.browser_settings().add_history(page.title, page.url)
+            self.browser_toolbar(panel, page)
+            if self.browser_find_words and self.browser_find_at == start:
+                found = browser_tools.count_matches(page.blocks, self.browser_find_words)
+                self.browser_label(panel, f'Found "{self.browser_find_words}" ({found} in this page)', 'quote')
+                self.browser_link(panel, 'Next match', None).add_event_cb(
+                    lambda e: self.browser_find(self.browser_find_words), lv.EVENT_CODE.CLICKED, None)
 
             # A long page is shown in parts; each part is its own set of widgets
             per_part = self.BROWSER_BLOCKS_PER_PART
