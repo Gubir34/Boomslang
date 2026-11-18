@@ -42,9 +42,14 @@ CSS = """
     background:
       radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.34) 0%, rgba(255,255,255,0) 70%),
       linear-gradient(160deg, rgba(255,255,255,.20) 0%, rgba(255,255,255,.05) 45%, rgba(255,255,255,.12) 100%);
-    backdrop-filter: blur(14px) saturate(1.9) brightness(1.12);
-    -webkit-backdrop-filter: blur(14px) saturate(1.9) brightness(1.12);
+    /* no backdrop-filter: Firefox's headless screenshots, which made the pictures so far,
+       never applied it, and Chromium's saturate tinted the panes bright lime. The look is the
+       panes' own gradient over the wallpaper. */
     box-shadow: 0 14px 28px rgba(0,0,0,.38), 0 2px 6px rgba(0,0,0,.25), inset 0 0 22px rgba(255,255,255,.10), inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -1.5px 1px rgba(255,255,255,.22); }
+  /* Panes inside the taskbar (the orbs and the clock) cast a small shadow. The big one of the
+     free panes fell 14 px down inside the bar and darkened the gap under them, so they looked
+     as if they sat on the bar's bottom edge although the gaps above and below are equal. */
+  .lg.inbar { box-shadow: 0 2px 5px rgba(0,0,0,.22), inset 0 0 22px rgba(255,255,255,.10), inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -1.5px 1px rgba(255,255,255,.22); }
   .lg::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px; pointer-events: none;
     background: conic-gradient(from 215deg, rgba(255,255,255,.95), rgba(255,255,255,.08) 22%, rgba(255,255,255,.55) 50%, rgba(255,255,255,.06) 72%, rgba(255,255,255,.95));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
@@ -109,11 +114,11 @@ def home(icons, text, with_tab=True, with_clock=True):
     out = [pane(L.BAR, L.BAR_RADIUS)]
     for i, (name, _glyph, label) in enumerate(L.ORBS):
         icon = f'<span class="ic txt-shadow" style="font-size:29px" aria-label="{label}">{name}</span>' if icons else ''
-        out.append(pane(L.orb_rect(i), L.ORB_SIZE // 2, ('warm center' if i == L.POWER_ORB else 'center'), icon))
+        out.append(pane(L.orb_rect(i), L.ORB_SIZE // 2, ('warm center inbar' if i == L.POWER_ORB else 'center inbar'), icon))
     clock = ('<div class="txt" style="text-align:center;line-height:1.05"><div class="txt-shadow" style="font-size:22px;font-weight:700">19:09</div>'
              '<div style="font-size:11px;font-weight:500;opacity:.9">11/11/2026</div></div>') if mock else ''
     if with_clock:
-        out.append(pane(L.CLOCK, L.CLOCK_RADIUS, 'center', clock))
+        out.append(pane(L.CLOCK, L.CLOCK_RADIUS, 'center inbar', clock))
     out.append(pane(L.BACK, L.BACK_RADIUS, 'center', '<span class="ic txt-shadow" style="font-size:30px">undo</span>' if icons else ''))
     tx, ty, tw, th = L.TAB
     tab = ''
@@ -188,7 +193,28 @@ def page(mode):
             f'<body class="{("bake " + mode) if bake else ""}">\n<div id="screen">\n{WORLD}\n{body}\n</div>\n</body>\n</html>\n')
 
 
+RENDER_CHROMIUM = """
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 800, height: 480 } });
+  await page.goto(process.argv[1], { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: process.argv[2], clip: { x: 0, y: 0, width: 800, height: 480 } });
+  await browser.close();
+})();
+"""
+
+
 def render(html_path, png_path):
+    import shutil
+    if not shutil.which('firefox') and shutil.which('node'):
+        # No Firefox: Chromium through Playwright draws the same CSS
+        subprocess.run(['node', '-e', RENDER_CHROMIUM, f'file://{html_path}', str(png_path)],
+                       check=True, capture_output=True, timeout=180)
+        from PIL import Image
+        Image.open(png_path).convert('RGB').save(png_path, optimize=True)
+        return
     profile = tempfile.mkdtemp(prefix='liquid-firefox-')
     subprocess.run(['firefox', '--headless', '--no-remote', '--profile', profile, '--window-size=800,480',
                     '--screenshot', str(png_path), f'file://{html_path}'], check=True, capture_output=True, timeout=180)

@@ -120,8 +120,15 @@ class Glass:
         button = (self.lvr.button_icon if glyph else self.lvr.button)(parent)
         x, y, w, h = rect
         button.set_size(w, h)
+        # The shared button style has a minimum width (dpx(65), 73 px on the S1) wider than an
+        # orb: the button grew past the pane, so the icon sat 6 px right of the middle and the
+        # pressed light spilled out of the orb
+        button.set_style_min_width(0, lv.STATE.DEFAULT)
+        button.set_style_min_height(0, lv.STATE.DEFAULT)
         button.set_pos(x, y)
         self.clear(button, radius)
+        if glyph:
+            button.set_style_pad_top(3, lv.STATE.DEFAULT)   # the icon font sits 1-2 px high in its line
         button.set_style_bg_color(self.color(WHITE), lv.STATE.PRESSED)
         button.set_style_bg_opa(70, lv.STATE.PRESSED)
         button.set_style_text_color(self.color(WHITE), lv.STATE.DEFAULT)

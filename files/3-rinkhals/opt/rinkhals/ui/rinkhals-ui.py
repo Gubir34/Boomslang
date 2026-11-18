@@ -470,6 +470,7 @@ class RinkhalsUiApp(BaseApp):
     def aero_orb(self, parent, x, glyph, callback):
         orb = lvr.button_icon(parent)
         orb.set_size(60, 60)
+        orb.set_style_min_width(0, lv.STATE.DEFAULT)   # the button style's minimum (73 px) made the orbs wide pills
         orb.set_pos(x, 408)            # the taskbar is 396..480: 408..468 is centred in it
         self.aero_light(orb, self.AERO_ORB, 30)
         top, bottom = self.AERO_ORB_PRESSED
@@ -1311,6 +1312,7 @@ class RinkhalsUiApp(BaseApp):
                         button_settings = lvr.button_icon(line)
                         button_settings.set_text('\ue8b8')
                         button_settings.set_size(lv.dpx(58), lv.dpx(58))
+                        button_settings.set_style_min_width(0, lv.STATE.DEFAULT)
                         button_settings.add_event_cb(lambda e, app=app: self.show_app_settings(app), lv.EVENT_CODE.CLICKED, None)
 
                     switch_app = lvr.switch(line)
@@ -1640,6 +1642,7 @@ class RinkhalsUiApp(BaseApp):
             button = lvr.button_icon(line)
             button.set_text(glyph)
             button.set_size(lv.dpx(58), lv.dpx(58))
+            button.set_style_min_width(0, lv.STATE.DEFAULT)     # else the button style widens it
             button.add_event_cb(lambda e: action(), lv.EVENT_CODE.CLICKED, None)
             return button
 

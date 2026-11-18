@@ -14,9 +14,14 @@
     background:
       radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.34) 0%, rgba(255,255,255,0) 70%),
       linear-gradient(160deg, rgba(255,255,255,.20) 0%, rgba(255,255,255,.05) 45%, rgba(255,255,255,.12) 100%);
-    backdrop-filter: blur(14px) saturate(1.9) brightness(1.12);
-    -webkit-backdrop-filter: blur(14px) saturate(1.9) brightness(1.12);
+    /* no backdrop-filter: Firefox's headless screenshots, which made the pictures so far,
+       never applied it, and Chromium's saturate tinted the panes bright lime. The look is the
+       panes' own gradient over the wallpaper. */
     box-shadow: 0 14px 28px rgba(0,0,0,.38), 0 2px 6px rgba(0,0,0,.25), inset 0 0 22px rgba(255,255,255,.10), inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -1.5px 1px rgba(255,255,255,.22); }
+  /* Panes inside the taskbar (the orbs and the clock) cast a small shadow. The big one of the
+     free panes fell 14 px down inside the bar and darkened the gap under them, so they looked
+     as if they sat on the bar's bottom edge although the gaps above and below are equal. */
+  .lg.inbar { box-shadow: 0 2px 5px rgba(0,0,0,.22), inset 0 0 22px rgba(255,255,255,.10), inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -1.5px 1px rgba(255,255,255,.22); }
   .lg::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px; pointer-events: none;
     background: conic-gradient(from 215deg, rgba(255,255,255,.95), rgba(255,255,255,.08) 22%, rgba(255,255,255,.55) 50%, rgba(255,255,255,.06) 72%, rgba(255,255,255,.95));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
@@ -60,13 +65,13 @@
   </svg>
 
 <div class="lg " style="left:8px;top:400px;width:784px;height:72px;border-radius:36px"></div>
-<div class="lg center" style="left:16px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Settings">settings</span></div>
-<div class="lg center" style="left:88px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="App Store">local_mall</span></div>
-<div class="lg center" style="left:160px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Apps">widgets</span></div>
-<div class="lg center" style="left:232px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Web portal">qr_code_2</span></div>
-<div class="lg center" style="left:304px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Browser">search</span></div>
-<div class="lg warm center" style="left:376px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Power">power_settings_new</span></div>
-<div class="lg center" style="left:688px;top:407px;width:96px;height:58px;border-radius:29px"><div class="txt" style="text-align:center;line-height:1.05"><div class="txt-shadow" style="font-size:22px;font-weight:700">19:09</div><div style="font-size:11px;font-weight:500;opacity:.9">11/11/2026</div></div></div>
+<div class="lg center inbar" style="left:16px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Settings">settings</span></div>
+<div class="lg center inbar" style="left:88px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="App Store">local_mall</span></div>
+<div class="lg center inbar" style="left:160px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Apps">widgets</span></div>
+<div class="lg center inbar" style="left:232px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Web portal">qr_code_2</span></div>
+<div class="lg center inbar" style="left:304px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Browser">search</span></div>
+<div class="lg warm center inbar" style="left:376px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Power">power_settings_new</span></div>
+<div class="lg center inbar" style="left:688px;top:407px;width:96px;height:58px;border-radius:29px"><div class="txt" style="text-align:center;line-height:1.05"><div class="txt-shadow" style="font-size:22px;font-weight:700">19:09</div><div style="font-size:11px;font-weight:500;opacity:.9">11/11/2026</div></div></div>
 <div class="lg center" style="left:14px;top:14px;width:60px;height:60px;border-radius:30px"><span class="ic txt-shadow" style="font-size:30px">undo</span></div>
 <div class="lg " style="left:696px;top:14px;width:90px;height:90px;border-radius:34px"><span class="ic" style="position:absolute;left:15px;top:15px;font-size:24px">wifi</span><span class="ic" style="position:absolute;left:51px;top:15px;font-size:24px">swap_vert</span><span class="ic" style="position:absolute;left:15px;top:51px;font-size:24px">notifications</span><span class="ic" style="position:absolute;left:51px;top:51px;font-size:24px">print</span><span class="lg warm center badge" style="position:absolute;left:33px;top:47px;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:700">1</span></div>
 <div style="position:absolute;inset:0;background:rgba(0,0,0,0.353)"></div>
@@ -79,7 +84,7 @@
 <div class="txt txt-shadow" style="position:absolute;left:140px;top:22px;font-size:20px;font-weight:700">Quick settings</div>
 <span class="ic" style="position:absolute;left:138px;top:94px;font-size:26px">brightness_low</span>
 <span class="ic" style="position:absolute;left:616px;top:94px;font-size:26px">brightness_high</span>
-<div class="slider" style="position:absolute;left:196px;top:101px;width:408px;height:10px;border-radius:5px;background:rgba(255,255,255,.30)"><div style="width:70%;height:100%;border-radius:5px;background:linear-gradient(90deg,#9be86a,#d8ff8c)"></div><div style="position:absolute;left:calc(70% - 14px);top:-9px;width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#fff,#e4efe0);box-shadow:0 3px 8px rgba(0,0,0,.4)"></div></div>
+<div class="slider" style="position:absolute;left:196px;top:101px;width:388px;height:10px;border-radius:5px;background:rgba(255,255,255,.30)"><div style="width:70%;height:100%;border-radius:5px;background:linear-gradient(90deg,#9be86a,#d8ff8c)"></div><div style="position:absolute;left:calc(70% - 14px);top:-9px;width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#fff,#e4efe0);box-shadow:0 3px 8px rgba(0,0,0,.4)"></div></div>
 <div class="lg tint" style="left:130px;top:146px;width:260px;height:58px;border-radius:29px;opacity:.55;box-shadow:none"></div><div style="position:absolute;left:130px;top:146px;width:260px;height:58px;display:flex;align-items:center;gap:14px;padding-left:22px;box-sizing:border-box"><span class="ic txt-shadow" style="font-size:26px">volume_up</span><span class="txt txt-shadow" style="font-size:16px;font-weight:600">Sounds</span></div>
 <div class="lg tint" style="left:410px;top:146px;width:260px;height:58px;border-radius:29px;opacity:.55;box-shadow:none"></div><div style="position:absolute;left:410px;top:146px;width:260px;height:58px;display:flex;align-items:center;gap:14px;padding-left:22px;box-sizing:border-box"><span class="ic txt-shadow" style="font-size:26px">system_update</span><span class="txt txt-shadow" style="font-size:16px;font-weight:600">Auto update</span></div>
 <div style="position:absolute;left:130px;top:220px;width:260px;height:58px;display:flex;align-items:center;gap:14px;padding-left:22px;box-sizing:border-box"><span class="ic txt-shadow" style="font-size:26px">qr_code_2</span><span class="txt txt-shadow" style="font-size:16px;font-weight:600">Web portal</span></div>
