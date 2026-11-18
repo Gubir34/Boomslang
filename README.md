@@ -172,11 +172,10 @@ Every update channel has its own branch. A push to a channel branch builds and p
 | Branch | Update channel | What goes there |
 | -- | -- | -- |
 | `alpha` | Alpha | All new work, first. Open pull requests against this branch |
-| `beta` | Beta | Alpha builds that have been tested on a printer |
-| `release-preview` | Release Preview | Beta builds with no known problems |
-| `master` | Release | Stable only. The default branch, so the README you read here is the stable one |
+| `beta` | Beta | Alpha builds where the bugs that were found have been fixed |
+| `master` | Release | Beta builds that have been tested on a printer. Stable only. The default branch, so the README you read here is the stable one |
 
-A change moves up one step at a time, by fast-forwarding the next branch to the one before it (for example `git checkout beta && git merge --ff-only alpha && git push`). The same commit then gets its own release in the new channel. Printers only get a release when they use that channel (or a less stable one with test versions enabled).
+A change moves up one step at a time, by fast-forwarding the next branch to the one before it (`git checkout beta && git merge --ff-only alpha && git push`, later `git checkout master && git merge --ff-only beta && git push`). The same commit then gets its own release in the new channel. Printers only get a release when they use that channel (or a less stable one with test versions enabled).
 
 More and more contributors help this project move faster. Thank you everyone!
 If you want to help and contribute, whether it's code, documentation or sharing good ideas, the upstream Rinkhals community is on Discord!

@@ -8,9 +8,11 @@ name: Auto release on tag
 #
 #   branch            channel
 #   alpha             Alpha            (all new work lands here first)
-#   beta              Beta
-#   release-preview   Release Preview
-#   master            Release          (stable only)
+#   beta              Beta             (bugs found in Alpha are fixed)
+#   master            Release          (tested in Beta, stable only)
+#
+# There is no branch for Release Preview: the channel still exists in the
+# release names, but nothing builds it any more.
 #
 # Promote by fast-forwarding the next branch to the one before it, for example
 #   git checkout beta && git merge --ff-only alpha && git push
@@ -33,14 +35,12 @@ on:
         options:
           - alpha
           - beta
-          - release-preview
           - release
   push:
     # Documentation, branding and local firmware copies do not trigger one.
     branches:
       - alpha
       - beta
-      - release-preview
       - master
     paths-ignore:
       - '**.md'
@@ -105,7 +105,7 @@ jobs:
         # The channel of a push is the one of its branch
         if [ -z "$CHANNEL" ]; then
           case "$GITHUB_REF_NAME" in
-            alpha|beta|release-preview) CHANNEL=$GITHUB_REF_NAME ;;
+            alpha|beta) CHANNEL=$GITHUB_REF_NAME ;;
             master) CHANNEL=release ;;
             *) echo "Branch $GITHUB_REF_NAME has no update channel" >&2; exit 1 ;;
           esac
