@@ -32,6 +32,7 @@ import reader
 import app_settings
 import browser_tools
 import model_files
+import slicer
 import home_tools
 import liquid_layout
 import liquid_ui
@@ -2648,13 +2649,70 @@ class RinkhalsUiApp(BaseApp):
                         for plate in info['plates']:
                             self.browser_row_button(content, '\uf090', f'Copy plate {plate["index"]} to the printer').add_event_cb(
                                 lambda e, i=plate['index']: self.browser_model_copy(path, i), lv.EVENT_CODE.CLICKED, None)
+                elif KOBRA_MODEL_CODE in slicer.PROFILES:
+                    if model_files.fits(info['size'], KOBRA_MODEL_CODE)[0]:
+                        self.browser_row_button(content, '\ue8b8', 'Slice for this printer (PLA, 0.2 mm)').add_event_cb(
+                            lambda e: self.browser_model_slice(path), lv.EVENT_CODE.CLICKED, None)
                 else:
-                    self.browser_label(content, 'To print it, slice it first. A slicer on the printer is coming; '
-                                                'until then, slice it on a computer for this printer.', 'quote')
+                    self.browser_label(content, 'There is no slicing profile for this printer yet: '
+                                                'slice it on a computer for this printer.', 'quote')
                 delete = self.browser_link(content, 'Delete this model', None)
                 delete.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
                 delete.add_event_cb(lambda e: self.browser_model_delete(path), lv.EVENT_CODE.CLICKED, None)
         run_async(work)
+
+    def browser_model_slice(self, path):
+        """Ask, then slice the model for this printer into its files."""
+        self.show_text_dialog('Slice for this printer?\n\nPLA, 0.2 mm layers, 15 % infill,\nno supports. '
+                              'Watch the start\nof the first print.', action='Slice',
+                              callback=lambda: self.browser_model_slice_now(path))
+
+    def browser_model_slice_now(self, path):
+        self.browser_gen += 1
+        gen = self.browser_gen
+        self.browser_showing_url = False
+        name = os.path.basename(path)
+        self.screen_browser.label_title.set_text('Slicing...')
+        panel = self.browser_new_content()
+        status = self.browser_label(panel, f'{name}\nStarting...', 'p')
+        note = self.browser_label(panel, 'This can take a few minutes. The printer stays usable.', 'quote')
+        started = time.monotonic()
+        done = [False]
+
+        def tick():
+            while not done[0]:
+                time.sleep(2)
+                with lvr.lock():
+                    if done[0] or gen != self.browser_gen:
+                        return
+                    status.set_text(f'{name}\n{int(time.monotonic() - started)} s')
+
+        def work():
+            try:
+                gcode, seconds = slicer.slice_model(path, KOBRA_MODEL_CODE, printing=browser_tools.printer_busy)
+                estimate = ''
+                if seconds:
+                    minutes = seconds // 60
+                    estimate = f'\nAbout {minutes // 60} h {minutes % 60} min to print.' if minutes >= 60 else \
+                        f'\nAbout {max(1, minutes)} min to print.'
+                title, text = 'Sliced', (f'{os.path.basename(gcode)} is in the printer\'s files.{estimate}\n'
+                                         'Start it from the print screen or Mainsail.')
+            except (slicer.SliceError, model_files.ModelError) as e:
+                title, text = 'Not sliced', str(e)
+            except Exception as e:
+                logging.exception('Slicing failed')
+                title, text = 'Not sliced', f'Unexpected error: {type(e).__name__}'
+            done[0] = True
+            with lvr.lock():
+                if gen != self.browser_gen:
+                    return
+                self.screen_browser.label_title.set_text(title)
+                status.set_text(text)
+                note.add_flag(lv.OBJ_FLAG.HIDDEN)
+                self.browser_link(panel, 'Back to the model', None).add_event_cb(
+                    lambda e: self.browser_model_open(path), lv.EVENT_CODE.CLICKED, None)
+        run_async(work)     # the work first: where run_async does not start a thread, the clock then ends at once
+        run_async(tick)
 
     def browser_model_copy(self, path, plate):
         def work():

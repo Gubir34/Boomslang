@@ -40,7 +40,7 @@ def load_browser_class():
     home_tools.BOOKMARKS_PATH = str(Path(tempfile.mkdtemp()) / 'bookmarks.json')
     namespace = {'lv': lv, 'lvr': lvr, 'reader': reader, 'logging': logging, 'home_tools': home_tools,
                  'browser_tools': browser_tools, 'time': __import__('time'), 'os': __import__('os'),
-                 'model_files': __import__('model_files'), 'KOBRA_MODEL_CODE': 'KS1',
+                 'model_files': __import__('model_files'), 'slicer': __import__('slicer'), 'KOBRA_MODEL_CODE': 'KS1',
                  'ellipsis': lambda text, n: text if len(text) <= n else text[:n - 1] + '…',
                  'run_async': lambda fn: fn(), 'printer_ip': lambda: '192.168.1.5',
                  'RINKHALS_VERSION': 'test', 'KOBRA_MODEL': 'Kobra', 'KOBRA_VERSION': '1.0'}
@@ -566,6 +566,39 @@ class BrowserScreenTests(unittest.TestCase):
         LVR.reset_mock()
         self.app.browser_start_page()
         self.assertIn('Box.3mf', [c.args[0] for c in LVR.button.return_value.set_text.call_args_list])
+
+
+    def test_a_model_that_fits_can_be_sliced(self):
+        path = self.model('Box.3mf')
+        LVR.reset_mock()
+        self.app.browser_model_open(path)
+        self.assertIn('Slice for this printer (PLA, 0.2 mm)', [c.args[0] for c in LVR.button.return_value.set_text.call_args_list])
+        import slicer
+        with mock.patch.object(slicer, 'slice_model', return_value=('/gcodes/Box-PLA.gcode', 3720)) as sliced:
+            self.app.browser_model_slice(path)
+            sliced.assert_not_called()                              # nothing before the user agrees
+            self.app.show_text_dialog.call_args.kwargs['callback']()
+            sliced.assert_called_once()
+            self.assertIs(sliced.call_args.kwargs['printing'], browser_tools.printer_busy)
+        self.assertEqual(self.titles()[-1], 'Sliced')
+        self.assertTrue(any('Box-PLA.gcode' in t and '1 h 2 min' in t for t in self.label_texts()))
+
+    def test_a_failed_slice_says_why(self):
+        path = self.model('Box.3mf')
+        import slicer
+        with mock.patch.object(slicer, 'slice_model', side_effect=slicer.SliceError('The printer is printing.')):
+            self.app.browser_model_slice_now(path)
+        self.assertEqual(self.titles()[-1], 'Not sliced')
+
+    def test_a_model_too_big_is_not_offered_for_slicing(self):
+        import zipfile
+        import model_files
+        path = os.path.join(model_files.MODELS_DIR, 'Huge.3mf')
+        from test_model_files import threemf
+        threemf(path, vertices=((0, 0, 0), (400, 400, 10)))
+        LVR.reset_mock()
+        self.app.browser_model_open(path)
+        self.assertNotIn('Slice for this printer (PLA, 0.2 mm)', [c.args[0] for c in LVR.button.return_value.set_text.call_args_list])
 
 
 if __name__ == '__main__':

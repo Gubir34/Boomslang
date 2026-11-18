@@ -24,3 +24,9 @@ licenses, including but not limited to:
 
 Additional dependencies pulled in at build time (Buildroot, busybox,
 Python packages, etc.) retain their respective upstream licenses.
+
+- files/3-rinkhals/opt/rinkhals/slicer/CuraEngine
+  CuraEngine 15.04.6 by Ultimaker, built unchanged as a static ARM binary.
+  GNU Affero General Public License v3. Source:
+  https://github.com/Ultimaker/CuraEngine/tree/15.04.6
+  (see files/3-rinkhals/opt/rinkhals/slicer/README.md and build/slicer/build-curaengine.sh)

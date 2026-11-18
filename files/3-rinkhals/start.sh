@@ -148,6 +148,7 @@ chmod +x ./usr/share/udhcpc/default.script.d/lease-file.script
 chmod +x ./usr/share/udhcpc/default.script.d/rinkhals-dns-fallback.script
 chmod +x ./usr/libexec/gcc/arm-buildroot-linux-uclibcgnueabihf/11.4.0/* 2> /dev/null
 chmod +x ./opt/rinkhals/*/*.sh 2> /dev/null
+chmod +x ./opt/rinkhals/slicer/CuraEngine 2> /dev/null
 
 
 ################
