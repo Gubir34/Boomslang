@@ -54,7 +54,7 @@ Fair question, and a common one. The changes here were big and moving fast: new 
 
 Boomslang keeps the same on-printer layout (`/useremain/rinkhals`), so apps and tools made for Rinkhals keep working, and [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) apps also run on Rinkhals.
 
-"One project with all the features" would be better for everyone, and that is the long-term goal. The generic fixes (the newer-firmware patches and small bug fixes) are meant to go upstream as pull requests, so they don't stay only here. If you think a specific feature should go upstream first, open an issue and say which one.
+"One project with all the features" would be better for everyone, and that is the long-term goal. Some of this work already landed upstream too (for example support for Kobra S1 `2.7.3.7`), and I send the generic fixes there as pull requests, like [#244](https://github.com/rinkhals-community/Rinkhals/pull/244), so they don't stay only here. If you think a specific feature should go upstream first, open an issue and say which one.
 
 Boomslang is built on the work of the Rinkhals maintainers, who did the real work here.
 
