@@ -122,3 +122,29 @@ def is_newer_release(latest, current):
     """
     a, b = release_tag_key(latest), release_tag_key(current)
     return bool(a and b and a > b)
+
+
+def channel_of(tag):
+    """The update channel a version belongs to.
+
+    A release name says it (2611-3-alpha -> 'alpha'). An older dated test
+    build (20261108_04_test) counts as Alpha; any other dated tag, a dev
+    build or an unknown version counts as Release, the same rule as the web
+    portal's automatic updates.
+    """
+    parsed = parse_release_tag(tag)
+    if parsed:
+        return parsed['channel']
+    if 'test' in (tag or '').lower():
+        return 'alpha'
+    return 'release'
+
+
+def offered_in_channel(tag, channel):
+    """Whether a release is offered to a printer that follows this channel.
+
+    A channel gets its own releases and every more stable one: Alpha gets
+    everything, Beta gets Beta and Release, Release only Release.
+    """
+    wanted = channel if channel in CHANNELS else 'release'
+    return CHANNELS.index(channel_of(tag)) >= CHANNELS.index(wanted)

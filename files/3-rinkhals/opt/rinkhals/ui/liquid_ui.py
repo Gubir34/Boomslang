@@ -30,6 +30,15 @@ MIN_BRIGHTNESS = 15          # percent. The screen is never set darker: black ca
 
 # --- screen brightness --------------------------------------------------------------
 
+def _max_brightness(base):
+    """The backlight's highest value, 255 when it can't be read (or reads 0)."""
+    try:
+        with open(os.path.join(base, 'max_brightness')) as f:
+            return int(f.read().strip()) or 255
+    except (OSError, ValueError):
+        return 255
+
+
 def read_brightness(base=None):
     """Brightness of the screen in percent (MIN_BRIGHTNESS..100), or None when it can't be read."""
     base = base or BACKLIGHT
@@ -38,33 +47,34 @@ def read_brightness(base=None):
             value = int(f.read().strip())
     except (OSError, ValueError):
         return None
-    maximum = 255
-    try:
-        with open(os.path.join(base, 'max_brightness')) as f:
-            maximum = int(f.read().strip()) or 255
-    except (OSError, ValueError):
-        pass
-    return max(MIN_BRIGHTNESS, min(100, round(value * 100 / maximum)))
+    return max(MIN_BRIGHTNESS, min(100, round(value * 100 / _max_brightness(base))))
 
 
 def set_brightness(percent, base=None):
     """Set the brightness of the screen. Returns the percent that was set (never below MIN_BRIGHTNESS)."""
     base = base or BACKLIGHT
     percent = max(MIN_BRIGHTNESS, min(100, int(round(percent))))
-    maximum = 255
-    try:
-        with open(os.path.join(base, 'max_brightness')) as f:
-            maximum = int(f.read().strip()) or 255
-    except (OSError, ValueError):
-        pass
     with open(os.path.join(base, 'brightness'), 'w') as f:
-        f.write(str(round(maximum * percent / 100)))
+        f.write(str(round(_max_brightness(base) * percent / 100)))
     return percent
 
 
 def auto_update_on(value):
     """Whether the auto_update setting of Boomslang Web means "install updates by itself"."""
     return (value or '').strip().lower() != 'off'
+
+
+def auto_update_value(on, previous):
+    """The auto_update setting to write when the toggle is switched.
+
+    Off is 'off'. On goes back to the choice there was before it was turned
+    off (a channel picked in Settings, like 'release'), and to 'auto' only
+    when there was none, so the toggle never changes which channel is followed.
+    """
+    if not on:
+        return 'off'
+    previous = (previous or '').strip()
+    return previous if previous and previous.lower() != 'off' else 'auto'
 
 
 # --- widgets ---------------------------------------------------------------------------

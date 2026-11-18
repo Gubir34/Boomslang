@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import lvgl as lv
 import lvgl_rinkhals as lvr
 
-from release_assets import display_version, find_update_asset, is_newer_release, switch_warning_text
+from release_assets import channel_of, display_version, find_update_asset, is_newer_release, offered_in_channel, switch_warning_text
 
 
 class JSONWithCommentsDecoder(json.JSONDecoder):
@@ -248,14 +248,16 @@ def ota_package_compressed():
 
 
 class RinkhalsVersion:
-    version: str
-    path: str
-    test: bool
-    date: int
-    changes: str
+    # Defaults, so that a field a release did not fill reads as None instead
+    # of raising AttributeError (a release without a date, for example)
+    version: str = None
+    path: str = None
+    test: bool = False
+    date: int = None
+    changes: str = None
     sha256: str = None   # unset when GitHub gave no digest; download_version reads it
-    url: str
-    supported_firmwares: list[str]
+    url: str = None
+    supported_firmwares: list[str] = None
     product: str = 'Boomslang'   # or 'Rinkhals' for the original project
 
 class Rinkhals:
@@ -303,9 +305,14 @@ class Rinkhals:
                     version.path = f.path
                     versions.append(version)
         return versions
-    def get_available_versions(include_test=False, limit=10, repo=BOOMSLANG_REPO, compressed=None):
+    RELEASES_PER_PAGE = 100   # GitHub's maximum
+    RELEASE_PAGES = 3         # every push to alpha publishes one, so a Release can be far down the list
+
+    def get_available_versions(include_test=False, limit=10, repo=BOOMSLANG_REPO, compressed=None, channel=None):
         """Releases of repo with a package for this printer, newest first.
 
+        channel: only the releases a printer on that channel is offered
+        (release_assets.offered_in_channel); it replaces include_test.
         compressed: prefer the compressed package (see release_assets);
         None follows ota_package_compressed().
         """
@@ -317,10 +324,26 @@ class Rinkhals:
 
         try:
             import requests
-            response = requests.get(f'https://api.github.com/repos/{repo}/releases?per_page=20', timeout=5)
-            if response.status_code == 200:
-                releases = response.json()
-                releases.sort(key=lambda r: r.get('published_at', ''), reverse=True)
+            # Several pages: filtering by channel comes after, and the
+            # releases wanted can be older than many test releases
+            releases = []
+            status = None   # of the first page; a later page that fails keeps what came before
+            for page in range(1, Rinkhals.RELEASE_PAGES + 1):
+                response = requests.get(f'https://api.github.com/repos/{repo}/releases',
+                                        params={'per_page': Rinkhals.RELEASES_PER_PAGE, 'page': page}, timeout=5)
+                if page == 1:
+                    status = response.status_code
+                if response.status_code != 200:
+                    break
+                batch = response.json()
+                releases.extend(batch)
+                wanted = [r for r in releases if r.get('tag_name') and not r.get('draft') and
+                          (offered_in_channel(r['tag_name'], channel) if channel else
+                           include_test or not r.get('prerelease'))]
+                if len(batch) < Rinkhals.RELEASES_PER_PAGE or len(wanted) >= limit:
+                    break
+            if status == 200:
+                releases.sort(key=lambda r: r.get('published_at') or '', reverse=True)
                 versions = []
                 for release in releases:
                     tag = release.get('tag_name')
@@ -336,7 +359,10 @@ class Rinkhals:
                         continue
                     version.changes = release.get('body', '')
                     
-                    if not include_test and version.test:
+                    if channel:
+                        if not offered_in_channel(tag, channel):
+                            continue
+                    elif not include_test and version.test:
                         continue
 
                     published_at = release.get('published_at')
@@ -347,25 +373,19 @@ class Rinkhals:
                         except Exception:
                             version.date = None
 
-                    assets = release.get('assets', [])
-                    if assets:
-                        # Try to find asset matching current model code
-                        asset_url = None
-                        asset_digest = None
-
-                        # Match the exact package name. A substring test let a K3
-                        # pick update-k3m.swu (another password, so the install
-                        # failed) whenever GitHub listed it first.
-                        asset = find_update_asset(assets, printer_info.model_code, compressed)
-                        if asset:
-                            asset_url = asset.get('browser_download_url', '')
-                            asset_digest = asset.get('digest', '')
-                        if not asset_url:
-                            continue
-
-                        version.url = asset_url
-                        if asset_digest and 'sha256' in asset_digest:
-                            version.sha256 = asset_digest.replace('sha256:', '') if asset_digest else None
+                    # Match the exact package name. A substring test let a K3
+                    # pick update-k3m.swu (another password, so the install
+                    # failed) whenever GitHub listed it first. A release with
+                    # no package for this printer (or no assets at all) is
+                    # skipped: there is nothing to install.
+                    asset = find_update_asset(release.get('assets') or [], printer_info.model_code, compressed)
+                    asset_url = asset.get('browser_download_url', '') if asset else ''
+                    if not asset_url:
+                        continue
+                    version.url = asset_url
+                    asset_digest = asset.get('digest', '')
+                    if asset_digest and 'sha256' in asset_digest:
+                        version.sha256 = asset_digest.replace('sha256:', '')
 
                     version.product = 'Rinkhals' if repo == RINKHALS_REPO else 'Boomslang'
                     versions.append(version)
@@ -373,13 +393,13 @@ class Rinkhals:
                         break
                 return versions
             else:
-                logging.warning(f'Failed to fetch releases: {response.status_code}')
+                logging.warning(f'Failed to fetch releases: {status}')
                 return []
         except Exception as e:
             logging.error(f'Error listing Boomslang versions: {e}')
             return []
-    def get_latest_version(include_test=False):
-        return (Rinkhals.get_available_versions(include_test=include_test, limit=1) or [None])[0]
+    def get_latest_version(include_test=False, channel=None):
+        return (Rinkhals.get_available_versions(include_test=include_test, limit=1, channel=channel) or [None])[0]
 
 
 ################
@@ -1437,7 +1457,10 @@ class BaseApp:
             lv.unlock()
 
             if force or not self.cache_rinkhals_latest:
-                self.cache_rinkhals_latest = Rinkhals.get_latest_version()
+                # The newest release of the installed version's channel (and
+                # more stable ones): an Alpha is told about the next Alpha
+                channel = channel_of(rinkhals_current.version if rinkhals_current else None)
+                self.cache_rinkhals_latest = Rinkhals.get_latest_version(channel=channel)
 
             latest = self.cache_rinkhals_latest
             # Strictly newer only: a printer on a newer test build must not be

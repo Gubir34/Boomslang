@@ -827,7 +827,16 @@ class RinkhalsUiApp(BaseApp):
         if percent is not None:
             self.liquid_slider.set_value(percent, 0)
         self.liquid_sounds.set(not os.path.exists(self.MUTE_SOUNDS_FILE))
-        self.liquid_updates.set(liquid_ui.auto_update_on(get_app_property(self.WEB_APP, 'auto_update')))
+        # Reading the property can start a shell (tools.sh), so not on the screen's thread
+        run_async(self.liquid_read_updates)
+
+    def liquid_read_updates(self):
+        # liquid_auto_update: the setting last read while on, to go back to after Off
+        value = get_app_property(self.WEB_APP, 'auto_update')
+        if liquid_ui.auto_update_on(value):
+            self.liquid_auto_update = value
+        with lvr.lock():
+            self.liquid_updates.set(liquid_ui.auto_update_on(value))
 
     def liquid_brightness(self, percent, final=False):
         # Dragging gives many events. Write at most every 50 ms, and always the last value (on release).
@@ -852,8 +861,17 @@ class RinkhalsUiApp(BaseApp):
             self.liquid_sounds.set(not on)       # it did not change, so don't say it did
 
     def liquid_toggle_updates(self, on):
+        value = liquid_ui.auto_update_value(on, getattr(self, 'liquid_auto_update', None))
+
         # tools.sh sets the property: a shell, so not on the screen's thread
-        run_async(lambda: set_app_property(self.WEB_APP, 'auto_update', 'auto' if on else 'off'))
+        def write():
+            try:
+                set_app_property(self.WEB_APP, 'auto_update', value)
+            except Exception as e:
+                logging.error(f'Could not change automatic updates: {e}')
+                with lvr.lock():
+                    self.liquid_updates.set(not on)       # it did not change, so don't say it did
+        run_async(write)
 
     BUILD_PAUSE = 0.05            # seconds before each background build step
     background_done = False
@@ -1865,7 +1883,8 @@ class RinkhalsUiApp(BaseApp):
 
     def home_check_update(self):
         try:
-            latest = Rinkhals.get_latest_version()
+            # The installed version's channel: an Alpha is told about the next Alpha
+            latest = Rinkhals.get_latest_version(channel=channel_of(RINKHALS_VERSION))
             if not (latest and latest.url and is_newer_release(latest.version, RINKHALS_VERSION)):
                 return
             self.cache_rinkhals_latest = latest      # the Updates screen need not ask again
@@ -1877,9 +1896,12 @@ class RinkhalsUiApp(BaseApp):
     def home_status_loop(self):
         shown = None
         while True:
-            # Only while the home screen is what is on the display
-            on_home = self.screen_current in (self.screen_main, self.screen_composition)
-            if on_home and self.root_modal.has_flag(lv.OBJ_FLAG.HIDDEN):
+            # Only while the home screen is what is on the display. LVGL is
+            # not thread-safe, so the screen is looked at under its lock.
+            with lvr.lock():
+                on_home = (self.screen_current in (self.screen_main, self.screen_composition) and
+                           self.root_modal.has_flag(lv.OBJ_FLAG.HIDDEN))
+            if on_home:
                 text = home_tools.fetch_status()
                 if text != shown:
                     shown = text

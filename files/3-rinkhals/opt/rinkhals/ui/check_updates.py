@@ -114,6 +114,11 @@ class CheckUpdateProgram:
 
         return (username, encrypted_device_key)
 
+    # Seconds to wait for Anycubic's answer. Without a limit a broker that
+    # accepts the connection but never answers kept the caller (the touch
+    # UI's Updates screen) waiting forever.
+    MQTT_TIMEOUT = 30
+
     def get_latest_update(self, model_code=None, current_version=None):
         self.firmware_version = self.get_firmware_version()
         self.model_id = self.api_config['cloud']['modelId'] if self.api_config else None
@@ -122,7 +127,7 @@ class CheckUpdateProgram:
         if 'CERTS_CACRT' in os.environ and 'CERTS_DEVICECRT' in os.environ and 'CERTS_DEVICEPK' in os.environ:
             cert_path = '/tmp/rinkhals/certs'
 
-            os.makedirs(cert_path)
+            os.makedirs(cert_path, exist_ok=True)
             self.cloud_config['certPath'] = cert_path
 
             with open(f'{cert_path}/caCrt', 'w') as f:
@@ -211,7 +216,13 @@ class CheckUpdateProgram:
 
         self.cloud_client.username_pw_set(mqtt_username, mqtt_password)
         self.cloud_client.connect(mqtt_broker_endpoint.hostname, mqtt_broker_endpoint.port or 1883)
-        self.cloud_client.loop_forever()
+        deadline = time.monotonic() + self.MQTT_TIMEOUT
+        while self.mqtt_result is None and self.mqtt_error is None:
+            if time.monotonic() >= deadline:
+                self.mqtt_error = 'No answer from the Anycubic MQTT server'
+                break
+            self.cloud_client.loop(timeout=1.0)
+        self.cloud_client.disconnect()
 
         return (self.mqtt_result, self.mqtt_error)
         

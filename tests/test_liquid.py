@@ -24,7 +24,7 @@ import liquid_ui  # noqa: E402
 SOURCE = (UI / 'rinkhals-ui.py').read_text(encoding='utf-8')
 APP = next(n for n in ast.parse(SOURCE).body if isinstance(n, ast.ClassDef) and n.name == 'RinkhalsUiApp')
 METHODS = ('layout_liquid_home', 'layout_liquid_panel', 'liquid_open_panel', 'liquid_panel_refresh', 'liquid_brightness',
-           'liquid_toggle_sounds', 'liquid_toggle_updates', 'home_clear', 'home_glyph', 'home_tick_clock',
+           'liquid_toggle_sounds', 'liquid_toggle_updates', 'liquid_read_updates', 'home_clear', 'home_glyph', 'home_tick_clock',
            'home_refresh', 'home_show_update', 'home_show_link', 'home_power', 'aero_light')
 ATTRIBUTES = ('MUTE_SOUNDS_FILE', 'WEB_APP')
 
@@ -395,6 +395,14 @@ class LiquidHomeTests(unittest.TestCase):
         self.app.liquid_updates.toggle()
         self.names['set_app_property'].assert_called_with('65-rinkhals-web', 'auto_update', 'auto')
 
+    def test_the_auto_update_toggle_keeps_the_channel_chosen_in_settings(self):
+        self.names['get_app_property'].return_value = 'release'
+        self.app.liquid_open_panel()                  # reads the setting: on, following Release
+        self.app.liquid_updates.toggle()
+        self.names['set_app_property'].assert_called_with('65-rinkhals-web', 'auto_update', 'off')
+        self.app.liquid_updates.toggle()
+        self.names['set_app_property'].assert_called_with('65-rinkhals-web', 'auto_update', 'release')
+
     def test_brightness_is_written_at_most_every_50_ms_but_the_last_value_always(self):
         with mock.patch.object(liquid_ui, 'set_brightness') as write:
             self.app.liquid_brightness(80)
@@ -432,3 +440,16 @@ class LiquidHomeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class AutoUpdateToggleTests(unittest.TestCase):
+    def test_off_is_off(self):
+        self.assertEqual(liquid_ui.auto_update_value(False, 'release'), 'off')
+
+    def test_on_goes_back_to_the_channel_chosen_before(self):
+        self.assertEqual(liquid_ui.auto_update_value(True, 'release'), 'release')
+        self.assertEqual(liquid_ui.auto_update_value(True, 'beta'), 'beta')
+
+    def test_on_is_auto_when_there_was_no_choice(self):
+        for previous in (None, '', '  ', 'off', 'OFF'):
+            self.assertEqual(liquid_ui.auto_update_value(True, previous), 'auto')

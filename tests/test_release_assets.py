@@ -107,3 +107,30 @@ class IsNewerReleaseTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ChannelTests(unittest.TestCase):
+    """The touch UI offers a printer the releases of its installed channel and more stable ones."""
+
+    def test_channel_of_a_version(self):
+        self.assertEqual(release_assets.channel_of('2611-3-alpha'), 'alpha')
+        self.assertEqual(release_assets.channel_of('2611-3-beta'), 'beta')
+        self.assertEqual(release_assets.channel_of('2611-3-release'), 'release')
+        self.assertEqual(release_assets.channel_of('20261108_04_test'), 'alpha')
+        for other in ('20261108_04', 'dev', '', None):
+            self.assertEqual(release_assets.channel_of(other), 'release')
+
+    def test_each_channel_gets_its_own_and_more_stable_releases(self):
+        offered = release_assets.offered_in_channel
+        for tag in ('2611-6-alpha', '2611-6-beta', '2611-6-release'):
+            self.assertTrue(offered(tag, 'alpha'))
+        self.assertFalse(offered('2611-6-alpha', 'beta'))
+        self.assertTrue(offered('2611-6-beta', 'beta'))
+        self.assertTrue(offered('2611-6-release', 'beta'))
+        self.assertFalse(offered('2611-6-alpha', 'release'))
+        self.assertFalse(offered('2611-6-beta', 'release'))
+        self.assertTrue(offered('2611-6-release', 'release'))
+
+    def test_an_unknown_channel_is_treated_as_release(self):
+        self.assertFalse(release_assets.offered_in_channel('2611-6-alpha', 'nonsense'))
+        self.assertTrue(release_assets.offered_in_channel('2611-6-release', None))
