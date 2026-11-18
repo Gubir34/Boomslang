@@ -26,7 +26,7 @@ ORBS = (                                 # (icon name in the mockup font, glyph 
     ('local_mall', '', 'App Store'),
     ('widgets', '', 'Apps'),
     ('qr_code_2', '', 'Web portal'),
-    ('search', '', 'LemSearch Lite'),
+    ('lemsearch', 'lemsearch', 'LemSearch Lite'),     # an image, see lvgl_rinkhals.icon_image
     ('power_settings_new', '', 'Power'),
 )
 POWER_ORB = 5                            # the one tinted red

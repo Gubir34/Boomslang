@@ -320,11 +320,15 @@ class RinkhalsUiApp(BaseApp):
             box.set_style_radius(lv.dpx(12), lv.STATE.DEFAULT)
             box.set_style_bg_color(ICON_BOX, lv.STATE.DEFAULT)
             box.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
-            glyph = lv.label(box)
-            glyph.set_text(icon)
-            glyph.set_style_text_font(lvr.get_font_icon(), lv.STATE.DEFAULT)
-            glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'LemSearch Lite') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
-            glyph.center()
+            color = ICON_GREEN if label in ('Web portal', 'LemSearch Lite') else lvr.COLOR_PRIMARY
+            if icon == lvr.LEMSEARCH_ICON:
+                lvr.icon_image(box, color)
+            else:
+                glyph = lv.label(box)
+                glyph.set_text(icon)
+                glyph.set_style_text_font(lvr.get_font_icon(), lv.STATE.DEFAULT)
+                glyph.set_style_text_color(color, lv.STATE.DEFAULT)
+                glyph.center()
             plain(lvr.title(button)).set_text(label)
             button.hint = plain(lvr.subtitle(button))
             button.hint.set_text(hint)
@@ -415,7 +419,7 @@ class RinkhalsUiApp(BaseApp):
         row.set_style_min_height(0, lv.STATE.DEFAULT)
         card(row, '\ue00a', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
         card(row, '\ue894', 'Mainsail', 'Klipper web interface', lambda: show_link(4409, 'Mainsail'))
-        card(row, '\ue8b6', 'LemSearch Lite', 'Search and read the web', self.browser_show)
+        card(row, lvr.LEMSEARCH_ICON, 'LemSearch Lite', 'Search and read the web', self.browser_show)
 
         row = row_of(self.screen_main)
         flat(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
@@ -478,7 +482,11 @@ class RinkhalsUiApp(BaseApp):
         orb.set_style_bg_color(lv.color_make(*top), lv.STATE.PRESSED)
         orb.set_style_bg_grad_color(lv.color_make(*bottom), lv.STATE.PRESSED)
         orb.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
-        orb.set_text(glyph)
+        if glyph == lvr.LEMSEARCH_ICON:
+            orb.set_text('')
+            lvr.icon_image(orb, lv.color_make(*self.AERO_INK))
+        else:
+            orb.set_text(glyph)
         orb.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
         return orb
 
@@ -542,7 +550,7 @@ class RinkhalsUiApp(BaseApp):
         self.aero_orb(main, 88, '', lambda: self.show_screen(self.screen_store))
         self.aero_orb(main, 162, '', lambda: self.show_screen(self.screen_apps))
         self.aero_orb(main, 236, '', lambda: self.home_show_link(8090, 'Boomslang web portal'))
-        self.aero_orb(main, 310, '', self.browser_show)
+        self.aero_orb(main, 310, lvr.LEMSEARCH_ICON, self.browser_show)
         self.aero_orb(main, 384, '', self.home_power)
 
         # Clock

@@ -92,6 +92,13 @@ WORLD = """
 """
 
 
+# The LemSearch icon is not in the icon font: the same drawing as branding/make-lemsearch-icon.py
+LEMSEARCH_SVG = ('<svg class="ic txt-shadow" aria-label="{label}" width="30" height="30" viewBox="0 0 32 32" fill="none" '
+                 'stroke="#fff"><path d="M8 4 V26 H20" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/>'
+                 '<circle cx="19" cy="12" r="4.5" stroke-width="2.5"/>'
+                 '<path d="M22.2 15.2 L25.8 18.8" stroke-width="2.5" stroke-linecap="round"/></svg>')
+
+
 def box(rect, radius=None, extra=''):
     x, y, w, h = rect
     style = f'left:{x}px;top:{y}px;width:{w}px;height:{h}px'
@@ -114,6 +121,8 @@ def home(icons, text, with_tab=True, with_clock=True):
     out = [pane(L.BAR, L.BAR_RADIUS)]
     for i, (name, _glyph, label) in enumerate(L.ORBS):
         icon = f'<span class="ic txt-shadow" style="font-size:29px" aria-label="{label}">{name}</span>' if icons else ''
+        if icons and name == 'lemsearch':
+            icon = LEMSEARCH_SVG.format(label=label)
         out.append(pane(L.orb_rect(i), L.ORB_SIZE // 2, ('warm center inbar' if i == L.POWER_ORB else 'center inbar'), icon))
     clock = ('<div class="txt" style="text-align:center;line-height:1.05"><div class="txt-shadow" style="font-size:22px;font-weight:700">19:09</div>'
              '<div style="font-size:11px;font-weight:500;opacity:.9">11/11/2026</div></div>') if mock else ''

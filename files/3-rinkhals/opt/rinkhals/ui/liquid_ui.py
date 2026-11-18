@@ -132,7 +132,10 @@ class Glass:
         button.set_style_bg_color(self.color(WHITE), lv.STATE.PRESSED)
         button.set_style_bg_opa(70, lv.STATE.PRESSED)
         button.set_style_text_color(self.color(WHITE), lv.STATE.DEFAULT)
-        if glyph:
+        if glyph == self.lvr.LEMSEARCH_ICON:
+            button.set_text('')
+            self.lvr.icon_image(button, self.color(WHITE))
+        elif glyph:
             button.set_text(glyph)
         else:
             button.set_icon('')

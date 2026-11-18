@@ -151,7 +151,7 @@ class AeroHomeTests(unittest.TestCase):
         self.assertEqual(sizes.count((60, 60)), 7)              # six orbs and the back button
         glyphs = [c.args[0] for c in orb.set_text.call_args_list]
         # settings, local_mall, widgets, qr_code_2, search, power, undo: the Aero mockup's icons
-        self.assertEqual(glyphs, ['\ue8b8', '\ue54c', '\ue1bd', '\ue00a', '\ue8b6', '\ue8ac', '\ue166'])
+        self.assertEqual(glyphs, ['\ue8b8', '\ue54c', '\ue1bd', '\ue00a', '', '\ue8ac', '\ue166'])   # LemSearch: an image
 
     def test_the_taskbar_parts_share_one_vertical_centre(self):
         # The bar is 396..480 (centre 438). The orbs and the clock are 60 tall, so

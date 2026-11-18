@@ -422,6 +422,28 @@ def checkbox(parent):
 
     return result
 
+LEMSEARCH_ICON = 'lemsearch'      # used in place of a glyph: the LemSearch image (not in the icon font)
+LEMSEARCH_ICON_SIZES = (22, 26, 30, 34)    # the files branding/make-lemsearch-icon.py makes
+
+
+def icon_image(parent, color, size=None, path=None):
+    """The LemSearch icon (an A8 image) in a colour, about as big as the icon font.
+
+    LVGL paints an A8 image in its image recolor colour, so it matches the
+    glyphs around it on every look. Taps go through to what it sits on.
+    """
+    size = size or int(lv.dpx(32) * 0.85)
+    # the file closest in size, shown as it is: scaling a small image left jagged edges
+    pixels = min(LEMSEARCH_ICON_SIZES, key=lambda s: abs(s - size))
+    result = lv.image(parent)
+    result.set_src(path or os.path.join(ASSETS_PATH, f'lemsearch-icon-{pixels}.bin'))
+    result.set_style_image_recolor(color, lv.STATE.DEFAULT)
+    result.set_style_image_recolor_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+    result.remove_flag(lv.OBJ_FLAG.CLICKABLE)
+    result.center()
+    return result
+
+
 def image(parent):
     result = lv.image(parent)
     result.add_style(get_style_debug(), lv.STATE.DEFAULT)
