@@ -267,7 +267,7 @@ def free_bytes(path):
 
 
 def download_print_file(url, folder=None, get=None, printing=lambda: False, free=free_bytes,
-                        progress=None, user_agent='LemSearchLite'):
+                        progress=None, user_agent='LemSearchLite', name_for=None, max_bytes=None):
     """Save a print file into the printer's files. Returns the path.
 
     Refused (DownloadError) while printing, when the file is too big or the
@@ -277,6 +277,8 @@ def download_print_file(url, folder=None, get=None, printing=lambda: False, free
     progress(done, total) is called as it goes (total may be None).
     """
     folder = folder or GCODE_DIR
+    name_for = name_for or print_file_name
+    max_bytes = max_bytes or MAX_PRINT_FILE_BYTES
     if printing():
         raise DownloadError('The printer is printing. Download the file when it is done.')
     if get is None:
@@ -297,12 +299,12 @@ def download_print_file(url, folder=None, get=None, printing=lambda: False, free
             raise DownloadError('This link leads to a web page, not to a print file.')
         total = response.headers.get('Content-Length')
         total = int(total) if total and str(total).isdigit() else None
-        if total and total > MAX_PRINT_FILE_BYTES:
+        if total and total > max_bytes:
             raise DownloadError(f'The file is too big ({total // (1024 * 1024)} MB).')
         room = free(folder) - FREE_MARGIN_BYTES
         if total and total > room:
             raise DownloadError('There is not enough free space on the printer for this file.')
-        name = print_file_name(url, os.listdir(folder))
+        name = name_for(url, os.listdir(folder))
         temporary = os.path.join(folder, f'.{name}.part')
         done = 0
         with open(temporary, 'wb') as f:
@@ -310,7 +312,7 @@ def download_print_file(url, folder=None, get=None, printing=lambda: False, free
                 if not chunk:
                     continue
                 done += len(chunk)
-                if done > MAX_PRINT_FILE_BYTES:
+                if done > max_bytes:
                     raise DownloadError('The file is too big.')
                 if done > room:
                     raise DownloadError('There is not enough free space on the printer for this file.')

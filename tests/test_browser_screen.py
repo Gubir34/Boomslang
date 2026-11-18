@@ -6,6 +6,7 @@ widgets. What this does not check is how the screen looks.
 """
 import ast
 import importlib.util
+import os
 import sys
 import logging
 import tempfile
@@ -39,6 +40,7 @@ def load_browser_class():
     home_tools.BOOKMARKS_PATH = str(Path(tempfile.mkdtemp()) / 'bookmarks.json')
     namespace = {'lv': lv, 'lvr': lvr, 'reader': reader, 'logging': logging, 'home_tools': home_tools,
                  'browser_tools': browser_tools, 'time': __import__('time'), 'os': __import__('os'),
+                 'model_files': __import__('model_files'), 'KOBRA_MODEL_CODE': 'KS1',
                  'ellipsis': lambda text, n: text if len(text) <= n else text[:n - 1] + '…',
                  'run_async': lambda fn: fn(), 'printer_ip': lambda: '192.168.1.5',
                  'RINKHALS_VERSION': 'test', 'KOBRA_MODEL': 'Kobra', 'KOBRA_VERSION': '1.0'}
@@ -63,6 +65,8 @@ class BrowserScreenTests(unittest.TestCase):
         import browser_tools
         # history, text size and refusing sites of this test only
         browser_tools.SETTINGS_PATH = str(Path(tempfile.mkdtemp()) / 'lemsearch.json')
+        import model_files
+        model_files.MODELS_DIR = tempfile.mkdtemp()
         self.app = BrowserApp()
         self.app.root_screen = mock.MagicMock()
         self.app.screen_main = object()
@@ -513,6 +517,56 @@ class BrowserScreenTests(unittest.TestCase):
         self.open('https://files.example/Benchy.gcode')
         self.assertEqual(self.fetched, [])
         self.assertIn('Download this print file', self.app.show_text_dialog.call_args.args[0])
+
+    # --- 3D models --------------------------------------------------------------------------
+    def model(self, name, sliced_for=None, plates=()):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_model_files import threemf
+        import model_files
+        path = os.path.join(model_files.MODELS_DIR, name)
+        threemf(path, sliced_for, plates)
+        return path
+
+    def label_texts(self):
+        return [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+
+    def test_a_model_link_is_offered(self):
+        blocks = [{'kind': 'p', 'text': 'Files', 'links': [('stl', 'https://files.example/Benchy.stl')]}]
+        self.pages['https://models.example/'] = page('https://models.example/', blocks=blocks)
+        LVR.reset_mock()
+        self.open('https://models.example/')
+        self.assertIn('Open 3D model: Benchy.stl', [c.args[0] for c in LVR.button.return_value.set_text.call_args_list])
+
+    def test_a_model_sliced_for_this_printer_offers_its_plates(self):
+        path = self.model('Benchy.gcode.3mf', 'Anycubic Kobra S1', plates=((1, 600, 2.5),))
+        LVR.reset_mock()
+        self.app.browser_model_open(path)
+        buttons = [c.args[0] for c in LVR.button.return_value.set_text.call_args_list]
+        self.assertIn('Copy plate 1 to the printer', buttons)
+        self.assertIn('Sliced for: Anycubic Kobra S1', self.label_texts())
+
+    def test_a_model_sliced_for_another_printer_is_refused(self):
+        path = self.model('Other.gcode.3mf', 'Bambu Lab X1 Carbon', plates=((1, 600, 2.5),))
+        LVR.reset_mock()
+        self.app.browser_model_open(path)
+        buttons = [c.args[0] for c in LVR.button.return_value.set_text.call_args_list]
+        self.assertFalse(any(b.startswith('Copy plate') for b in buttons), buttons)
+        self.assertTrue(any('Bambu Lab X1 Carbon' in t and 'not for this' in t for t in self.label_texts()))
+
+    def test_an_unsliced_model_shows_its_size_and_whether_it_fits(self):
+        path = self.model('Box.3mf')
+        LVR.reset_mock()
+        self.app.browser_model_open(path)
+        texts = self.label_texts()
+        self.assertIn('Size: 30 x 40 x 10 mm', texts)
+        self.assertIn('It fits on this printer.', texts)
+
+    def test_downloaded_models_are_listed_on_the_start_page(self):
+        self.model('Box.3mf')
+        LVR.reset_mock()
+        self.app.browser_start_page()
+        self.assertIn('Box.3mf', [c.args[0] for c in LVR.button.return_value.set_text.call_args_list])
+
 
 if __name__ == '__main__':
     unittest.main()

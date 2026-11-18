@@ -31,6 +31,7 @@ from common import *
 import reader
 import app_settings
 import browser_tools
+import model_files
 import home_tools
 import liquid_layout
 import liquid_ui
@@ -2286,6 +2287,8 @@ class RinkhalsUiApp(BaseApp):
     def browser_link(self, parent, text, url):
         if url and browser_tools.is_print_file(url):
             return self.browser_print_link(parent, url)
+        if url and model_files.model_kind(url):
+            return self.browser_model_link(parent, url)
         button = lvr.button(parent)
         button.set_width(lv.pct(100))
         button.set_text(ellipsis(text, 40))
@@ -2366,6 +2369,13 @@ class RinkhalsUiApp(BaseApp):
                 settings.clear_history()
                 self.browser_start_page()
             self.browser_link(panel, 'Clear recent searches and pages', None).add_event_cb(clear, lv.EVENT_CODE.CLICKED, None)
+        models = self.browser_saved_models()
+        if models:
+            self.browser_label(panel, 'Your 3D models', 'h2')
+            for name in models[:5]:
+                self.browser_row_button(panel, '\ue84d', name).add_event_cb(      # 3d_rotation
+                    lambda e, n=name: self.browser_model_open(os.path.join(model_files.MODELS_DIR, n)),
+                    lv.EVENT_CODE.CLICKED, None)
         self.browser_label(panel, 'Bookmarks', 'h2')
         saved = home_tools.load_bookmarks()
         for name, url in saved:
@@ -2536,6 +2546,140 @@ class RinkhalsUiApp(BaseApp):
                         lambda e: self.browser_open(self.browser_url, push=False), lv.EVENT_CODE.CLICKED, None)
         run_async(work)
 
+    # --- 3D models: STL and 3MF ------------------------------------------------------------
+    def browser_saved_models(self):
+        """Models downloaded before, newest first."""
+        try:
+            entries = [e for e in os.scandir(model_files.MODELS_DIR)
+                       if e.is_file() and not e.name.startswith('.') and model_files.model_kind(e.name)]
+        except OSError:
+            return []
+        return [e.name for e in sorted(entries, key=lambda e: e.stat().st_mtime, reverse=True)]
+
+    def browser_model_link(self, parent, url):
+        button = self.browser_row_button(parent, '\ue84d',               # 3d_rotation
+                                         ellipsis('Open 3D model: ' + model_files.model_file_name(url), 44))
+        button.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        button.add_event_cb(lambda e, u=url: self.browser_model_download(u), lv.EVENT_CODE.CLICKED, None)
+        return button
+
+    def browser_model_download(self, url):
+        name = model_files.model_file_name(url)
+        self.show_text_dialog(f'Download this 3D model\nto the printer?\n\n{ellipsis(name, 40)}',
+                              action='Download', callback=lambda: self.browser_model_download_now(url, name))
+
+    def browser_model_download_now(self, url, name):
+        self.browser_gen += 1
+        gen = self.browser_gen
+        self.browser_showing_url = False
+        self.screen_browser.label_title.set_text('Downloading...')
+        panel = self.browser_new_content()
+        status = self.browser_label(panel, f'{name}\nStarting...', 'p')
+        last = [0.0]
+
+        def progress(done, total):
+            now = time.monotonic()
+            if now - last[0] < 0.5:
+                return
+            last[0] = now
+            text = f'{done / 1048576:.1f} MB' + (f' of {total / 1048576:.1f} MB' if total else '')
+            with lvr.lock():
+                if gen == self.browser_gen:
+                    status.set_text(f'{name}\n{text}')
+
+        def work():
+            try:
+                os.makedirs(model_files.MODELS_DIR, exist_ok=True)
+                path = browser_tools.download_print_file(url, folder=model_files.MODELS_DIR, printing=browser_tools.printer_busy,
+                                                         progress=progress, user_agent=reader.USER_AGENT,
+                                                         name_for=model_files.model_file_name,
+                                                         max_bytes=model_files.MAX_MODEL_BYTES)
+            except browser_tools.DownloadError as e:
+                with lvr.lock():
+                    if gen == self.browser_gen:
+                        self.screen_browser.label_title.set_text('Not downloaded')
+                        status.set_text(str(e))
+                return
+            except Exception as e:
+                logging.exception('Model download failed')
+                with lvr.lock():
+                    if gen == self.browser_gen:
+                        self.screen_browser.label_title.set_text('Not downloaded')
+                        status.set_text(f'Unexpected error: {type(e).__name__}')
+                return
+            with lvr.lock():
+                if gen == self.browser_gen:
+                    self.browser_model_open(path)
+        run_async(work)
+
+    def browser_model_open(self, path):
+        """The model screen: its size, whether it fits, and for a sliced 3MF its plates."""
+        self.browser_gen += 1
+        gen = self.browser_gen
+        self.browser_showing_url = False
+        name = os.path.basename(path)
+        self.screen_browser.label_title.set_text(ellipsis(name, 24))
+        panel = self.browser_new_content()
+        self.browser_label(panel, 'Reading the model...', 'quote')
+
+        def work():
+            info, error = None, None
+            try:
+                info = model_files.model_info(path)
+            except model_files.ModelError as e:
+                error = str(e)
+            except Exception as e:
+                logging.exception('Model failed to open')
+                error = f'Unexpected error: {type(e).__name__}'
+            with lvr.lock():
+                if gen != self.browser_gen:
+                    return
+                content = self.browser_new_content()
+                if error:
+                    self.browser_label(content, error, 'p')
+                    return
+                for line in model_files.describe(info, KOBRA_MODEL_CODE):
+                    self.browser_label(content, line, 'p')
+                if info.get('sliced'):
+                    problem = model_files.sliced_for_problem(info, KOBRA_MODEL_CODE)
+                    if problem:
+                        self.browser_label(content, problem, 'quote')
+                    else:
+                        for plate in info['plates']:
+                            self.browser_row_button(content, '\uf090', f'Copy plate {plate["index"]} to the printer').add_event_cb(
+                                lambda e, i=plate['index']: self.browser_model_copy(path, i), lv.EVENT_CODE.CLICKED, None)
+                else:
+                    self.browser_label(content, 'To print it, slice it first. A slicer on the printer is coming; '
+                                                'until then, slice it on a computer for this printer.', 'quote')
+                delete = self.browser_link(content, 'Delete this model', None)
+                delete.set_style_text_color(lvr.COLOR_DANGER, lv.STATE.DEFAULT)
+                delete.add_event_cb(lambda e: self.browser_model_delete(path), lv.EVENT_CODE.CLICKED, None)
+        run_async(work)
+
+    def browser_model_copy(self, path, plate):
+        def work():
+            try:
+                copied = model_files.extract_plate(path, plate, KOBRA_MODEL_CODE, printing=browser_tools.printer_busy)
+                text = f'{os.path.basename(copied)} is in the printer\'s files.\nStart it from the print screen or Mainsail.'
+            except model_files.ModelError as e:
+                text = str(e)
+            except Exception as e:
+                logging.exception('Plate copy failed')
+                text = f'Unexpected error: {type(e).__name__}'
+            with lvr.lock():
+                self.show_text_dialog(text)
+        run_async(work)
+
+    def browser_model_delete(self, path):
+        def delete():
+            try:
+                os.remove(path)
+            except OSError as e:
+                logging.error(f'Could not delete {path}: {e}')
+            self.browser_start_page()
+        self.show_text_dialog(f'Delete {ellipsis(os.path.basename(path), 30)}?', action='Delete',
+                              action_color=lvr.COLOR_DANGER, callback=delete)
+
     def browser_form(self, form, label):
         self.show_input_text_dialog(label, '', False,
                                     lambda text: self.browser_open(reader.submit_url(form, text)) if text else None)
@@ -2561,6 +2705,9 @@ class RinkhalsUiApp(BaseApp):
             return
         if browser_tools.is_print_file(url):
             self.browser_download(url)
+            return
+        if model_files.model_kind(url):
+            self.browser_model_download(url)
             return
         self.browser_gen += 1
         gen = self.browser_gen
