@@ -48,6 +48,16 @@ However, Anycubic moved from the K3 software base (GoKlipper) to a K4 software b
 
 In addition, the SWU update flow requires a trusted certificate for package acceptance. Until a reliable bypass is discovered, SWU-based firmware injection similar to Boomslang is not currently feasible on Kobra X.
 
+## Why a fork?
+
+Fair question, and a common one. The changes here were big and moving fast: new touch UI looks, patches for newer firmware like Kobra S1 `2.7.3.7`, and its own release and update flow. I didn't want to push half-finished work onto the upstream project.
+
+Boomslang keeps the same on-printer layout (`/useremain/rinkhals`), so apps and tools made for Rinkhals keep working, and [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) apps also run on Rinkhals.
+
+"One project with all the features" would be better for everyone, and that is the long-term goal. The generic fixes (the newer-firmware patches and small bug fixes) are meant to go upstream as pull requests, so they don't stay only here. If you think a specific feature should go upstream first, open an issue and say which one.
+
+Boomslang is built on the work of the Rinkhals maintainers, who did the real work here.
+
 ## General Information
 
 In case you're wondering: Rinkhals is named after the rinkhals, a sub-species of Cobras ... Kobra ... Rinkhals 👏 Boomslang keeps the snake theme with another South African snake, the boomslang.
