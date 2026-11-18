@@ -238,6 +238,29 @@ def print_file_name(url, existing=()):
     return candidate
 
 
+MOONRAKER_PRINT_STATE = 'http://127.0.0.1:7125/printer/objects/query?print_stats'
+
+
+def printer_busy(fetch=None):
+    """True while printing or paused, and also when that can't be told.
+
+    A download writes megabytes to the printer's disk and keeps its single
+    weak CPU busy; during a print that risks the print. When Moonraker does
+    not answer, nobody can say the printer is idle, so the download waits.
+    fetch() returns Moonraker's JSON answer (tests pass their own).
+    """
+    if fetch is None:
+        def fetch():
+            import urllib.request
+            with urllib.request.urlopen(MOONRAKER_PRINT_STATE, timeout=2) as r:
+                return json.loads(r.read(65536))
+    try:
+        state = fetch()['result']['status']['print_stats']['state']
+    except Exception:
+        return True
+    return str(state).lower() in ('printing', 'paused')
+
+
 def free_bytes(path):
     stat = os.statvfs(path)
     return stat.f_bavail * stat.f_frsize

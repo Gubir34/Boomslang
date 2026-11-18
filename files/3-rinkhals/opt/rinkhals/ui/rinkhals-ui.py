@@ -2276,6 +2276,8 @@ class RinkhalsUiApp(BaseApp):
         return label
 
     def browser_link(self, parent, text, url):
+        if url and browser_tools.is_print_file(url):
+            return self.browser_print_link(parent, url)
         button = lvr.button(parent)
         button.set_width(lv.pct(100))
         button.set_text(ellipsis(text, 40))
@@ -2286,24 +2288,29 @@ class RinkhalsUiApp(BaseApp):
             button.add_event_cb(lambda e, u=url: self.browser_open(u), lv.EVENT_CODE.CLICKED, None)
         return button
 
-    def browser_search_field(self, parent, text=None):
-        """The search box at the top: tap to type words or an address."""
-        field = lvr.button(parent)
-        field.set_width(lv.pct(100))
-        field.set_icon('\ue8b6')
-        field.set_text(ellipsis(text, 40) if text else 'Search the web or type an address')
-        field.set_flex_flow(lv.FLEX_FLOW.ROW)
-        field.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+    def browser_row_button(self, parent, icon, text):
+        """A full-width button with its icon on the left of its text."""
+        button = lvr.button(parent)
+        button.set_width(lv.pct(100))
+        button.set_icon(icon)
+        button.set_text(text)
+        button.set_flex_flow(lv.FLEX_FLOW.ROW)
+        button.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        button.set_style_pad_column(lv.dpx(12), lv.STATE.DEFAULT)
+        button.set_style_pad_left(lv.dpx(18), lv.STATE.DEFAULT)
         # lvr.button makes its icon and text 100 % wide (it lays them out in a
         # column); side by side the icon took the whole row and hid the text
-        icon, words = field.get_child(0), field.get_child(1)
-        icon.set_width(lv.SIZE_CONTENT)
+        icon_label, words = button.get_child(0), button.get_child(1)
+        icon_label.set_width(lv.SIZE_CONTENT)
         words.set_width(1)
         words.set_flex_grow(1)
         words.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
         words.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
-        field.set_style_pad_column(lv.dpx(12), lv.STATE.DEFAULT)
-        field.set_style_pad_left(lv.dpx(18), lv.STATE.DEFAULT)
+        return button
+
+    def browser_search_field(self, parent, text=None):
+        """The search box at the top: tap to type words or an address."""
+        field = self.browser_row_button(parent, '\ue8b6', ellipsis(text, 40) if text else 'Search the web or type an address')
         field.set_style_text_color(lvr.COLOR_TEXT if text else lvr.COLOR_SUBTITLE, lv.STATE.DEFAULT)
         field.add_event_cb(lambda e: self.show_input_text_dialog('Search or address', text or '', False,
                                                                  lambda typed: self.browser_open(typed)),
@@ -2467,6 +2474,60 @@ class RinkhalsUiApp(BaseApp):
         if self.browser_page:
             self.browser_show_part(self.browser_start)
 
+    def browser_print_link(self, parent, url):
+        """A link to a print file: offered as a download into the printer's files."""
+        button = self.browser_row_button(parent, '\uf090',          # download
+                                         ellipsis('Download to printer: ' + browser_tools.print_file_name(url), 44))
+        button.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        button.add_event_cb(lambda e, u=url: self.browser_download(u), lv.EVENT_CODE.CLICKED, None)
+        return button
+
+    def browser_download(self, url):
+        """Ask, then save a print file into the printer's files, showing how far it got."""
+        name = browser_tools.print_file_name(url)
+        self.show_text_dialog(f'Download this print file\nto the printer?\n\n{ellipsis(name, 40)}',
+                              action='Download', callback=lambda: self.browser_download_now(url, name))
+
+    def browser_download_now(self, url, name):
+        self.browser_gen += 1
+        gen = self.browser_gen
+        self.browser_showing_url = False
+        self.screen_browser.label_title.set_text('Downloading...')
+        panel = self.browser_new_content()
+        status = self.browser_label(panel, f'{name}\nStarting...', 'p')
+        last = [0.0]
+
+        def progress(done, total):
+            now = time.monotonic()
+            if now - last[0] < 0.5:            # the screen is redrawn at most twice a second
+                return
+            last[0] = now
+            text = f'{done / 1048576:.1f} MB' + (f' of {total / 1048576:.1f} MB' if total else '')
+            with lvr.lock():
+                if gen == self.browser_gen:
+                    status.set_text(f'{name}\n{text}')
+
+        def work():
+            try:
+                path = browser_tools.download_print_file(url, printing=browser_tools.printer_busy, progress=progress,
+                                                         user_agent=reader.USER_AGENT)
+                title, text = 'Saved to the printer', (f'{os.path.basename(path)} is in the printer\'s files. '
+                                                       'Start it from the print screen or Mainsail.')
+            except browser_tools.DownloadError as e:
+                title, text = 'Not downloaded', str(e)
+            except Exception as e:
+                logging.exception('Print file download failed')
+                title, text = 'Not downloaded', f'Unexpected error: {type(e).__name__}'
+            with lvr.lock():
+                if gen != self.browser_gen:
+                    return
+                self.screen_browser.label_title.set_text(title)
+                status.set_text(text)
+                if self.browser_url:
+                    self.browser_link(panel, 'Back to the page', None).add_event_cb(
+                        lambda e: self.browser_open(self.browser_url, push=False), lv.EVENT_CODE.CLICKED, None)
+        run_async(work)
+
     def browser_form(self, form, label):
         self.show_input_text_dialog(label, '', False,
                                     lambda text: self.browser_open(reader.submit_url(form, text)) if text else None)
@@ -2489,6 +2550,9 @@ class RinkhalsUiApp(BaseApp):
             url = reader.normalize_url(target)
         except reader.BrowserError as e:
             self.show_text_dialog(str(e))
+            return
+        if browser_tools.is_print_file(url):
+            self.browser_download(url)
             return
         self.browser_gen += 1
         gen = self.browser_gen

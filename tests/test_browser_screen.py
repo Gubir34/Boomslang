@@ -38,7 +38,7 @@ def load_browser_class():
     # Bookmarks go to a folder of this test run, not to the printer's path
     home_tools.BOOKMARKS_PATH = str(Path(tempfile.mkdtemp()) / 'bookmarks.json')
     namespace = {'lv': lv, 'lvr': lvr, 'reader': reader, 'logging': logging, 'home_tools': home_tools,
-                 'browser_tools': browser_tools,
+                 'browser_tools': browser_tools, 'time': __import__('time'), 'os': __import__('os'),
                  'ellipsis': lambda text, n: text if len(text) <= n else text[:n - 1] + '…',
                  'run_async': lambda fn: fn(), 'printer_ip': lambda: '192.168.1.5',
                  'RINKHALS_VERSION': 'test', 'KOBRA_MODEL': 'Kobra', 'KOBRA_VERSION': '1.0'}
@@ -395,8 +395,6 @@ class BrowserScreenTests(unittest.TestCase):
         LV.color_make.assert_any_call(0, 0, 0)                           # dark text on the light box
         self.assertIn(mock.call('large'), LVR.title.return_value.set_text.call_args_list)
 
-if __name__ == '__main__':
-    unittest.main()
 
     # --- LemSearch Lite: results as cards, the phone for sites that refuse simple browsers ---
 
@@ -482,3 +480,39 @@ if __name__ == '__main__':
         with mock.patch.object(reader, 'search', self.search):
             callback('pressure advance')
         self.assertEqual(self.fetched[-1], reader.SEARCH_URL + 'site%3Aklipper3d.org+pressure+advance')
+
+    # --- print files ------------------------------------------------------------------------
+    def test_a_print_file_link_is_offered_as_a_download(self):
+        blocks = [{'kind': 'p', 'text': 'Files', 'links': [('benchy', 'https://files.example/Benchy.gcode')]}]
+        self.pages['https://models.example/'] = page('https://models.example/', blocks=blocks)
+        LVR.reset_mock()
+        self.open('https://models.example/')
+        texts = [c.args[0] for c in LVR.button.return_value.set_text.call_args_list]
+        self.assertIn('Download to printer: Benchy.gcode', texts)
+
+    def test_a_download_asks_first_and_reports_where_the_file_went(self):
+        with mock.patch.object(browser_tools, 'download_print_file', return_value='/useremain/app/gk/gcodes/Benchy.gcode') as dl:
+            self.app.browser_download('https://files.example/Benchy.gcode')
+            dl.assert_not_called()                                  # nothing before the user agrees
+            message, = self.app.show_text_dialog.call_args.args
+            self.assertIn('Benchy.gcode', message)
+            self.app.show_text_dialog.call_args.kwargs['callback']()
+            dl.assert_called_once()
+            self.assertIs(dl.call_args.kwargs['printing'], browser_tools.printer_busy)
+        self.assertEqual(self.titles()[-1], 'Saved to the printer')
+
+    def test_a_refused_download_says_why(self):
+        error = browser_tools.DownloadError('The printer is printing. Download the file when it is done.')
+        with mock.patch.object(browser_tools, 'download_print_file', side_effect=error):
+            self.app.browser_download_now('https://files.example/Benchy.gcode', 'Benchy.gcode')
+        self.assertEqual(self.titles()[-1], 'Not downloaded')
+        texts = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertTrue(any('printing' in t for t in texts), texts)
+
+    def test_typing_a_print_file_address_downloads_instead_of_reading(self):
+        self.open('https://files.example/Benchy.gcode')
+        self.assertEqual(self.fetched, [])
+        self.assertIn('Download this print file', self.app.show_text_dialog.call_args.args[0])
+
+if __name__ == '__main__':
+    unittest.main()

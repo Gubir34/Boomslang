@@ -201,3 +201,20 @@ class PrintFileTests(unittest.TestCase):
         seen = []
         self.download(progress=lambda done, total: seen.append((done, total)))
         self.assertEqual(seen[-1], (600, 600))
+
+
+class PrinterBusyTests(unittest.TestCase):
+    def answer(self, state):
+        return lambda: {'result': {'status': {'print_stats': {'state': state}}}}
+
+    def test_printing_or_paused_is_busy_idle_states_are_not(self):
+        for state in ('printing', 'paused', 'PRINTING'):
+            self.assertTrue(bt.printer_busy(self.answer(state)), state)
+        for state in ('standby', 'complete', 'cancelled', 'error'):
+            self.assertFalse(bt.printer_busy(self.answer(state)), state)
+
+    def test_when_it_can_not_be_told_it_counts_as_busy(self):
+        def down():
+            raise OSError('connection refused')
+        self.assertTrue(bt.printer_busy(down))
+        self.assertTrue(bt.printer_busy(lambda: {'result': {}}))
