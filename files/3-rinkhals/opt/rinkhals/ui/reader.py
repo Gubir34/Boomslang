@@ -36,14 +36,17 @@ import reader_css
 from reader_css import (MAX_CSS_BYTES, MAX_CSS_RULES, NAMED_COLORS, Stylesheet, media_matches,  # noqa: F401
                         parse_color, parse_css, parse_declarations, parse_length, parse_rgb)
 
-MAX_BYTES = 512 * 1024      # bytes of HTML read from one page
+MAX_BYTES = 512 * 1024      # characters of HTML parsed from one page, after slim_html()
+MAX_RAW_BYTES = 3 * 1024 * 1024   # bytes downloaded: modern pages carry megabytes of script before their text
 MAX_BLOCKS = 2000           # blocks kept from one page (the touch UI shows them in parts)
 MAX_BLOCK_CHARS = 1200      # longer paragraphs are split
 MAX_LINKS_PER_BLOCK = 8
 MAX_FORMS = 4
 MIN_FREE_MEMORY_KB = 30 * 1024
 SEARCH_URL = 'https://html.duckduckgo.com/html/?q='
-USER_AGENT = 'Mozilla/5.0 (X11; Linux armv7l) Boomslang-Reader/1.0'
+# Says honestly what it is. Sites that refuse simple browsers are not tricked:
+# the touch UI offers to open them on a phone instead.
+USER_AGENT = 'Mozilla/5.0 (X11; Linux armv7l) LemSearchLite/1.0 (Boomslang)'
 
 MAX_STYLESHEETS = 2         # external stylesheets fetched for one page
 MAX_REDIRECTS = 3
@@ -184,8 +187,140 @@ def data_blocks(scripts):
     return blocks
 
 
+# --- Modern pages: megabytes of script, text far down ---------------------------
+
+_SCRIPT_OR_STYLE = re.compile(r'(<(script|style|svg)\b([^>]*)>)(.*?)(</\2\s*>)', re.S | re.I)
+_DATA_SCRIPT = re.compile(r"""type\s*=\s*["']?application/(?:ld\+)?json|id\s*=\s*["']?(?:__NEXT_DATA__|__NUXT_DATA__)""", re.I)
+SMALL_SCRIPT_CHARS = 4096       # inline scripts this short are kept: redirects, document.write
+
+
+def slim_html(html):
+    """The page without the weight that is never read, so the text fits in MAX_BYTES.
+
+    Modern pages put hundreds of kilobytes of script, style and inline SVG
+    before their text; cut at MAX_BYTES they showed nothing. Kept: short
+    scripts (redirects and document.write are short), data scripts up to
+    MAX_DATA_BYTES (data_blocks reads them), and stylesheets up to
+    MAX_CSS_BYTES (reader_css reads no more). SVG drawings are emptied.
+    """
+    data_left = [MAX_DATA_BYTES]
+
+    def keep(m):
+        open_tag, tag, attrs, body, close = m.group(1), m.group(2).lower(), m.group(3), m.group(4), m.group(5)
+        if tag == 'svg':
+            return open_tag + close
+        if tag == 'style':
+            return open_tag + body[:MAX_CSS_BYTES] + close
+        if len(body) <= SMALL_SCRIPT_CHARS:
+            return m.group(0)
+        if _DATA_SCRIPT.search(attrs) and data_left[0] > 0:
+            part = body[:data_left[0]]
+            data_left[0] -= len(part)
+            return open_tag + part + close
+        return open_tag + close
+
+    return _SCRIPT_OR_STYLE.sub(keep, html)
+
+
+def summary_blocks(meta):
+    """What the page says about itself for link previews (og:title, og:description ...).
+
+    Shown when a page drawn by JavaScript has no text of its own and carries no
+    readable data: better its own summary than an empty screen.
+    """
+    title = (meta.get('og:title') or meta.get('twitter:title') or '').strip()
+    text = (meta.get('og:description') or meta.get('twitter:description') or meta.get('description') or '').strip()
+    blocks = []
+    if title:
+        blocks.append({'kind': 'h2', 'text': title[:MAX_BLOCK_CHARS], 'main': False, 'links': [],
+                       'color': None, 'align': None})
+    if text and text != title:
+        blocks.append({'kind': 'p', 'text': text[:MAX_BLOCK_CHARS], 'main': False, 'links': [],
+                       'color': None, 'align': None})
+    return blocks
+
+
+def text_chars(blocks):
+    return sum(len(b['text']) for b in blocks if b['kind'] != 'form')
+
+
+class _SearchResults(HTMLParser):
+    """DuckDuckGo's page for browsers without JavaScript -> results. Ads are left out."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.results = []
+        self._result = None
+        self._field = None
+        self._depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        classes = (attrs.get('class') or '').split()
+        if tag == 'div':
+            if self._result is not None:
+                self._depth += 1
+            elif 'web-result' in classes and 'result--ad' not in classes:
+                self._result = {'title': '', 'url': '', 'domain': '', 'snippet': ''}
+                self._depth = 1
+        if self._result is None:
+            return
+        if tag == 'a' and 'result__a' in classes:
+            self._field = 'title'
+            self._result['url'] = clean_link(urljoin('https://duckduckgo.com/', attrs.get('href') or ''))
+        elif tag == 'a' and 'result__url' in classes:
+            self._field = 'domain'
+        elif 'result__snippet' in classes:
+            self._field = 'snippet'
+
+    def handle_endtag(self, tag):
+        if tag == 'a':
+            self._field = None
+        if tag == 'div' and self._result is not None:
+            self._depth -= 1
+            if self._field == 'snippet':
+                self._field = None
+            if self._depth <= 0:
+                result = {k: re.sub(r'\s+', ' ', v).strip() for k, v in self._result.items()}
+                if result['title'] and urlparse(result['url']).scheme in ('http', 'https'):
+                    result['domain'] = (result['domain'] or urlparse(result['url']).netloc).split('/')[0]
+                    self.results.append(result)
+                self._result = None
+                self._field = None
+
+    def handle_data(self, data):
+        if self._result is not None and self._field:
+            self._result[self._field] += data
+
+
+def search_results(html, limit=20):
+    """[{'title', 'url', 'domain', 'snippet'}] from a SEARCH_URL page."""
+    parser = _SearchResults()
+    try:
+        parser.feed(html)
+        parser.close()
+    except Exception:
+        pass
+    return parser.results[:limit]
+
+
+def is_search(url):
+    return (url or '').startswith(SEARCH_URL)
+
+
+def search_query(url):
+    """The words of a SEARCH_URL address ('' for any other)."""
+    if not is_search(url):
+        return ''
+    return parse_qs(urlparse(url).query).get('q', [''])[0]
+
+
 class BrowserError(Exception):
     """An error with a message that is fine to show on the touch screen."""
+
+
+class BlockedError(BrowserError):
+    """The site does not let simple browsers in (401, 403, 429). Opening it on a phone works."""
 
 
 class Page:
@@ -198,6 +333,8 @@ class Page:
         self.truncated = truncated
         self.redirect = redirect      # where a meta refresh or script redirect sends the reader
         self.from_data = False        # the text came from script data, see data_blocks
+        self.from_summary = False     # the text is the page's own preview (og:description), see summary_blocks
+        self.amp = None               # the page's AMP version, drawn without scripts, when it has one
 
 
 def normalize_url(text):
@@ -268,6 +405,8 @@ class _Extractor(HTMLParser):
         self.truncated = False
         self.redirect = None
         self.data = []            # JSON found in scripts, for pages drawn by JavaScript
+        self.meta = {}            # og:title, og:description, description ... (link previews)
+        self.amp = None           # <link rel="amphtml">
         self._data_bytes = 0
         self._kind = 'p'
         self._text = []
@@ -475,6 +614,14 @@ class _Extractor(HTMLParser):
             if (attrs.get('http-equiv') or '').lower() == 'refresh' and not self.redirect:
                 target = meta_refresh_target(attrs.get('content'))
                 self.redirect = self._resolve(target) if target else None
+            name = (attrs.get('property') or attrs.get('name') or '').lower()
+            if name in ('og:title', 'og:description', 'description', 'twitter:title', 'twitter:description') \
+                    and name not in self.meta and attrs.get('content'):
+                self.meta[name] = unescape(attrs['content'])[:2000]
+            return
+        if tag == 'link':
+            if 'amphtml' in (attrs.get('rel') or '').lower().split() and attrs.get('href') and not self.amp:
+                self.amp = self._resolve(attrs['href'])
             return
         if tag == 'title':
             self._in_title = True
@@ -664,12 +811,19 @@ def parse_html(html, base_url, stylesheets=()):
         blocks = [b for b in blocks if b['main'] or b['kind'] == 'form']
     title = re.sub(r'\s+', ' ', extractor.title).strip() or urlparse(base_url).netloc
     page = Page(base_url, title, blocks, extractor.truncated, extractor.redirect)
-    # Hardly any text: the page is drawn by JavaScript. Show what its data says.
-    if extractor.data and sum(len(b['text']) for b in blocks if b['kind'] != 'form') < THIN_PAGE_CHARS:
-        found = data_blocks(extractor.data)
+    page.amp = extractor.amp
+    # Hardly any text: the page is drawn by JavaScript. Show what its data says,
+    # or else what it says about itself for link previews.
+    if text_chars(blocks) < THIN_PAGE_CHARS:
+        found = data_blocks(extractor.data) if extractor.data else []
         if found:
             page.blocks = blocks + found
             page.from_data = True
+        else:
+            found = summary_blocks(extractor.meta)
+            if found and text_chars(found) > text_chars(blocks):
+                page.blocks = found + blocks
+                page.from_summary = True
     return page
 
 
@@ -696,9 +850,61 @@ def fetch(url, get=None, available_kb=memory_available_kb):
         page = _fetch_once(url, get, available_kb)
         target = page.redirect
         if not target or target in seen or hop == MAX_REDIRECTS:
-            return page
+            return _try_amp(page, seen, get, available_kb)
         seen.add(target)
         url = target
+
+
+def _try_amp(page, seen, get, available_kb):
+    """A page with hardly any text of its own, that has an AMP version: that version.
+
+    AMP pages are drawn on the server, without scripts, so a news article that
+    is empty here usually reads well in its AMP form. The page as it is stays
+    when the AMP one fails or does not read better.
+    """
+    own = text_chars([b for b in page.blocks if not page.from_summary])
+    if not page.amp or page.amp in seen or own >= THIN_PAGE_CHARS:
+        return page
+    try:
+        amp = _fetch_once(page.amp, get, available_kb)
+    except BrowserError:
+        return page
+    return amp if text_chars(amp.blocks) > text_chars(page.blocks) else page
+
+
+def search(url, get=None, available_kb=memory_available_kb):
+    """Results for a SEARCH_URL address: [{'title', 'url', 'domain', 'snippet'}].
+
+    The same request as opening the page, but the results are read as results,
+    so the touch UI can show them as cards instead of a page of links.
+    """
+    free = available_kb()
+    if free is not None and free < MIN_FREE_MEMORY_KB:
+        raise BrowserError(f'Not enough free memory ({free // 1024} MB) to search safely')
+    if get is None:
+        import requests
+        get = requests.get
+    try:
+        response = get(url, timeout=(6, 12), headers={'User-Agent': USER_AGENT, 'Accept': 'text/html'})
+    except Exception as e:
+        raise BrowserError(f'Could not reach the search: {type(e).__name__}')
+    try:
+        if response.status_code in (401, 403, 429):
+            raise BlockedError(f'The search is not answering simple browsers right now ({response.status_code}).')
+        if response.status_code >= 400:
+            raise BrowserError(f'The search answered {response.status_code}')
+        text = response.text or ''
+        results = search_results(text)
+        # No results and no "no results" page either: a cut or a busy page
+        # (DuckDuckGo answers 202 when it is busy). Not the same as nothing found.
+        nothing_found = 'no-results' in text or 'no results' in text.lower()
+        if not results and (response.status_code != 200 or not nothing_found):
+            raise BrowserError('The search did not answer properly. Try again in a moment.')
+        return results
+    finally:
+        close = getattr(response, 'close', None)
+        if close:
+            close()
 
 
 _LINK_TAG = re.compile(r'<link\b[^>]*>', re.I)
@@ -771,18 +977,20 @@ def _fetch_once(url, get, available_kb):
         final = getattr(response, 'url', url) or url
         if urlparse(final).scheme not in ('http', 'https'):
             raise BrowserError('The page redirected to an unsupported address')
+        if response.status_code in (401, 403, 429):
+            raise BlockedError(f'This site does not let simple browsers in ({response.status_code}).')
         if response.status_code >= 400:
             raise BrowserError(f'The server answered {response.status_code}')
         kind = (response.headers.get('Content-Type') or 'text/html').split(';')[0].strip().lower()
         if kind not in ('text/html', 'application/xhtml+xml', 'text/plain', ''):
             raise BrowserError(f'This is a {kind} file, not a web page')
         parts, size = [], 0
-        for chunk in response.iter_content(chunk_size=16384):
+        for chunk in response.iter_content(chunk_size=65536):
             parts.append(chunk)
             size += len(chunk)
-            if size >= MAX_BYTES:
+            if size >= MAX_RAW_BYTES:
                 break
-        data = b''.join(parts)[:MAX_BYTES]
+        data = b''.join(parts)[:MAX_RAW_BYTES]
         # Use the charset the server states, otherwise UTF-8 (undecodable
         # bytes become replacement characters instead of an error)
         header = response.headers.get('Content-Type') or ''
@@ -801,6 +1009,7 @@ def _fetch_once(url, get, available_kb):
         if close:
             close()
     if kind == 'text/plain':
-        escaped = text.replace('&', '&amp;').replace('<', '&lt;')
+        escaped = text[:MAX_BYTES].replace('&', '&amp;').replace('<', '&lt;')
         return parse_html(f'<pre>{escaped}</pre>', final)
+    text = slim_html(text)[:MAX_BYTES]
     return parse_html(text, final, _fetch_stylesheets(text, final, get))

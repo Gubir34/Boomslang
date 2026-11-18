@@ -115,7 +115,7 @@ From the home screen you reach:
 - **Apps**: turn apps on and off, see whether they are running, and change their settings
 - **App Store**: browse and install apps from [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) directly from the printer screen (see below)
 - **Updates**: Boomslang and Anycubic firmware updates, following your update channel
-- **Web portal**, **Mainsail** and a reader-mode **Browser**
+- **Web portal**, **Mainsail** and **LemSearch Lite**, a search and reader-mode browser: results as cards, pages as text with links. It runs no JavaScript (the printer has about 200 MB of memory), but reads pages built for it from the data and preview they carry, follows AMP versions, and offers a QR code to open on your phone the sites that refuse simple browsers
 - **Settings**: sounds, the look, reboot and restart, system information
 
 ### Three looks

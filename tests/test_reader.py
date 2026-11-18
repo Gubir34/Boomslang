@@ -197,9 +197,9 @@ class FetchTests(unittest.TestCase):
         self.assertIsNone(page.blocks[0]['align'])
 
     def test_big_pages_stop_downloading_at_the_limit(self):
-        response = FakeResponse(b'<p>' + b'a' * (3 * reader.MAX_BYTES) + b'</p>')
+        response = FakeResponse(b'<p>' + b'a' * (2 * reader.MAX_RAW_BYTES) + b'</p>')
         fetching(response)
-        self.assertLessEqual(response.bytes_served, reader.MAX_BYTES + 16384)
+        self.assertLessEqual(response.bytes_served, reader.MAX_RAW_BYTES + 65536)
         self.assertTrue(response.closed)
 
     def test_plain_text_is_shown_as_preformatted_text(self):
@@ -673,3 +673,127 @@ class SpeedTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ModernPageTests(unittest.TestCase):
+    """Pages of today: megabytes of script, drawn by JavaScript, AMP versions, refusals."""
+
+    def test_text_after_megabytes_of_script_is_read(self):
+        big = '<script>' + 'var a=1;' * 150000 + '</script>'          # 1.2 MB of script
+        style = '<style>' + '.x{color:red}' * 45000 + '</style>'       # 0.6 MB of style
+        body = f'<html><head>{big}{style}</head><body><svg>{"<path/>" * 40000}</svg><p>The text</p></body></html>'
+        page = fetching(FakeResponse(body.encode()))
+        self.assertIn(('p', 'The text'), kinds(page))
+
+    def test_short_scripts_and_data_scripts_are_kept(self):
+        html = ('<script>location.href="/next"</script>'
+                '<script type="application/ld+json">' + '{"a":1}' + ' ' * 9000 + '</script>'
+                '<script>' + 'x' * 9000 + '</script>')
+        slim = reader.slim_html(html)
+        self.assertIn('location.href="/next"', slim)
+        self.assertIn('{"a":1}', slim)
+        self.assertNotIn('x' * 100, slim)
+
+    def test_a_page_drawn_by_javascript_shows_its_preview(self):
+        html = ('<html><head><meta property="og:title" content="Benchy &amp; friends">'
+                '<meta name="description" content="A jolly torture test for 3D printers."></head>'
+                '<body><div id="root"></div></body></html>')
+        page = reader.parse_html(html, 'https://example.com/')
+        self.assertTrue(page.from_summary)
+        self.assertEqual(kinds(page), [('h2', 'Benchy & friends'), ('p', 'A jolly torture test for 3D printers.')])
+
+    def test_a_page_with_text_keeps_it_and_shows_no_preview(self):
+        html = '<meta property="og:description" content="preview"><p>' + 'real text ' * 60 + '</p>'
+        page = reader.parse_html(html, 'https://example.com/')
+        self.assertFalse(page.from_summary)
+        self.assertNotIn('preview', ' '.join(t for _, t in kinds(page)))
+
+    def test_an_empty_page_with_an_amp_version_opens_that(self):
+        pages = {
+            'https://example.com/': b'<link rel="amphtml" href="/amp"><div id="app"></div>',
+            'https://example.com/amp': b'<p>' + b'The article. ' * 50 + b'</p>',
+        }
+        def get(url, **kwargs):
+            return FakeResponse(pages[url], url=url)
+        page = reader.fetch('https://example.com/', get=get, available_kb=lambda: 500000)
+        self.assertEqual(page.url, 'https://example.com/amp')
+        self.assertIn('The article.', page.blocks[0]['text'])
+
+    def test_a_failing_amp_version_keeps_the_page(self):
+        def get(url, **kwargs):
+            if url.endswith('/amp'):
+                return FakeResponse(b'', status=500, url=url)
+            return FakeResponse(b'<link rel="amphtml" href="/amp"><p>short</p>', url=url)
+        page = reader.fetch('https://example.com/', get=get, available_kb=lambda: 500000)
+        self.assertEqual(page.url, 'https://example.com/')
+
+    def test_sites_that_refuse_simple_browsers_say_so(self):
+        for status in (401, 403, 429):
+            with self.assertRaises(reader.BlockedError):
+                fetching(FakeResponse(b'denied', status=status))
+        with self.assertRaises(reader.BrowserError) as error:
+            fetching(FakeResponse(b'gone', status=404))
+        self.assertNotIsInstance(error.exception, reader.BlockedError)
+
+    def test_the_user_agent_says_what_it_is(self):
+        self.assertIn('LemSearchLite', reader.USER_AGENT)
+
+
+SEARCH_PAGE = """
+<div class="serp__results"><div id="links" class="results">
+ <div class="result results_links results_links_deep result--ad web-result">
+  <h2 class="result__title"><a class="result__a" href="https://ads.example/x">An advert</a></h2>
+ </div>
+ <div class="result results_links results_links_deep web-result ">
+  <div class="links_main links_deep result__body">
+   <h2 class="result__title"><a rel="nofollow" class="result__a"
+      href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.klipper3d.org%2FPressure_Advance.html&amp;rut=abc">Pressure advance - <b>Klipper</b></a></h2>
+   <div class="result__extras"><div class="result__extras__url">
+    <a class="result__url" href="//duckduckgo.com/l/?uddg=x"> www.klipper3d.org/Pressure_Advance.html </a></div></div>
+   <a class="result__snippet" href="//duckduckgo.com/l/?uddg=x">How to tune <b>pressure advance</b> for sharper corners.</a>
+   <div class="clear"></div>
+  </div>
+ </div>
+ <div class="result results_links web-result"><div class="result__body">
+   <h2 class="result__title"><a class="result__a" href="https://github.com/Gubir34/Boomslang">Boomslang</a></h2>
+   <a class="result__snippet">Custom firmware for the Kobra S1.</a></div></div>
+</div></div>
+"""
+
+
+class SearchTests(unittest.TestCase):
+    def test_results_are_read_as_results_and_adverts_left_out(self):
+        results = reader.search_results(SEARCH_PAGE)
+        self.assertEqual(results, [
+            {'title': 'Pressure advance - Klipper', 'url': 'https://www.klipper3d.org/Pressure_Advance.html',
+             'domain': 'www.klipper3d.org', 'snippet': 'How to tune pressure advance for sharper corners.'},
+            {'title': 'Boomslang', 'url': 'https://github.com/Gubir34/Boomslang',
+             'domain': 'github.com', 'snippet': 'Custom firmware for the Kobra S1.'},
+        ])
+
+    def test_search_fetches_and_reads_results(self):
+        class Response:
+            status_code, text = 200, SEARCH_PAGE
+            def close(self): pass
+        results = reader.search(reader.SEARCH_URL + 'x', get=lambda *a, **k: Response(), available_kb=lambda: 500000)
+        self.assertEqual(len(results), 2)
+
+    def test_a_cut_or_busy_answer_is_an_error_but_no_results_is_not(self):
+        class Response:
+            def __init__(self, status, text):
+                self.status_code, self.text = status, text
+            def close(self): pass
+        for status, text in ((200, '<html>cut'), (202, '<div class="no-results">'), (200, '')):
+            with self.assertRaises(reader.BrowserError):
+                reader.search(reader.SEARCH_URL + 'x', get=lambda *a, **k: Response(status, text), available_kb=lambda: 500000)
+        empty = reader.search(reader.SEARCH_URL + 'x', get=lambda *a, **k: Response(200, '<div class="no-results">No results.</div>'),
+                              available_kb=lambda: 500000)
+        self.assertEqual(empty, [])
+
+    def test_a_search_address_is_known(self):
+        self.assertTrue(reader.is_search(reader.normalize_url('pressure advance')))
+        self.assertFalse(reader.is_search(reader.normalize_url('klipper3d.org')))
+
+    def test_broken_or_empty_pages_give_no_results(self):
+        self.assertEqual(reader.search_results(''), [])
+        self.assertEqual(reader.search_results('<div class="web-result"><a class="result__a" href="javascript:x">x</a>'), [])

@@ -322,7 +322,7 @@ class RinkhalsUiApp(BaseApp):
             glyph = lv.label(box)
             glyph.set_text(icon)
             glyph.set_style_text_font(lvr.get_font_icon(), lv.STATE.DEFAULT)
-            glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'Browser') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+            glyph.set_style_text_color(ICON_GREEN if label in ('Web portal', 'LemSearch Lite') else lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
             glyph.center()
             plain(lvr.title(button)).set_text(label)
             button.hint = plain(lvr.subtitle(button))
@@ -414,7 +414,7 @@ class RinkhalsUiApp(BaseApp):
         row.set_style_min_height(0, lv.STATE.DEFAULT)
         card(row, '\ue00a', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
         card(row, '\ue894', 'Mainsail', 'Klipper web interface', lambda: show_link(4409, 'Mainsail'))
-        card(row, '\ue80b', 'Browser', 'Reader-mode web', self.browser_show)
+        card(row, '\ue8b6', 'LemSearch Lite', 'Search and read the web', self.browser_show)
 
         row = row_of(self.screen_main)
         flat(row, '\uf053', 'Restart', lambda: confirm('Are you sure you want\nto restart Boomslang?', self.restart_rinkhals))
@@ -2145,6 +2145,7 @@ class RinkhalsUiApp(BaseApp):
         run_async(find_release)
 
     # Web browser (reader mode: text, headings and links, no JavaScript)
+    BROWSER_NAME = 'LemSearch Lite'
     BROWSER_BOOKMARKS = [
         ('Wikipedia', 'https://en.m.wikipedia.org/wiki/Main_Page'),
         ('Hacker News', 'https://news.ycombinator.com'),
@@ -2176,7 +2177,7 @@ class RinkhalsUiApp(BaseApp):
             title_bar.set_y(-lvr.get_title_bar_height())
 
             self.screen_browser.label_title = lvr.title(title_bar)
-            self.screen_browser.label_title.set_text('Browser')
+            self.screen_browser.label_title.set_text(self.BROWSER_NAME)
             self.screen_browser.label_title.center()
 
             icon_back = lvr.button_icon(title_bar)
@@ -2270,21 +2271,104 @@ class RinkhalsUiApp(BaseApp):
             button.add_event_cb(lambda e, u=url: self.browser_open(u), lv.EVENT_CODE.CLICKED, None)
         return button
 
+    def browser_search_field(self, parent, text=None):
+        """The search box at the top: tap to type words or an address."""
+        field = lvr.button(parent)
+        field.set_width(lv.pct(100))
+        field.set_icon('\ue8b6')
+        field.set_text(ellipsis(text, 40) if text else 'Search the web or type an address')
+        field.set_flex_flow(lv.FLEX_FLOW.ROW)
+        field.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        # lvr.button makes its icon and text 100 % wide (it lays them out in a
+        # column); side by side the icon took the whole row and hid the text
+        icon, words = field.get_child(0), field.get_child(1)
+        icon.set_width(lv.SIZE_CONTENT)
+        words.set_width(1)
+        words.set_flex_grow(1)
+        words.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
+        words.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
+        field.set_style_pad_column(lv.dpx(12), lv.STATE.DEFAULT)
+        field.set_style_pad_left(lv.dpx(18), lv.STATE.DEFAULT)
+        field.set_style_text_color(lvr.COLOR_TEXT if text else lvr.COLOR_SUBTITLE, lv.STATE.DEFAULT)
+        field.add_event_cb(lambda e: self.show_input_text_dialog('Search or address', text or '', False,
+                                                                 lambda typed: self.browser_open(typed)),
+                           lv.EVENT_CODE.CLICKED, None)
+        return field
+
     def browser_start_page(self):
         self.browser_gen += 1
         self.browser_showing_url = False
-        self.screen_browser.label_title.set_text('Browser')
+        self.screen_browser.label_title.set_text(self.BROWSER_NAME)
         panel = self.browser_new_content()
-        self.browser_label(panel, 'Tap the magnifier at the top right to type a web address, or words to search for. '
-                                  'Pages are shown as text with links; there is no JavaScript, so some sites will not work.', 'quote')
-        self.browser_link(panel, 'Open an address or search...', None).add_event_cb(
-            lambda e: self.browser_ask_address(), lv.EVENT_CODE.CLICKED, None)
+        self.browser_search_field(panel)
+        self.browser_label(panel, 'Pages are shown as text with links. Sites that need a full browser '
+                                  'can be opened on your phone with a QR code.', 'quote')
         saved = home_tools.load_bookmarks()
         for name, url in saved:
             self.browser_link(panel, name, url)
         for name, url in self.BROWSER_BOOKMARKS:
             if not any(url == u for _, u in saved):
                 self.browser_link(panel, name, url)
+
+    def browser_phone_link(self, panel, url):
+        """Offer to carry on on the phone: a QR code of the address."""
+        self.browser_link(panel, 'Open on your phone', None).add_event_cb(
+            lambda e, u=url: self.show_qr_dialog(u, 'Scan to open this page\non your phone'), lv.EVENT_CODE.CLICKED, None)
+
+    def browser_result_card(self, panel, result):
+        """A search result as in the LemSearch mockup: the site, the title in green, a few words."""
+        card = lvr.button(panel)
+        card.set_width(lv.pct(100))
+        card.set_height(lv.SIZE_CONTENT)
+        card.set_style_min_height(0, lv.STATE.DEFAULT)
+        card.set_style_pad_all(lv.dpx(12), lv.STATE.DEFAULT)
+        card.set_style_pad_row(lv.dpx(3), lv.STATE.DEFAULT)
+        card.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START)
+        card.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)   # buttons centre their text
+        card.set_style_radius(lv.dpx(16), lv.STATE.DEFAULT)              # not a capsule: cards are tall
+        site = lvr.subtitle(card)
+        site.set_text(ellipsis(result['domain'], 48))
+        title = lvr.label(card)
+        title.set_width(lv.pct(100))
+        title.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+        title.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        title.set_text(ellipsis(result['title'], 90))
+        if result['snippet']:
+            words = lvr.subtitle(card)
+            words.set_width(lv.pct(100))
+            words.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+            words.set_text(ellipsis(result['snippet'], 160))
+        card.add_event_cb(lambda e, u=result['url']: self.browser_open(u), lv.EVENT_CODE.CLICKED, None)
+        return card
+
+    def browser_render_results(self, results, error, url, push, gen):
+        query = reader.search_query(url)
+        with lvr.lock():
+            if gen != self.browser_gen:
+                return
+            panel = self.browser_new_content()
+            self.browser_search_field(panel, query)
+            if error:
+                self.screen_browser.label_title.set_text('Cannot search')
+                self.browser_label(panel, error, 'p')
+                self.browser_link(panel, 'Try again', None).add_event_cb(
+                    lambda e, u=url, p=push: self.browser_open(u, push=p), lv.EVENT_CODE.CLICKED, None)
+                return
+            if push and self.browser_url:
+                self.browser_history.append(self.browser_url)
+                del self.browser_history[:-30]
+            self.browser_url = url
+            self.browser_page = None
+            self.browser_showing_url = True
+            self.screen_browser.label_title.set_text(self.BROWSER_NAME)
+            if not results:
+                self.browser_label(panel, 'Nothing found. Try other words.', 'quote')
+        for i in range(0, len(results), 5):
+            with lvr.lock():
+                if gen != self.browser_gen:
+                    return
+                for result in results[i:i + 5]:
+                    self.browser_result_card(panel, result)
 
     def browser_form(self, form, label):
         self.show_input_text_dialog(label, '', False,
@@ -2318,8 +2402,21 @@ class RinkhalsUiApp(BaseApp):
 
         def load():
             page, error = None, None
+            if reader.is_search(url):
+                results = []
+                try:
+                    results = reader.search(url)
+                except reader.BrowserError as e:
+                    error = str(e)
+                except Exception as e:
+                    logging.exception('Search failed')
+                    error = f'Unexpected error: {type(e).__name__}'
+                self.browser_render_results(results, error, url, push, gen)
+                return
             try:
                 page = reader.fetch(url)
+            except reader.BlockedError as e:
+                error = (str(e), True)
             except reader.BrowserError as e:
                 error = str(e)
             except Exception as e:
@@ -2338,9 +2435,13 @@ class RinkhalsUiApp(BaseApp):
                 return  # the user went somewhere else while it loaded
             panel = self.browser_new_content()
             if error:
-                self.screen_browser.label_title.set_text('Cannot open page')
-                self.browser_label(panel, error, 'p')
+                blocked = isinstance(error, tuple)
+                message = error[0] if blocked else error
+                self.screen_browser.label_title.set_text('Needs a full browser' if blocked else 'Cannot open page')
+                self.browser_label(panel, message, 'p')
                 self.browser_label(panel, ellipsis(url, 90), 'quote')
+                if blocked:
+                    self.browser_phone_link(panel, url)
                 self.browser_link(panel, 'Try again', None).add_event_cb(
                     lambda e, u=url, p=push: self.browser_open(u, push=p), lv.EVENT_CODE.CLICKED, None)
                 return
@@ -2362,6 +2463,11 @@ class RinkhalsUiApp(BaseApp):
             elif getattr(page, 'from_data', False):
                 self.browser_label(panel, 'This page is drawn by JavaScript, which is not run here. '
                                           'Below is the text found in the data it carries.', 'quote')
+                self.browser_phone_link(panel, page.url)
+            elif getattr(page, 'from_summary', False):
+                self.browser_label(panel, 'This page is drawn by JavaScript, which is not run here. '
+                                          'Below is the summary it gives for link previews.', 'quote')
+                self.browser_phone_link(panel, page.url)
 
         blocks = page.blocks[start:start + per_part]
         links_left = self.BROWSER_MAX_LINK_BUTTONS
@@ -2398,9 +2504,11 @@ class RinkhalsUiApp(BaseApp):
             if page.truncated and last_part:
                 notes.append('The page is very long: the end of it is not shown.')
             if not page.blocks:
-                notes.append('This page has no readable text. It probably needs JavaScript.')
+                notes.append('This page has no readable text. It probably needs a full browser.')
             for note in notes:
                 self.browser_label(panel, note, 'quote')
+            if not page.blocks:
+                self.browser_phone_link(panel, page.url)
             if not last_part:
                 self.browser_link(panel, f'Continue reading (part {part + 1} of {parts})', None).add_event_cb(
                     lambda e: self.browser_show_part(start + per_part), lv.EVENT_CODE.CLICKED, None)

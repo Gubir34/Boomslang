@@ -61,6 +61,7 @@ class BrowserScreenTests(unittest.TestCase):
         self.app.show_screen = mock.MagicMock()
         self.app.show_text_dialog = mock.MagicMock()
         self.app.show_input_text_dialog = mock.MagicMock()
+        self.app.show_qr_dialog = mock.MagicMock()
         self.app.layout_browser()
         self.title = self.app.screen_browser.label_title
         self.fetched = []
@@ -73,8 +74,15 @@ class BrowserScreenTests(unittest.TestCase):
             raise result
         return result or page(url)
 
+    def search(self, url):
+        self.fetched.append(url)
+        result = self.pages.get(url, [])
+        if isinstance(result, Exception):
+            raise result
+        return result
+
     def open(self, target, **kwargs):
-        with mock.patch.object(reader, 'fetch', self.fetch):
+        with mock.patch.object(reader, 'fetch', self.fetch), mock.patch.object(reader, 'search', self.search):
             self.app.browser_open(target, **kwargs)
 
     def titles(self):
@@ -136,7 +144,7 @@ class BrowserScreenTests(unittest.TestCase):
         self.assertEqual(self.app.browser_history, [])
         self.app.browser_back()
         self.assertIsNone(self.app.browser_url)
-        self.assertEqual(self.title.set_text.call_args.args[0], 'Browser')
+        self.assertEqual(self.title.set_text.call_args.args[0], 'LemSearch Lite')
         self.app.show_screen.reset_mock()
         self.app.browser_back()
         self.app.show_screen.assert_called_once_with(self.app.screen_main)
@@ -256,7 +264,7 @@ class BrowserScreenTests(unittest.TestCase):
     def test_empty_and_truncated_pages_get_an_explanation(self):
         self.pages['https://empty.example/'] = page('https://empty.example/', blocks=[])
         self.pages['https://long.example/'] = page('https://long.example/', truncated=True)
-        for url, expected in (('https://empty.example/', 'JavaScript'), ('https://long.example/', 'long')):
+        for url, expected in (('https://empty.example/', 'full browser'), ('https://long.example/', 'long')):
             LVR.reset_mock()
             self.open(url)
             notes = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
@@ -379,3 +387,41 @@ class BrowserScreenTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    # --- LemSearch Lite: results as cards, the phone for sites that refuse simple browsers ---
+
+    def test_search_results_are_cards_that_open_their_page(self):
+        url = reader.SEARCH_URL + 'benchy'
+        self.pages[url] = [{'title': 'Benchy', 'url': 'https://www.3dbenchy.com/', 'domain': 'www.3dbenchy.com',
+                            'snippet': 'The jolly torture test'}]
+        LVR.reset_mock()
+        self.open('benchy')
+        self.assertEqual(self.fetched, [url])
+        texts = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertIn('Benchy', texts)
+        self.assertEqual(self.app.browser_url, url)
+        # tapping the card opens the result's page
+        card = LVR.button.return_value
+        callbacks = [c.args[0] for c in card.add_event_cb.call_args_list]
+        with mock.patch.object(reader, 'fetch', self.fetch):
+            callbacks[-1](None)
+        self.assertEqual(self.fetched[-1], 'https://www.3dbenchy.com/')
+
+    def test_an_empty_search_says_so(self):
+        LVR.reset_mock()
+        self.open('zzqx nothing')
+        notes = [c.args[0] for c in LVR.label.return_value.set_text.call_args_list]
+        self.assertTrue(any('Nothing found' in n for n in notes), notes)
+
+    def test_a_site_that_refuses_simple_browsers_offers_the_phone(self):
+        self.pages['https://www.printables.com/'] = reader.BlockedError('This site does not let simple browsers in (403).')
+        self.open('https://www.printables.com/')
+        self.assertIn('Needs a full browser', self.titles())
+        buttons = LVR.button.return_value
+        labels = [c.args[0] for c in buttons.set_text.call_args_list]
+        self.assertIn('Open on your phone', labels)
+        phone = [c.args[0] for c in buttons.add_event_cb.call_args_list]
+        for callback in phone:
+            callback(None)
+        self.app.show_qr_dialog.assert_called()
+        self.assertEqual(self.app.show_qr_dialog.call_args.args[0], 'https://www.printables.com/')
