@@ -111,18 +111,47 @@ For more information about installation, firmware updates and details about spec
 
 After installation, Boomslang provides a touch UI accessible from the printer screen when you tap the Settings icon, then tap Boomslang.
 
-The main menu gives you quick access to four areas arranged in a 2×2 grid:
-- **Manage apps** — enable, disable, start and stop individual apps
-- **App Store** — browse and install community apps directly from the printer screen (see below)
-- **Updates** — check for and apply OTA Boomslang updates
-- **Settings** — advanced options, reboot controls and system information
+From the home screen you reach:
+- **Apps**: turn apps on and off, see whether they are running, and change their settings
+- **App Store**: browse and install apps from [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) directly from the printer screen (see below)
+- **Updates**: Boomslang and Anycubic firmware updates, following your update channel
+- **Web portal**, **Mainsail** and a reader-mode **Browser**
+- **Settings**: sounds, the look, reboot and restart, system information
+
+### Three looks
+
+Pick one in **Settings > Look**. Aero and Liquid Plastic are made for the 800×480 screen of the Kobra S1 and S1 Max; the other printers use Classic.
+
+**Classic**, flat and clear:
 
 <p align="center">
-    <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-main.png">
-    <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-apps.png">
-    <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-app-store.png">
-    <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-updates.png">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/classic-home.png" alt="Classic home screen">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/classic-apps.png" alt="Classic apps list">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/classic-settings.png" alt="Classic app settings">
 </p>
+
+**Aero**, a taskbar and glass panes on the home screen (the other screens look Classic):
+
+<p align="center">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/aero-home.png" alt="Aero home screen">
+</p>
+
+**Liquid Plastic**, clear glass on every screen, with a quick settings panel (brightness, sounds, automatic updates) that drops down from the top:
+
+<p align="center">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-home.png" alt="Liquid Plastic home screen">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-panel.png" alt="Liquid Plastic quick settings">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-apps.png" alt="Liquid Plastic apps list">
+</p>
+<p align="center">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-settings.png" alt="Liquid Plastic app settings">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-updates.png" alt="Liquid Plastic updates">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-store.png" alt="Liquid Plastic App Store">
+</p>
+
+### App settings
+
+Every app with settings has a gear in the Apps list. On/off settings are switches, numbers have − and + buttons, choices open a list and text opens a keyboard. Advanced settings are folded away, and when you change a running app, Boomslang offers to restart it so the new settings are used.
 
 ## Boomslang Installer
 
@@ -147,8 +176,8 @@ The default apps are listed in detail under [Features and built-in apps](https:/
 The Boomslang Touch UI includes a built-in **App Store** that lets you browse, install and remove community apps without leaving the printer screen. Apps are sourced directly from [Gubir34/Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) on GitHub.
 
 <p align="center">
-    <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-app-store.png">
-    <img width="192" src="./docs/docs/assets/rinkhals-ui/ui-app-store-detail.png">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/classic-store.png" alt="App Store">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-store.png" alt="App Store in Liquid Plastic">
 </p>
 
 To use it, open the Boomslang Touch UI and tap **App Store**. The store will fetch the latest app list, show version info and flag already-installed apps. Tap any app to see its description, then tap **Install** or **Remove** as needed.

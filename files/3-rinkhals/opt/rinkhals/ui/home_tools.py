@@ -115,6 +115,12 @@ def take_update_notice(current_version, path=None):
             'It will not be tried again;\ninstall it from Updates.')
 
 
+def short_model(model):
+    """'Anycubic Kobra S1' -> 'Kobra S1': the header has room for the model and the address,
+    and cutting the long name kept 'Anycubic Kobr...1' and lost what tells the printers apart."""
+    return re.sub(r'^\s*Anycubic\s+', '', model or '').strip()
+
+
 # --- home screen status line ---------------------------------------------------
 
 STATUS_QUERY = 'extruder&heater_bed&print_stats&display_status'

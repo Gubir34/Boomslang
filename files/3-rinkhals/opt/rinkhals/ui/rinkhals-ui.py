@@ -381,7 +381,7 @@ class RinkhalsUiApp(BaseApp):
         gap.set_style_pad_all(0, lv.STATE.DEFAULT)
         self.home_label_device = lvr.subtitle(header)
         self.home_label_device.set_width(lv.SIZE_CONTENT)
-        self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} \u00b7 {printer_ip() or "no network"}', 26))
+        self.home_label_device.set_text(ellipsis(f'{home_tools.short_model(KOBRA_MODEL)} \u00b7 {printer_ip() or "no network"}', 26))
         pill = plain(lvr.panel(header))
         pill.set_style_pad_hor(lv.dpx(12), lv.STATE.DEFAULT)
         pill.set_style_pad_ver(lv.dpx(4), lv.STATE.DEFAULT)
@@ -1217,7 +1217,7 @@ class RinkhalsUiApp(BaseApp):
         if self.home_theme != 'classic':
             self.home_refresh()
         else:
-            self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} · {printer_ip() or "no network"}', 26))
+            self.home_label_device.set_text(ellipsis(f'{home_tools.short_model(KOBRA_MODEL)} · {printer_ip() or "no network"}', 26))
     def show_apps(self):
         """Installed apps: name, whether it runs and its version, a switch, and its settings."""
         if self.screen_apps.panel_apps:

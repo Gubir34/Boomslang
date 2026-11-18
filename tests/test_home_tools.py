@@ -223,3 +223,11 @@ class ThemeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ShortModelTests(unittest.TestCase):
+    def test_the_brand_is_left_out(self):
+        self.assertEqual(home_tools.short_model('Anycubic Kobra S1'), 'Kobra S1')
+        self.assertEqual(home_tools.short_model('Anycubic Kobra 3 Max'), 'Kobra 3 Max')
+        self.assertEqual(home_tools.short_model('Kobra X'), 'Kobra X')
+        self.assertEqual(home_tools.short_model(None), '')
