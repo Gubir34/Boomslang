@@ -273,7 +273,7 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual((changes, releases), ([42], [42]))
         # the three parts are styled with their part number (an int), not a state
         parts = {call.args[1] for call in slider.set_style_bg_color.call_args_list}
-        self.assertEqual(parts, {self.lv.PART.MAIN.value, self.lv.PART.INDICATOR.value, self.lv.PART.KNOB.value})
+        self.assertEqual(parts, {liquid_ui.PART_MAIN, liquid_ui.PART_INDICATOR, liquid_ui.PART_KNOB})
 
     def test_a_toggle_flips_and_tells_the_caller(self):
         seen = []
@@ -453,3 +453,21 @@ class AutoUpdateToggleTests(unittest.TestCase):
     def test_on_is_auto_when_there_was_no_choice(self):
         for previous in (None, '', '  ', 'off', 'OFF'):
             self.assertEqual(liquid_ui.auto_update_value(True, previous), 'auto')
+
+
+class BindingPartsTests(unittest.TestCase):
+    """liquid_ui can't use lv.PART (the binding defines it twice); its own values must match LVGL's."""
+
+    def test_the_part_values_are_the_ones_of_the_binding(self):
+        import ast
+        source = (Path(__file__).resolve().parents[1] /
+                  'files/3-rinkhals/opt/rinkhals/ui/lvgl/__init__.py').read_text(encoding='utf-8')
+        parts = [node for node in ast.parse(source).body if isinstance(node, ast.ClassDef) and node.name == 'PART']
+        values = {}
+        for node in parts:
+            for item in node.body:
+                if isinstance(item, ast.Assign) and isinstance(item.value, ast.Constant):
+                    values.setdefault(item.targets[0].id, item.value.value)
+        self.assertEqual(liquid_ui.PART_MAIN, values['MAIN'])
+        self.assertEqual(liquid_ui.PART_INDICATOR, values['INDICATOR'])
+        self.assertEqual(liquid_ui.PART_KNOB, values['KNOB'])

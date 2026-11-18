@@ -30,6 +30,45 @@ if gradient_background:
     gradient_background.init_stops(colors, None, None, len(colors))
     gradient_background.linear_init(lv.pct(0), lv.pct(0), lv.pct(100), lv.pct(50), lv.GRAD_EXTEND.PAD)
 
+# The look of the screens other than home. 'liquid' gives the buttons, checkboxes
+# and dialogs the clear glass of the Liquid Plastic home; anything else is the
+# flat look. Styles are built once (see _cached), so set_look() must come first.
+LOOK = 'classic'
+GLASS_WHITE = lv.color_white()
+
+
+def set_look(name):
+    global LOOK
+    LOOK = 'liquid' if name == 'liquid' else 'classic'
+
+
+def liquid():
+    return LOOK == 'liquid'
+
+
+gradient_liquid = lv.grad_dsc()
+if gradient_liquid:
+    # the deep greens of the Liquid Plastic wallpaper
+    gradient_liquid.init_stops([lv.color_make(10, 34, 22), lv.color_make(18, 78, 58)], None, None, 2)
+    gradient_liquid.linear_init(lv.pct(0), lv.pct(0), lv.pct(100), lv.pct(100), lv.GRAD_EXTEND.PAD)
+
+
+def glass(style, radius):
+    """Clear glass: a light see-through fill, a bright rim and a soft shadow."""
+    style.set_bg_color(GLASS_WHITE)
+    style.set_bg_opa(38)
+    style.set_border_color(GLASS_WHITE)
+    style.set_border_opa(120)
+    style.set_border_width(1)
+    style.set_border_side(lv.BORDER_SIDE.FULL)
+    style.set_radius(radius)
+    style.set_shadow_width(14)
+    style.set_shadow_color(lv.color_black())
+    style.set_shadow_opa(70)
+    style.set_shadow_offset_y(3)
+    return style
+
+
 # Fonts
 def get_font_text(): return lv.tiny_ttf_create_file(ASSETS_PATH + '/AlibabaSans-Regular.ttf', int(lv.dpx(19)))
 def get_font_title(): return lv.tiny_ttf_create_file(ASSETS_PATH + '/AlibabaSans-Regular.ttf', int(lv.dpx(22)))
@@ -50,7 +89,7 @@ def get_style_debug():
     return style_debug
 def get_style_screen():
     style_screen = lv.style()
-    style_screen.set_bg_grad(gradient_background)
+    style_screen.set_bg_grad(gradient_liquid if liquid() and gradient_liquid else gradient_background)
     style_screen.set_bg_opa(lv.OPA.COVER)
     style_screen.set_text_font(get_font_text())
     style_screen.set_text_color(COLOR_TEXT)
@@ -103,6 +142,9 @@ def get_style_button():
     style_button.set_width(lv.SIZE_CONTENT)
     style_button.set_height(lv.dpx(65))
     style_button.set_text_align(lv.TEXT_ALIGN.CENTER)
+    if liquid():
+        glass(style_button, 1000)          # a capsule
+        style_button.set_pad_hor(lv.dpx(22))
     return style_button
 def get_style_button_icon():
     style_button_icon = lv.style()
@@ -117,6 +159,9 @@ def get_style_button_pressed():
     style_button_pressed = lv.style()
     style_button_pressed.set_bg_opa(lv.OPA.COVER)
     style_button_pressed.set_bg_color(lv.color_lighten(COLOR_BACKGROUND, 96))
+    if liquid():
+        style_button_pressed.set_bg_color(GLASS_WHITE)   # the pane lights up
+        style_button_pressed.set_bg_opa(96)
     return style_button_pressed
 def get_style_button_disabled():
     style_button_disabled = lv.style()
@@ -139,6 +184,8 @@ def get_style_checkbox():
     style_checkbox.set_min_width(0)
     style_checkbox.set_text_font(get_font_icon())
     style_checkbox.set_radius(lv.dpx(8))
+    if liquid():
+        glass(style_checkbox, lv.dpx(16))
     return style_checkbox
 def get_style_tag():
     style_tag = lv.style()
@@ -168,6 +215,13 @@ def get_style_modal():
     style_modal.set_bg_opa(lv.OPA.COVER)
     style_modal.set_radius(8)
     style_modal.set_pad_all(lv.dpx(20))
+    if liquid():
+        style_modal.set_bg_color(lv.color_make(16, 44, 32))   # dark glass, so the text stays readable
+        style_modal.set_bg_opa(235)
+        style_modal.set_border_color(GLASS_WHITE)
+        style_modal.set_border_opa(110)
+        style_modal.set_border_width(1)
+        style_modal.set_radius(lv.dpx(24))
     return style_modal
 
 # Fonts and styles are built once and shared. Before this every widget loaded

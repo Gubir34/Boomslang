@@ -23,9 +23,9 @@ ORB_Y = 407                              # centred in the bar: 400 + (72 - 58) /
 ORB_X = (16, 88, 160, 232, 304, 376)     # pitch 72
 ORBS = (                                 # (icon name in the mockup font, glyph in the printer's font, what it is)
     ('settings', '', 'Settings'),
-    ('local_mall', '', 'App Store'),
-    ('widgets', '', 'Apps'),
-    ('qr_code_2', '', 'Web portal'),
+    ('local_mall', '', 'App Store'),
+    ('widgets', '', 'Apps'),
+    ('qr_code_2', '', 'Web portal'),
     ('search', '', 'Browser'),
     ('power_settings_new', '', 'Power'),
 )
@@ -51,7 +51,8 @@ CHIP_ICON_X, CHIP_ICON_Y = 22, 16        # inside a chip or a button: the icon..
 CHIP_TEXT_X, CHIP_TEXT_Y = 62, 18        # ...and the text
 TAB_TITLE_ROW = (236, 10, 328, 32)       # logo and name, centred in this row
 TAB_VERSION_ROW = (236, 49, 328, 26)     # version and the Update pill
-PANEL_SLIDER = (196, 92, 408, 28)        # the brightness slider (the track is drawn live)
+PANEL_SLIDER = (196, 92, 388, 28)        # the brightness slider (the track is drawn live). The knob
+                                         # reaches 14 px past each end, so it stops short of the bright sun
 PANEL_SLIDER_ICONS = ((138, 92), (616, 92))   # dim sun, bright sun
 PANEL_CHIPS = ((130, 146, 260, 58), (410, 146, 260, 58))      # two toggles
 PANEL_BUTTONS = ((130, 220, 260, 58), (410, 220, 260, 58))    # two plain buttons

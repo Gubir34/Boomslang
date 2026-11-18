@@ -25,6 +25,14 @@ LIME = (170, 235, 110)
 LIME_LIGHT = (216, 255, 140)
 
 BACKLIGHT = '/sys/class/backlight/backlight'
+
+# Style parts of a widget, LVGL's values (lv_obj.h). lv.PART can't be used:
+# the generated binding defines class PART twice, and the second one (with
+# only TEXTAREA_PLACEHOLDER) replaces the first, so lv.PART.MAIN does not
+# exist on the printer. tests/test_liquid.py checks these against the binding.
+PART_MAIN = 0x000000
+PART_INDICATOR = 0x020000
+PART_KNOB = 0x030000
 MIN_BRIGHTNESS = 15          # percent. The screen is never set darker: black can't be undone by touch.
 
 
@@ -146,7 +154,6 @@ class Glass:
     def slider(self, parent, rect, minimum, maximum, value, on_change=None, on_release=None):
         """A slider in the rectangle: a thin track, a filled part and a round knob."""
         lv = self.lv
-        part = lambda p: p.value  # noqa: E731  (an int: a part and a state are combined as one number)
         x, y, w, h = rect
         track = 10
         slider = lv.slider(parent)
@@ -155,7 +162,7 @@ class Glass:
         slider.set_range(minimum, maximum)
         slider.set_value(value, 0)
 
-        main, indicator, knob = part(lv.PART.MAIN), part(lv.PART.INDICATOR), part(lv.PART.KNOB)
+        main, indicator, knob = PART_MAIN, PART_INDICATOR, PART_KNOB   # ints: a part and a state combine as one number
         slider.set_style_bg_color(self.color(WHITE), main)
         slider.set_style_bg_opa(80, main)
         slider.set_style_radius(track // 2, main)

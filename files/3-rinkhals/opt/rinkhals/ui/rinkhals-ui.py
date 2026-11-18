@@ -247,6 +247,10 @@ class RinkhalsUiApp(BaseApp):
         client.loop_start()
 
     def layout(self):
+        # The look of every screen follows the home's: the shared styles are
+        # built in super().layout(), so they are told first
+        if self.screen_info:
+            lvr.set_look(home_tools.theme_for(self.screen_info.width, self.screen_info.height))
         super().layout()
 
         # The home screen uses the whole display (fullscreen = True): the
@@ -407,7 +411,7 @@ class RinkhalsUiApp(BaseApp):
         row = row_of(self.screen_main)
         row.set_flex_grow(1)
         row.set_style_min_height(0, lv.STATE.DEFAULT)
-        card(row, '\ue00b', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
+        card(row, '\ue00a', 'Web portal', 'Open on your phone', lambda: show_link(8090, 'Boomslang web portal'))
         card(row, '\ue894', 'Mainsail', 'Klipper web interface', lambda: show_link(4409, 'Mainsail'))
         card(row, '\ue80b', 'Browser', 'Reader-mode web', self.browser_show)
 
@@ -532,9 +536,9 @@ class RinkhalsUiApp(BaseApp):
 
         # Orbs: Settings, App Store, Apps, Web portal, LemSearch (the browser), Power
         self.aero_orb(main, 14, '', lambda: self.show_screen(self.screen_advanced))
-        self.aero_orb(main, 88, '', lambda: self.show_screen(self.screen_store))
-        self.aero_orb(main, 162, '', lambda: self.show_screen(self.screen_apps))
-        self.aero_orb(main, 236, '', lambda: self.home_show_link(8090, 'Boomslang web portal'))
+        self.aero_orb(main, 88, '', lambda: self.show_screen(self.screen_store))
+        self.aero_orb(main, 162, '', lambda: self.show_screen(self.screen_apps))
+        self.aero_orb(main, 236, '', lambda: self.home_show_link(8090, 'Boomslang web portal'))
         self.aero_orb(main, 310, '', self.browser_show)
         self.aero_orb(main, 384, '', self.home_power)
 
@@ -543,12 +547,13 @@ class RinkhalsUiApp(BaseApp):
         clock.set_size(92, 60)
         clock.set_pos(694, 408)
         clock.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+        clock.set_style_pad_all(0, lv.STATE.DEFAULT)     # the panel's own padding left no room for two lines
         self.home_label_time = lvr.title(clock)
         self.home_label_time.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
-        self.home_label_time.align(lv.ALIGN.TOP_MID, 0, 5)
+        self.home_label_time.align(lv.ALIGN.CENTER, 0, -11)
         self.home_label_date = lvr.subtitle(clock)
         self.home_label_date.set_style_text_color(lv.color_make(*self.AERO_INK), lv.STATE.DEFAULT)
-        self.home_label_date.align(lv.ALIGN.BOTTOM_MID, 0, -5)
+        self.home_label_date.align(lv.ALIGN.CENTER, 0, 14)
         self.home_tick_clock()
 
         # Back: leaves Boomslang for the stock screen (the other screens have
@@ -630,7 +635,8 @@ class RinkhalsUiApp(BaseApp):
     def home_tick_clock(self):
         now = time.localtime()
         self.home_label_time.set_text(time.strftime('%H:%M', now))
-        self.home_label_date.set_text(time.strftime('%d/%m/%Y', now))
+        # Short: the full 18/11/2026 is wider than the clock on the printer's screen
+        self.home_label_date.set_text(time.strftime('%d %b', now))
 
     def home_refresh(self):
         """What changes while the UI is open: the clock and whether there is a network."""
@@ -713,10 +719,10 @@ class RinkhalsUiApp(BaseApp):
         clock = glass.container(main, L.CLOCK, clickable=False)
         self.home_label_time = lvr.title(clock)
         self.home_label_time.set_style_text_color(white, lv.STATE.DEFAULT)
-        self.home_label_time.align(lv.ALIGN.TOP_MID, 0, 5)
+        self.home_label_time.align(lv.ALIGN.CENTER, 0, -11)
         self.home_label_date = lvr.subtitle(clock)
         self.home_label_date.set_style_text_color(white, lv.STATE.DEFAULT)
-        self.home_label_date.align(lv.ALIGN.BOTTOM_MID, 0, -5)
+        self.home_label_date.align(lv.ALIGN.CENTER, 0, 14)
         self.home_tick_clock()
 
         # The tab: logo and name, then the version and, when there is one, the Update pill
@@ -810,7 +816,7 @@ class RinkhalsUiApp(BaseApp):
                                               True, self.liquid_toggle_sounds)
         self.liquid_updates = liquid_ui.Toggle(glass, layer, L.PANEL_CHIPS[1], L.PANEL_CHIP_RADIUS, '', 'Auto update',
                                                True, self.liquid_toggle_updates)
-        buttons = (('', 'Web portal', lambda: (panel.hide(), self.home_show_link(8090, 'Boomslang web portal'))),
+        buttons = (('', 'Web portal', lambda: (panel.hide(), self.home_show_link(8090, 'Boomslang web portal'))),
                    ('', 'Settings', lambda: (panel.hide(), self.show_screen(self.screen_advanced))))
         for rect, (glyph, text, action) in zip(L.PANEL_BUTTONS, buttons):
             x, y = rect[0], rect[1]

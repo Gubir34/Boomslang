@@ -150,7 +150,8 @@ class AeroHomeTests(unittest.TestCase):
         sizes = [c.args for c in orb.set_size.call_args_list]
         self.assertEqual(sizes.count((60, 60)), 7)              # six orbs and the back button
         glyphs = [c.args[0] for c in orb.set_text.call_args_list]
-        self.assertEqual(glyphs, ['', '', '', '', '', '', ''])
+        # settings, local_mall, widgets, qr_code_2, search, power, undo: the Aero mockup's icons
+        self.assertEqual(glyphs, ['\ue8b8', '\ue54c', '\ue1bd', '\ue00a', '\ue8b6', '\ue8ac', '\ue166'])
 
     def test_the_taskbar_parts_share_one_vertical_centre(self):
         # The bar is 396..480 (centre 438). The orbs and the clock are 60 tall, so
@@ -221,7 +222,7 @@ class AeroHomeTests(unittest.TestCase):
         with mock.patch.object(time, 'localtime', return_value=moment):
             self.app.home_tick_clock()
         self.app.home_label_time.set_text.assert_called_with('19:09')
-        self.app.home_label_date.set_text.assert_called_with('11/11/2026')
+        self.app.home_label_date.set_text.assert_called_with('11 Nov')
 
     def test_the_wifi_icon_dims_without_a_network(self):
         self.app.layout()
