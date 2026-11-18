@@ -2473,6 +2473,14 @@ class RinkhalsUiApp(BaseApp):
 
         self.store_generation = getattr(self, 'store_generation', 0) + 1
         generation = self.store_generation
+        panel_apps = self.screen_store.panel_apps
+
+        # Leaving and opening the store again (or Refresh) deletes this panel and
+        # its label while this load still runs. Touching them then crashed the
+        # menu, so every change below first checks, under the lock, that this
+        # load is still the current one.
+        def current():
+            return generation == self.store_generation
 
         def fetch_apps():
             try:
@@ -2486,7 +2494,8 @@ class RinkhalsUiApp(BaseApp):
                     else:
                         msg = f'Failed to load ({response.status_code})'
                     with lvr.lock():
-                        label_loading.set_text(msg)
+                        if current():
+                            label_loading.set_text(msg)
                     return
 
                 entries = response.json()
@@ -2509,10 +2518,9 @@ class RinkhalsUiApp(BaseApp):
                 app_names = [e.get('name') for e in app_dirs if e.get('name')]
                 with ThreadPoolExecutor(max_workers=6) as pool:
                     manifests = list(pool.map(lambda d: self.fetch_store_manifest(d, manifest_ref, api_headers), app_names))
-                if generation != self.store_generation:
-                    return  # the user left the store and came back: this list is stale
-
                 with lvr.lock():
+                    if not current():
+                        return  # the user left the store and came back: this list is stale
                     label_loading.add_flag(lv.OBJ_FLAG.HIDDEN)
 
                 for app_dir, app_manifest in zip(app_names, manifests):
@@ -2523,7 +2531,9 @@ class RinkhalsUiApp(BaseApp):
                     update_available = bool(is_installed and installed_version and app_version and installed_version != app_version)
 
                     with lvr.lock():
-                        panel_app = lvr.panel(self.screen_store.panel_apps)
+                        if not current():
+                            return
+                        panel_app = lvr.panel(panel_apps)
                         panel_app.set_size(lv.pct(100), lv.dpx(70))
                         panel_app.set_style_border_side(lv.BORDER_SIDE.BOTTOM, lv.STATE.DEFAULT)
                         panel_app.set_state(lv.STATE.DISABLED, False)
@@ -2548,7 +2558,8 @@ class RinkhalsUiApp(BaseApp):
             except Exception as ex:
                 logging.error(f'App store fetch failed: {ex}')
                 with lvr.lock():
-                    label_loading.set_text(f'Error loading apps')
+                    if current():
+                        label_loading.set_text(f'Error loading apps')
 
         run_async(fetch_apps)
 
