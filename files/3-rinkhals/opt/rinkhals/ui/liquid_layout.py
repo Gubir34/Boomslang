@@ -47,8 +47,8 @@ PANEL = (110, -30, 580, 380)             # on the screen: y 0..350
 PANEL_RADIUS = 44
 PANEL_VISIBLE_BOTTOM = 350
 PANEL_TITLE = (140, 22)                  # top left of the title text
-CHIP_ICON_X, CHIP_ICON_Y = 22, 16        # inside a chip or a button: the icon...
-CHIP_TEXT_X, CHIP_TEXT_Y = 62, 18        # ...and the text
+CHIP_PAD_LEFT, CHIP_GAP = 22, 14         # inside a chip or a button: the icon from the left edge, then the
+                                         # text; both centred top to bottom (fonts grow with the screen's dpi)
 TAB_TITLE_ROW = (236, 10, 328, 32)       # logo and name, centred in this row
 TAB_VERSION_ROW = (236, 49, 328, 26)     # version and the Update pill
 PANEL_SLIDER = (196, 92, 388, 28)        # the brightness slider (the track is drawn live). The knob

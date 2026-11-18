@@ -820,9 +820,7 @@ class RinkhalsUiApp(BaseApp):
         buttons = (('', 'Web portal', lambda: (panel.hide(), self.home_show_link(8090, 'Boomslang web portal'))),
                    ('', 'Settings', lambda: (panel.hide(), self.show_screen(self.screen_advanced))))
         for rect, (glyph, text, action) in zip(L.PANEL_BUTTONS, buttons):
-            x, y = rect[0], rect[1]
-            glass.label(layer, glyph, x + L.CHIP_ICON_X, y + L.CHIP_ICON_Y, glyph=True)
-            glass.label(layer, text, x + L.CHIP_TEXT_X, y + L.CHIP_TEXT_Y)
+            glass.chip_label(layer, rect, glyph, text)
             glass.touch(layer, rect, L.PANEL_CHIP_RADIUS, action)
 
     def liquid_open_panel(self):

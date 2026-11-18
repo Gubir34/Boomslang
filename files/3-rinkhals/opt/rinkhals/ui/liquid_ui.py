@@ -18,7 +18,7 @@ Also the brightness of the screen, which the quick settings panel sets.
 """
 import os
 
-from liquid_layout import CHIP_ICON_X, CHIP_ICON_Y, CHIP_TEXT_X, CHIP_TEXT_Y, SCREEN
+from liquid_layout import CHIP_GAP, CHIP_PAD_LEFT, SCREEN
 from lvgl_parts import PART_INDICATOR, PART_KNOB, PART_MAIN   # lv.PART is broken in the binding, see there
 
 WHITE = (255, 255, 255)
@@ -145,6 +145,22 @@ class Glass:
         label.set_pos(x, y)
         return label
 
+    def chip_label(self, parent, rect, glyph, text):
+        """An icon and a name in a chip or a button, centred top to bottom.
+
+        Placed at fixed offsets they sat apart: the fonts are sized for the
+        screen's dpi, so the icon ended up above the middle of the text.
+        """
+        lv = self.lv
+        row = self.container(parent, rect, clickable=False)     # taps go to the touch area on top
+        row.set_flex_flow(lv.FLEX_FLOW.ROW)
+        row.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        row.set_style_pad_left(CHIP_PAD_LEFT, lv.STATE.DEFAULT)
+        row.set_style_pad_column(CHIP_GAP, lv.STATE.DEFAULT)
+        self.label(row, glyph, 0, 0, glyph=True)
+        self.label(row, text, 0, 0)
+        return row
+
     def slider(self, parent, rect, minimum, maximum, value, on_change=None, on_release=None):
         """A slider in the rectangle: a thin track, a filled part and a round knob."""
         lv = self.lv
@@ -191,13 +207,11 @@ class Toggle:
 
     def __init__(self, glass, parent, rect, radius, glyph, text, on=False, on_change=None):
         lv = glass.lv
-        x, y, w, h = rect
         self.glass, self.on, self.on_change = glass, bool(on), on_change
         # the tint comes first, so that the icon, the text and the touch area are above it
         self.tint = glass.container(parent, rect, radius, clickable=False)   # only the touch area on top takes taps
         self.tint.set_style_bg_color(glass.color(LIME), lv.STATE.DEFAULT)
-        glass.label(parent, glyph, x + CHIP_ICON_X, y + CHIP_ICON_Y, glyph=True)
-        glass.label(parent, text, x + CHIP_TEXT_X, y + CHIP_TEXT_Y)
+        glass.chip_label(parent, rect, glyph, text)
         glass.touch(parent, rect, radius, self.toggle)
         self.set(self.on)
 
