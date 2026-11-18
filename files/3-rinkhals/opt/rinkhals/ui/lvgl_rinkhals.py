@@ -21,14 +21,74 @@ COLOR_DISABLED = lv.color_make(176, 176, 176)
 COLOR_SHADOW = lv.color_make(96, 96, 96)
 COLOR_DEBUG = lv.color_make(255, 0, 255)
 
+# Light and dark mode. Dark is what Boomslang always was; light has its own
+# backgrounds and colours, not a filter over the dark ones. Like the look, the
+# mode is told before the shared styles are built (set_mode, then set_look).
+MODE = 'dark'
+DARK_PALETTE = dict(primary=(79, 181, 72), background=None, text=(255, 255, 255), subtitle=(160, 160, 160),
+                    disabled=(176, 176, 176), danger=(255, 64, 64))
+LIGHT_PALETTE = dict(primary=(36, 138, 46), background=(236, 241, 233), text=(24, 34, 26), subtitle=(92, 104, 94),
+                     disabled=(112, 120, 112), danger=(198, 40, 40))
+
 gradient_background = lv.grad_dsc()
-if gradient_background:
-    colors = [
-        COLOR_BACKGROUND,
-        lv.color_mix(COLOR_BACKGROUND, COLOR_PRIMARY, 224)
-    ]
-    gradient_background.init_stops(colors, None, None, len(colors))
-    gradient_background.linear_init(lv.pct(0), lv.pct(0), lv.pct(100), lv.pct(50), lv.GRAD_EXTEND.PAD)
+gradient_liquid = lv.grad_dsc()
+
+
+def _gradients():
+    """The screen backgrounds for the mode: Classic's soft green wash and Liquid Plastic's greens."""
+    if gradient_background:
+        colors = [COLOR_BACKGROUND, lv.color_mix(COLOR_BACKGROUND, COLOR_PRIMARY, 224 if MODE == 'dark' else 200)]
+        gradient_background.init_stops(colors, None, None, len(colors))
+        gradient_background.linear_init(lv.pct(0), lv.pct(0), lv.pct(100), lv.pct(50), lv.GRAD_EXTEND.PAD)
+    if gradient_liquid:
+        stops = ([lv.color_make(10, 34, 22), lv.color_make(18, 78, 58)] if MODE == 'dark' else
+                 [lv.color_make(232, 244, 234), lv.color_make(196, 228, 208)])       # mint, as the light wallpaper
+        gradient_liquid.init_stops(stops, None, None, 2)
+        gradient_liquid.linear_init(lv.pct(0), lv.pct(0), lv.pct(100), lv.pct(100), lv.GRAD_EXTEND.PAD)
+
+
+def set_mode(name):
+    global MODE, COLOR_PRIMARY, COLOR_BACKGROUND, COLOR_TEXT, COLOR_SUBTITLE, COLOR_DISABLED, COLOR_DANGER
+    MODE = 'light' if name == 'light' else 'dark'
+    palette = LIGHT_PALETTE if MODE == 'light' else DARK_PALETTE
+    COLOR_PRIMARY = lv.color_make(*palette['primary'])
+    COLOR_BACKGROUND = (lv.color_make(*palette['background']) if palette['background']
+                        else lv.palette_darken(lv.PALETTE.GREY, 4))
+    COLOR_TEXT = lv.color_make(*palette['text'])
+    COLOR_SUBTITLE = lv.color_make(*palette['subtitle'])
+    COLOR_DISABLED = lv.color_make(*palette['disabled'])
+    COLOR_DANGER = lv.color_make(*palette['danger'])
+    _gradients()
+
+
+def light():
+    return MODE == 'light'
+
+
+# Surfaces on the background: lighter than it in dark mode, darker (or white) in light mode
+def surface_raised():      # buttons, checkboxes
+    return lv.color_lighten(COLOR_BACKGROUND, 24) if not light() else lv.color_white()
+
+
+def surface_edge():        # their border
+    return lv.color_lighten(COLOR_BACKGROUND, 72) if not light() else lv.color_darken(COLOR_BACKGROUND, 40)
+
+
+def surface_pressed():
+    return lv.color_lighten(COLOR_BACKGROUND, 96) if not light() else lv.color_darken(COLOR_BACKGROUND, 28)
+
+
+def surface_line():        # separators between rows
+    return lv.color_lighten(COLOR_BACKGROUND, 32) if not light() else lv.color_darken(COLOR_BACKGROUND, 26)
+
+
+def surface_track():       # switch and progress tracks, text fields
+    return lv.color_lighten(COLOR_BACKGROUND, 52) if not light() else lv.color_darken(COLOR_BACKGROUND, 34)
+
+
+def surface_sunken():      # the keyboard under a text field
+    return lv.color_darken(COLOR_BACKGROUND, 16) if not light() else lv.color_darken(COLOR_BACKGROUND, 12)
+
 
 # The look of the screens other than home. 'liquid' gives the buttons, checkboxes
 # and dialogs the clear glass of the Liquid Plastic home; anything else is the
@@ -46,25 +106,24 @@ def liquid():
     return LOOK == 'liquid'
 
 
-gradient_liquid = lv.grad_dsc()
-if gradient_liquid:
-    # the deep greens of the Liquid Plastic wallpaper
-    gradient_liquid.init_stops([lv.color_make(10, 34, 22), lv.color_make(18, 78, 58)], None, None, 2)
-    gradient_liquid.linear_init(lv.pct(0), lv.pct(0), lv.pct(100), lv.pct(100), lv.GRAD_EXTEND.PAD)
+set_mode('dark')
 
 
 def glass(style, radius):
-    """Clear glass: a light see-through fill, a bright rim and a soft shadow."""
+    """Clear glass: a light see-through fill, a bright rim and a soft shadow.
+
+    On the light mint background the panes are frosted white with a darker edge.
+    """
     style.set_bg_color(GLASS_WHITE)
-    style.set_bg_opa(38)
-    style.set_border_color(GLASS_WHITE)
-    style.set_border_opa(120)
+    style.set_bg_opa(38 if not light() else 150)
+    style.set_border_color(GLASS_WHITE if not light() else lv.color_make(150, 190, 160))
+    style.set_border_opa(120 if not light() else 200)
     style.set_border_width(1)
     style.set_border_side(lv.BORDER_SIDE.FULL)
     style.set_radius(radius)
     style.set_shadow_width(14)
     style.set_shadow_color(lv.color_black())
-    style.set_shadow_opa(70)
+    style.set_shadow_opa(70 if not light() else 30)
     style.set_shadow_offset_y(3)
     return style
 
@@ -106,15 +165,16 @@ def get_style_panel():
     style_panel.set_size(lv.SIZE_CONTENT, lv.SIZE_CONTENT)
     style_panel.set_border_side(lv.BORDER_SIDE.NONE)
     style_panel.set_border_width(1)
-    style_panel.set_border_color(lv.color_lighten(COLOR_BACKGROUND, 32))
+    style_panel.set_border_color(surface_line())
     style_panel.set_border_opa(lv.OPA.COVER)
     if liquid():
-        style_panel.set_border_color(GLASS_WHITE)    # the grey line read as dark red on the green glass
-        style_panel.set_border_opa(50)
+        # the grey line read as dark red on the green glass; on the light glass a dark line
+        style_panel.set_border_color(GLASS_WHITE if not light() else lv.color_black())
+        style_panel.set_border_opa(50 if not light() else 30)
     return style_panel
 def get_style_panel_pressed():
     style_panel_pressed = lv.style()
-    style_panel_pressed.set_bg_color(lv.color_white())
+    style_panel_pressed.set_bg_color(lv.color_white() if not light() else lv.color_black())
     style_panel_pressed.set_bg_opa(lv.OPA._20)
     return style_panel_pressed
 def get_style_label_title():
@@ -134,9 +194,11 @@ def get_style_label_text():
 def get_style_button():
     style_button = lv.style()
     style_button.set_bg_opa(lv.OPA.COVER)
-    style_button.set_bg_color(lv.color_lighten(COLOR_BACKGROUND, 24))
-    style_button.set_border_color(lv.color_lighten(COLOR_BACKGROUND, 72))
+    style_button.set_bg_color(surface_raised())
+    style_button.set_border_color(surface_edge())
     style_button.set_border_width(1)
+    # LVGL's own theme makes button text white: unreadable on light mode's white buttons
+    style_button.set_text_color(COLOR_TEXT)
     style_button.set_border_side(lv.BORDER_SIDE.FULL)
     style_button.set_shadow_width(0)
     style_button.set_radius(lv.dpx(8))
@@ -161,15 +223,15 @@ def get_style_button_icon():
 def get_style_button_pressed():
     style_button_pressed = lv.style()
     style_button_pressed.set_bg_opa(lv.OPA.COVER)
-    style_button_pressed.set_bg_color(lv.color_lighten(COLOR_BACKGROUND, 96))
+    style_button_pressed.set_bg_color(surface_pressed())
     if liquid():
         style_button_pressed.set_bg_color(GLASS_WHITE)   # the pane lights up
-        style_button_pressed.set_bg_opa(96)
+        style_button_pressed.set_bg_opa(96 if not light() else 230)
     return style_button_pressed
 def get_style_button_disabled():
     style_button_disabled = lv.style()
     style_button_disabled.set_recolor(COLOR_BACKGROUND)
-    style_button_disabled.set_text_color(lv.color_darken(COLOR_TEXT, 64))
+    style_button_disabled.set_text_color(COLOR_DISABLED)
     return style_button_disabled
 def get_style_title_bar():
     style_title_bar = lv.style()
@@ -181,8 +243,8 @@ def get_style_title_bar():
 def get_style_checkbox():
     style_checkbox = lv.style()
     style_checkbox.set_size(lv.dpx(55), lv.dpx(55))
-    style_checkbox.set_bg_color(lv.color_lighten(COLOR_BACKGROUND, 24))
-    style_checkbox.set_border_color(lv.color_lighten(COLOR_BACKGROUND, 72))
+    style_checkbox.set_bg_color(surface_raised())
+    style_checkbox.set_border_color(surface_edge())
     style_checkbox.set_border_width(1)
     style_checkbox.set_min_width(0)
     style_checkbox.set_text_font(get_font_icon())
@@ -219,9 +281,10 @@ def get_style_modal():
     style_modal.set_radius(8)
     style_modal.set_pad_all(lv.dpx(20))
     if liquid():
-        style_modal.set_bg_color(lv.color_make(16, 44, 32))   # dark glass, so the text stays readable
+        # dark glass (frosted white in light mode), so the text stays readable
+        style_modal.set_bg_color(lv.color_make(16, 44, 32) if not light() else lv.color_make(246, 251, 247))
         style_modal.set_bg_opa(235)
-        style_modal.set_border_color(GLASS_WHITE)
+        style_modal.set_border_color(GLASS_WHITE if not light() else lv.color_make(150, 190, 160))
         style_modal.set_border_opa(110)
         style_modal.set_border_width(1)
         style_modal.set_radius(lv.dpx(24))
@@ -466,18 +529,18 @@ def switch(parent):
     checked = lv.STATE.CHECKED.value
     result = lv.switch(parent)
     result.set_size(lv.dpx(80), lv.dpx(44))
-    result.set_style_bg_color(lv.color_lighten(COLOR_BACKGROUND, 56), PART_MAIN)
+    result.set_style_bg_color(surface_track(), PART_MAIN)
     result.set_style_bg_opa(lv.OPA.COVER, PART_MAIN)
-    result.set_style_bg_color(lv.color_lighten(COLOR_BACKGROUND, 56), PART_INDICATOR)
+    result.set_style_bg_color(surface_track(), PART_INDICATOR)
     result.set_style_bg_color(COLOR_PRIMARY, PART_INDICATOR | checked)
     result.set_style_bg_opa(lv.OPA.COVER, PART_INDICATOR | checked)
     result.set_style_bg_color(lv.color_white(), PART_KNOB)
     result.set_style_bg_opa(lv.OPA.COVER, PART_KNOB)
     result.set_style_pad_all(-lv.dpx(3), PART_KNOB)
     if liquid():
-        result.set_style_bg_color(GLASS_WHITE, PART_MAIN)
-        result.set_style_bg_opa(60, PART_MAIN)
-        result.set_style_border_color(GLASS_WHITE, PART_MAIN)
+        result.set_style_bg_color(GLASS_WHITE if not light() else lv.color_black(), PART_MAIN)
+        result.set_style_bg_opa(60 if not light() else 40, PART_MAIN)
+        result.set_style_border_color(GLASS_WHITE if not light() else lv.color_make(150, 190, 160), PART_MAIN)
         result.set_style_border_opa(120, PART_MAIN)
         result.set_style_border_width(1, PART_MAIN)
         result.set_style_bg_opa(0, PART_INDICATOR)

@@ -26,7 +26,8 @@ TREE = ast.parse(SOURCE)
 APP = next(n for n in TREE.body if isinstance(n, ast.ClassDef) and n.name == 'RinkhalsUiApp')
 
 WANTED = ('layout', 'layout_aero_home', 'home_show_link', 'home_show_update', 'home_power', 'home_tick_clock',
-          'home_refresh', 'choose_theme', 'home_clear', 'aero_glass', 'aero_light', 'aero_orb', 'home_glyph')
+          'home_refresh', 'choose_theme', 'choose_mode', 'home_clear', 'aero_glass', 'aero_light', 'aero_orb',
+          'home_glyph', 'home_ink', 'home_ink_off')
 
 
 def load_class(lv, lvr):
@@ -47,7 +48,7 @@ def load_class(lv, lvr):
         'liquid_layout': mock.MagicMock(), 'liquid_ui': mock.MagicMock(),
         'ASSETS_PATH': '/assets', 'RINKHALS_VERSION': '2611-4-alpha',
         'display_version': lambda v: '2611 4 Alpha', 'ellipsis': lambda t, n: t,
-        'printer_ip': lambda: '192.168.1.5', 'run_async': lambda fn: None,
+        'printer_ip': lambda: '192.168.1.5', 'run_async': lambda fn: None, 'reader': mock.MagicMock(),
     }
     exec(compile(code, 'rinkhals-ui-aero', 'exec'), namespace)
     return namespace['AeroApp']
@@ -56,9 +57,11 @@ def load_class(lv, lvr):
 class AeroHomeTests(unittest.TestCase):
     def setUp(self):
         self.lv, self.lvr = mock.MagicMock(name='lv'), mock.MagicMock(name='lvr')
+        self.lvr.light.return_value = False
         self.App = load_class(self.lv, self.lvr)
         self.tmp = tempfile.TemporaryDirectory()
         home_tools.THEME_FILE = os.path.join(self.tmp.name, 'ui-theme')
+        home_tools.MODE_FILE = os.path.join(self.tmp.name, 'ui-mode')
         home_tools.CLASSIC_UI_FLAG = os.path.join(self.tmp.name, 'classic-ui')
         self.app = self.App()
         self.app.screen_info = mock.Mock(width=800, height=480)
@@ -83,6 +86,7 @@ class AeroHomeTests(unittest.TestCase):
         self.tmp.cleanup()
         home_tools.THEME_FILE = '/useremain/rinkhals/.ui-theme'
         home_tools.CLASSIC_UI_FLAG = '/useremain/rinkhals/.classic-ui'
+        home_tools.MODE_FILE = '/useremain/rinkhals/.ui-mode'
 
     def orb_taps(self):
         """The handlers of the six orbs, in the order they were created, and the back button's."""
@@ -271,6 +275,52 @@ class AeroHomeTests(unittest.TestCase):
         self.app.choose_theme()
         self.app.show_selection_dialog.assert_not_called()
         self.assertIn('loading', self.app.show_text_dialog.call_args.args[0])
+
+    # --- dark or light -----------------------------------------------------------------
+
+    def wallpaper(self):
+        return [c.args[0] for c in self.lvr.image.return_value.set_src.call_args_list][0]
+
+    def test_the_mode_is_read_and_set_before_anything_is_styled(self):
+        home_tools.set_mode('light')
+        self.app.layout()
+        self.lvr.set_mode.assert_called_once_with('light')
+        self.assertEqual(self.app.ui_mode, 'light')
+
+    def test_dark_and_light_have_their_own_wallpaper_and_ink(self):
+        self.app.layout_aero_home()
+        self.assertEqual(self.wallpaper(), '/assets/aero-wallpaper.bin')
+        self.assertEqual(self.app.home_ink(), (242, 248, 238))
+        self.lvr.reset_mock()
+        self.lvr.light.return_value = True
+        self.app.layout_aero_home()
+        self.assertEqual(self.wallpaper(), '/assets/aero-wallpaper-light.bin')
+        self.assertEqual(self.app.home_ink(), (24, 56, 30))
+        for name in ('aero-wallpaper.bin', 'aero-wallpaper-light.bin'):
+            self.assertTrue((UI / 'assets' / name).is_file(), name)
+
+    def choose_mode(self, option):
+        self.app.choose_mode()
+        options, chosen = self.app.show_selection_dialog.call_args.args
+        self.assertEqual(options, ['Dark', 'Light'])
+        chosen(option)
+
+    def test_choosing_a_mode_is_saved_and_closes_boomslang(self):
+        self.app.ui_mode = 'dark'
+        self.choose_mode('Light')
+        self.assertEqual(home_tools.mode(), 'light')
+        message = self.app.show_text_dialog.call_args
+        self.assertIn('Light mode', message.args[0])
+        self.assertEqual(message.kwargs['callback'], self.app.quit)
+
+    def test_choosing_the_mode_already_used_or_one_that_cannot_be_saved(self):
+        self.app.ui_mode = 'dark'
+        self.choose_mode('Dark')
+        self.app.show_text_dialog.assert_not_called()
+        self.assertFalse(os.path.exists(home_tools.MODE_FILE))
+        with mock.patch.object(home_tools, 'set_mode', side_effect=OSError('read-only')), self.assertLogs(level='ERROR'):
+            self.choose_mode('Light')
+        self.assertIn('Nothing was changed', self.app.show_text_dialog.call_args.args[0])
 
 
 class StartupTests(unittest.TestCase):

@@ -121,10 +121,25 @@ def parse_rgb(value):
     return None
 
 
+SCREEN = 'dark'        # the touch UI's mode: page colours must read on its background
+
+
+def set_screen(mode):
+    global SCREEN
+    SCREEN = 'light' if mode == 'light' else 'dark'
+
+
 def parse_color(value):
-    """A text colour -> (r, g, b), or None when unknown or too dark to read on the dark screen."""
+    """A text colour -> (r, g, b), or None when unknown or unreadable on the screen.
+
+    On the dark screen a colour must be light enough, on the light screen dark enough.
+    """
     rgb = parse_rgb(value)
-    return rgb if rgb and luminance(rgb) >= 0.30 else None
+    if not rgb:
+        return None
+    if SCREEN == 'light':
+        return rgb if luminance(rgb) <= 0.55 else None
+    return rgb if luminance(rgb) >= 0.30 else None
 
 
 def parse_length(value, base=16.0):

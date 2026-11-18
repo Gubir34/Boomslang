@@ -9,6 +9,10 @@ From the positions in files/3-rinkhals/opt/rinkhals/ui/liquid_layout.py it makes
   png/LiquidPanel.png     the mockups: the home screen, and with the quick settings open
   .../ui/assets/liquid-home.bin     the home screen's wallpaper with its glass panes in it
   .../ui/assets/liquid-panel.bin    the same with the quick settings panel open
+  ...LiquidLight / LiquidPanelLight, liquid-home-light.bin, liquid-panel-light.bin
+                                    the same for light mode: its own mint wallpaper and white glass
+
+    python3 branding/make-liquid.py light     only the light ones (or "dark")
 
 The look is "liquid glass": clear curved panes that blur and tint what is behind
 them, lit from the top left, with a thin rim that is bright where the light hits
@@ -67,6 +71,18 @@ CSS = """
   body.bake .txt, body.bake img, body.bake .slider { visibility: hidden; }
   body.bake-home .ic { visibility: hidden; }
   body.bake .pill, body.bake .badge { display: none; }
+  /* Light mode: a mint wallpaper and frosted white panes with a green rim; dark green ink */
+  body.light #screen { color: #18381e; background: #e6f2e8; }
+  body.light .lg { background:
+      radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 70%),
+      linear-gradient(160deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.50) 45%, rgba(255,255,255,.62) 100%);
+    box-shadow: 0 12px 26px rgba(40,90,50,.20), 0 2px 6px rgba(40,90,50,.14), inset 0 0 22px rgba(255,255,255,.35), inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1.5px 1px rgba(120,170,130,.35); }
+  body.light .lg.inbar { box-shadow: 0 2px 5px rgba(40,90,50,.16), inset 0 0 22px rgba(255,255,255,.35), inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1.5px 1px rgba(120,170,130,.35); }
+  body.light .lg::before { background: conic-gradient(from 215deg, rgba(255,255,255,1), rgba(110,170,120,.35) 22%, rgba(255,255,255,.8) 50%, rgba(110,170,120,.30) 72%, rgba(255,255,255,1)); }
+  body.light .dim { background: rgba(30,70,40,.16) !important; }
+  body.light .handle { background: rgba(40,90,50,.45) !important; }
+  body.light .slider { background: rgba(40,90,50,.22) !important; }
+  body.light .txt-shadow { text-shadow: 0 1px 3px rgba(255,255,255,.6); }
 """
 
 WORLD = """
@@ -91,10 +107,33 @@ WORLD = """
   </svg>
 """
 
+# Light mode's own wallpaper: the same shapes as day, pale mint with soft lime, leaf and sky
+WORLD_LIGHT = """
+  <svg class="world" width="800" height="480" viewBox="0 0 800 480" aria-hidden="true">
+    <defs>
+      <radialGradient id="llime" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#e4fa9c"/><stop offset="1" stop-color="#e4fa9c" stop-opacity="0"/></radialGradient>
+      <radialGradient id="lleaf" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#9fe3a6"/><stop offset="1" stop-color="#9fe3a6" stop-opacity="0"/></radialGradient>
+      <radialGradient id="lteal" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#9eeadb"/><stop offset="1" stop-color="#9eeadb" stop-opacity="0"/></radialGradient>
+      <radialGradient id="lsun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+      <linearGradient id="lribbon" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4fb548" stop-opacity="0"/><stop offset=".5" stop-color="#4fb548" stop-opacity=".9"/><stop offset="1" stop-color="#4fb548" stop-opacity="0"/></linearGradient>
+    </defs>
+    <rect width="800" height="480" fill="#e2f0e4"/>
+    <circle cx="130" cy="90" r="220" fill="url(#lleaf)" opacity=".9"/>
+    <circle cx="640" cy="60" r="200" fill="url(#llime)" opacity=".9"/>
+    <circle cx="420" cy="300" r="240" fill="url(#lsun)" opacity=".9"/>
+    <circle cx="720" cy="400" r="200" fill="url(#lteal)" opacity=".8"/>
+    <circle cx="60" cy="420" r="170" fill="url(#llime)" opacity=".7"/>
+    <circle cx="330" cy="40" r="120" fill="url(#lteal)" opacity=".6"/>
+    <path d="M-40 380 C 150 260, 300 330, 470 230 S 720 70, 860 110" fill="none" stroke="url(#lribbon)" stroke-width="14" opacity=".25"/>
+    <path d="M-40 430 C 170 320, 320 380, 480 280 S 730 110, 860 150" fill="none" stroke="url(#lribbon)" stroke-width="4" opacity=".45"/>
+    <path d="M-40 460 C 190 390, 340 430, 500 330 S 740 170, 860 200" fill="none" stroke="url(#lribbon)" stroke-width="2" opacity=".35"/>
+  </svg>
+"""
+
 
 # The LemSearch icon is not in the icon font: the same drawing as branding/make-lemsearch-icon.py
 LEMSEARCH_SVG = ('<svg class="ic txt-shadow" aria-label="{label}" width="30" height="30" viewBox="0 0 32 32" fill="none" '
-                 'stroke="#fff"><path d="M8 4 V26 H20" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/>'
+                 'stroke="currentColor"><path d="M8 4 V26 H20" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/>'
                  '<circle cx="19" cy="12" r="4.5" stroke-width="2.5"/>'
                  '<path d="M22.2 15.2 L25.8 18.8" stroke-width="2.5" stroke-linecap="round"/></svg>')
 
@@ -154,13 +193,13 @@ def home(icons, text, with_tab=True, with_clock=True):
 
 def panel(mock):
     """The quick settings panel, with the home dimmed behind it."""
-    out = [f'<div style="position:absolute;inset:0;background:rgba(0,0,0,{L.DIM / 255:.3f})"></div>']
+    out = [f'<div class="dim" style="position:absolute;inset:0;background:rgba(0,0,0,{L.DIM / 255:.3f})"></div>']
     px, py, pw, ph = L.PANEL
     out.append(pane(L.PANEL, f'0 0 {L.PANEL_RADIUS}px {L.PANEL_RADIUS}px'))
     for rect in L.PANEL_CHIPS + L.PANEL_BUTTONS:
         out.append(pane(rect, L.PANEL_CHIP_RADIUS))
     hx, hy, hw, hh = L.PANEL_HANDLE
-    out.append(f'<div style="position:absolute;left:{hx}px;top:{hy}px;width:{hw}px;height:{hh}px;border-radius:3px;background:rgba(255,255,255,.55)"></div>')
+    out.append(f'<div class="handle" style="position:absolute;left:{hx}px;top:{hy}px;width:{hw}px;height:{hh}px;border-radius:3px;background:rgba(255,255,255,.55)"></div>')
     if mock:
         tx, ty = L.PANEL_TITLE
         out.append(f'<div class="txt txt-shadow" style="position:absolute;left:{tx}px;top:{ty}px;font-size:20px;font-weight:700">Quick settings</div>')
@@ -188,7 +227,7 @@ def _row(rect, icon, text):
             f'<span class="ic txt-shadow" style="font-size:26px">{icon}</span><span class="txt txt-shadow" style="font-size:16px;font-weight:600">{text}</span></div>')
 
 
-def page(mode):
+def page(mode, light=False):
     bake = mode.startswith('bake')
     fonts = '' if mode == 'bake-home' else ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
                              '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0" rel="stylesheet">')
@@ -199,7 +238,7 @@ def page(mode):
     if opened:
         body += '\n' + panel(not bake)
     return (f'<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Liquid Plastic UI</title>\n{fonts}\n<style>{CSS}</style>\n</head>\n'
-            f'<body class="{("bake " + mode) if bake else ""}">\n<div id="screen">\n{WORLD}\n{body}\n</div>\n</body>\n</html>\n')
+            f'<body class="{(("bake " + mode) if bake else "") + (" light" if light else "")}">\n<div id="screen">\n{WORLD_LIGHT if light else WORLD}\n{body}\n</div>\n</body>\n</html>\n')
 
 
 RENDER_CHROMIUM = """
@@ -233,14 +272,24 @@ def render(html_path, png_path):
 
 def main():
     work = Path(tempfile.mkdtemp(prefix='liquid-'))
-    for mode, name in (('home', 'Liquid'), ('panel', 'LiquidPanel')):
-        html_path = MOCKUPS / 'html' / f'{name}.html'
-        html_path.write_text(page(mode), encoding='utf-8')
-        render(html_path, MOCKUPS / 'png' / f'{name}.png')
-        print(f'mockup {name}: png/{name}.png')
+    only = sys.argv[1:]          # e.g. "light": make only the light pictures
+    for light, suffix, mock_suffix in ((False, '', ''), (True, '-light', 'Light')):
+        if only and ('light' if light else 'dark') not in only:
+            continue
+        for mode, name in (('home', 'Liquid'), ('panel', 'LiquidPanel')):
+            name += mock_suffix
+            html_path = MOCKUPS / 'html' / f'{name}.html'
+            html_path.write_text(page(mode, light), encoding='utf-8')
+            render(html_path, MOCKUPS / 'png' / f'{name}.png')
+            print(f'mockup {name}: png/{name}.png')
+        bake(work, light, suffix)
+
+
+def bake(work, light, suffix):
     for mode, name in (('bake-home', 'liquid-home'), ('bake-panel', 'liquid-panel')):
+        name += suffix
         html_path = work / f'{name}.html'
-        html_path.write_text(page(mode), encoding='utf-8')
+        html_path.write_text(page(mode, light), encoding='utf-8')
         png_path = work / f'{name}.png'
         render(html_path, png_path)
         target = UI / 'assets' / f'{name}.bin'

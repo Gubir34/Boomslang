@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <!-- Aero's light-mode wallpaper: the dark one's ribbons on a pale, sunlit green.
+       Rendered to aero-wallpaper-light.png by make-aero-wallpaper.py (Chromium via node Playwright). -->
+  <defs>
+    <radialGradient id="sky" cx="66%" cy="28%" r="80%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".45" stop-color="#e8f4e2"/>
+      <stop offset="1" stop-color="#c9e3c0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="480" fill="url(#sky)"/>
+  <path d="M130 -10 C 190 90, 200 200, 240 300 S 300 450, 325 490" fill="none" stroke="#7cc46e" stroke-width="20" opacity=".22"/>
+  <path d="M-20 360 C 120 290, 250 300, 400 240 S 640 70, 820 70" fill="none" stroke="#6cbf5e" stroke-width="16" opacity=".30"/>
+  <path d="M-20 400 C 130 330, 280 330, 440 260 S 660 110, 820 108" fill="none" stroke="#3f9e3a" stroke-width="3" opacity=".75"/>
+  <path d="M-20 425 C 140 360, 300 360, 470 300 S 680 140, 820 138" fill="none" stroke="#8fbf4a" stroke-width="2" opacity=".75"/>
+  <path d="M-20 460 C 160 400, 320 400, 500 330 S 700 200, 820 188" fill="none" stroke="#8fbf4a" stroke-width="1" opacity=".55"/>
+</svg>

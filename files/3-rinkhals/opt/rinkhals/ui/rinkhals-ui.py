@@ -253,6 +253,9 @@ class RinkhalsUiApp(BaseApp):
     def layout(self):
         # The look of every screen follows the home's: the shared styles are
         # built in super().layout(), so they are told first
+        self.ui_mode = home_tools.mode()                  # light or dark: its own backgrounds and colours
+        lvr.set_mode(self.ui_mode)
+        reader.reader_css.set_screen(self.ui_mode)       # page colours must read on that background
         if self.screen_info:
             lvr.set_look(home_tools.theme_for(self.screen_info.width, self.screen_info.height))
         super().layout()
@@ -292,11 +295,18 @@ class RinkhalsUiApp(BaseApp):
 
         # Home screen after branding/ui-mockups/png/Main.png (Classic theme):
         # header, a 3x2 grid of cards, and a row of three plain buttons.
-        SURFACE = lv.color_make(22, 29, 23)
-        BORDER = lv.color_make(36, 48, 38)
-        ICON_BOX = lv.color_make(31, 42, 33)
-        ICON_GREEN = lv.color_make(201, 234, 127)
-        PILL = lv.color_make(30, 62, 32)
+        if lvr.light():
+            SURFACE = lv.color_make(255, 255, 255)
+            BORDER = lv.color_make(206, 220, 205)
+            ICON_BOX = lv.color_make(226, 240, 222)
+            ICON_GREEN = lv.color_make(62, 140, 38)
+            PILL = lv.color_make(212, 236, 198)
+        else:
+            SURFACE = lv.color_make(22, 29, 23)
+            BORDER = lv.color_make(36, 48, 38)
+            ICON_BOX = lv.color_make(31, 42, 33)
+            ICON_GREEN = lv.color_make(201, 234, 127)
+            PILL = lv.color_make(30, 62, 32)
 
         def plain(widget):
             widget.remove_flag(lv.OBJ_FLAG.CLICKABLE)
@@ -438,6 +448,13 @@ class RinkhalsUiApp(BaseApp):
     AERO_PILL = ((201, 234, 127), (126, 196, 78))
     AERO_BADGE = (224, 83, 63)
 
+    def home_ink(self):
+        """Icons and text on the home screen's chrome: near white in dark mode, dark green in light mode."""
+        return (242, 248, 238) if not lvr.light() else (24, 56, 30)
+
+    def home_ink_off(self):
+        return (120, 140, 120) if not lvr.light() else (150, 168, 150)
+
     def home_clear(self, widget, radius=0):
         """No background, border or padding of the default panel style."""
         widget.set_style_bg_opa(lv.OPA.TRANSP, lv.STATE.DEFAULT)
@@ -448,12 +465,12 @@ class RinkhalsUiApp(BaseApp):
         return widget
 
     def aero_glass(self, widget, radius=16):
-        """A frosted pane: translucent white with a light edge."""
+        """A frosted pane: translucent white with a light edge (more white and a green edge in light mode)."""
         widget.set_style_bg_color(lv.color_white(), lv.STATE.DEFAULT)
-        widget.set_style_bg_opa(46, lv.STATE.DEFAULT)
+        widget.set_style_bg_opa(46 if not lvr.light() else 150, lv.STATE.DEFAULT)
         widget.set_style_border_width(1, lv.STATE.DEFAULT)
-        widget.set_style_border_color(lv.color_white(), lv.STATE.DEFAULT)
-        widget.set_style_border_opa(80, lv.STATE.DEFAULT)
+        widget.set_style_border_color(lv.color_white() if not lvr.light() else lv.color_make(140, 180, 140), lv.STATE.DEFAULT)
+        widget.set_style_border_opa(80 if not lvr.light() else 200, lv.STATE.DEFAULT)
         widget.set_style_radius(radius, lv.STATE.DEFAULT)
         widget.set_style_pad_all(0, lv.STATE.DEFAULT)
         widget.set_style_shadow_width(0, lv.STATE.DEFAULT)
@@ -468,7 +485,7 @@ class RinkhalsUiApp(BaseApp):
         widget.set_style_bg_grad_dir(lv.GRAD_DIR.VER, lv.STATE.DEFAULT)
         widget.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
         widget.set_style_border_width(2, lv.STATE.DEFAULT)
-        widget.set_style_border_color(lv.color_white(), lv.STATE.DEFAULT)
+        widget.set_style_border_color(lv.color_white() if not lvr.light() else lv.color_make(170, 200, 165), lv.STATE.DEFAULT)
         widget.set_style_border_opa(150, lv.STATE.DEFAULT)
         widget.set_style_radius(radius, lv.STATE.DEFAULT)
         widget.set_style_shadow_width(0, lv.STATE.DEFAULT)
@@ -492,11 +509,11 @@ class RinkhalsUiApp(BaseApp):
         orb.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
         return orb
 
-    def home_glyph(self, parent, glyph, x, y, color=(242, 248, 238)):
+    def home_glyph(self, parent, glyph, x, y, color=None):
         label = lv.label(parent)
         label.set_text(glyph)
         label.set_style_text_font(lvr.get_font_icon_small(), lv.STATE.DEFAULT)
-        label.set_style_text_color(lv.color_make(*color), lv.STATE.DEFAULT)
+        label.set_style_text_color(lv.color_make(*(color or self.home_ink())), lv.STATE.DEFAULT)
         label.set_pos(x, y)
         return label
 
@@ -526,13 +543,14 @@ class RinkhalsUiApp(BaseApp):
     def layout_aero_home(self):
         main = self.screen_main
         self.home_clear(main)
-        main.set_style_bg_color(lv.color_make(12, 36, 16), lv.STATE.DEFAULT)   # what shows if the wallpaper can't be read
+        # what shows if the wallpaper can't be read
+        main.set_style_bg_color(lv.color_make(12, 36, 16) if not lvr.light() else lv.color_make(226, 238, 222), lv.STATE.DEFAULT)
         main.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
 
-        # Wallpaper: a raw RGB565 LVGL image, so nothing is decoded on redraw
-        # (see branding/make-aero-wallpaper.py)
+        # Wallpaper: a raw RGB565 LVGL image, so nothing is decoded on redraw. Light
+        # mode has its own (see branding/make-aero-wallpaper.py)
         wallpaper = lvr.image(main)
-        wallpaper.set_src(ASSETS_PATH + '/aero-wallpaper.bin')
+        wallpaper.set_src(ASSETS_PATH + ('/aero-wallpaper-light.bin' if lvr.light() else '/aero-wallpaper.bin'))
         wallpaper.set_pos(0, 0)
         wallpaper.remove_flag(lv.OBJ_FLAG.CLICKABLE)
 
@@ -540,12 +558,12 @@ class RinkhalsUiApp(BaseApp):
         bar = self.home_clear(lvr.panel(main))
         bar.set_size(800, 84)
         bar.set_pos(0, 396)
-        bar.set_style_bg_color(lv.color_black(), lv.STATE.DEFAULT)
-        bar.set_style_bg_opa(90, lv.STATE.DEFAULT)
+        bar.set_style_bg_color(lv.color_black() if not lvr.light() else lv.color_white(), lv.STATE.DEFAULT)
+        bar.set_style_bg_opa(90 if not lvr.light() else 150, lv.STATE.DEFAULT)
         bar.set_style_border_side(lv.BORDER_SIDE.TOP, lv.STATE.DEFAULT)
         bar.set_style_border_width(1, lv.STATE.DEFAULT)
-        bar.set_style_border_color(lv.color_white(), lv.STATE.DEFAULT)
-        bar.set_style_border_opa(60, lv.STATE.DEFAULT)
+        bar.set_style_border_color(lv.color_white() if not lvr.light() else lv.color_make(140, 180, 140), lv.STATE.DEFAULT)
+        bar.set_style_border_opa(60 if not lvr.light() else 160, lv.STATE.DEFAULT)
 
         # Orbs: Settings, App Store, Apps, Web portal, LemSearch (the browser), Power
         self.aero_orb(main, 14, '', lambda: self.show_screen(self.screen_advanced))
@@ -575,7 +593,7 @@ class RinkhalsUiApp(BaseApp):
         back.set_size(60, 60)
         back.set_pos(14, 14)
         self.aero_glass(back, 16)
-        back.set_style_text_color(lv.color_make(242, 248, 238), lv.STATE.DEFAULT)
+        back.set_style_text_color(lv.color_make(*self.home_ink()), lv.STATE.DEFAULT)
         back.set_text('')
         back.add_event_cb(lambda e: self.quit(), lv.EVENT_CODE.CLICKED, None)
 
@@ -655,7 +673,7 @@ class RinkhalsUiApp(BaseApp):
         """What changes while the UI is open: the clock and whether there is a network."""
         self.home_tick_clock()
         online = printer_ip() is not None
-        self.home_wifi.set_style_text_color(lv.color_make(242, 248, 238) if online else lv.color_make(120, 140, 120), lv.STATE.DEFAULT)
+        self.home_wifi.set_style_text_color(lv.color_make(*(self.home_ink() if online else self.home_ink_off())), lv.STATE.DEFAULT)
 
     def home_show_update(self, latest):
         """There is a newer release: mark it on whichever home screen is showing."""
@@ -696,6 +714,28 @@ class RinkhalsUiApp(BaseApp):
                                   callback=self.quit)
         self.show_selection_dialog(options, chosen)
 
+    def choose_mode(self):
+        names = home_tools.MODE_NAMES
+        options = [names[mode] for mode in home_tools.MODES]
+        if not getattr(self, 'modal_selection', None):
+            self.show_text_dialog('Still loading,\ntry again in a moment.')
+            return
+
+        def chosen(option):
+            mode = next(m for m in home_tools.MODES if names[m] == option)
+            if mode == self.ui_mode:
+                return
+            try:
+                home_tools.set_mode(mode)
+            except OSError as e:
+                logging.error(f'Could not save the mode: {e}')
+                self.show_text_dialog('Could not save the choice.\nNothing was changed.')
+                return
+            # the styles are made once, when the screens are built: a restart redraws everything
+            self.show_text_dialog(f'{option} mode is used\nthe next time Boomslang opens.\n\nBoomslang closes now.',
+                                  callback=self.quit)
+        self.show_selection_dialog(options, chosen)
+
     # --- Liquid Plastic (design.md, branding/make-liquid.py) -----------------------------
     # Clear glass panes. They are part of the wallpaper pictures (LVGL can't blur what
     # is behind a widget); what is built here is the live part on top: touch areas
@@ -707,13 +747,16 @@ class RinkhalsUiApp(BaseApp):
     def layout_liquid_home(self):
         L = liquid_layout
         main = self.screen_main
-        glass = liquid_ui.Glass(lv, lvr)
+        glass = liquid_ui.Glass(lv, lvr, ink=self.home_ink() if lvr.light() else liquid_ui.WHITE, light=lvr.light())
+        self.liquid_glass = glass
         self.home_clear(main)
-        main.set_style_bg_color(lv.color_make(6, 23, 12), lv.STATE.DEFAULT)   # what shows if the picture can't be read
+        # what shows if the picture can't be read
+        main.set_style_bg_color(lv.color_make(6, 23, 12) if not lvr.light() else lv.color_make(226, 240, 230), lv.STATE.DEFAULT)
         main.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
 
+        # Light mode has its own pictures: a mint wallpaper with frosted white panes
         picture = lvr.image(main)
-        picture.set_src(ASSETS_PATH + '/liquid-home.bin')
+        picture.set_src(ASSETS_PATH + ('/liquid-home-light.bin' if lvr.light() else '/liquid-home.bin'))
         picture.set_pos(0, 0)
         picture.remove_flag(lv.OBJ_FLAG.CLICKABLE)
 
@@ -726,7 +769,7 @@ class RinkhalsUiApp(BaseApp):
         glass.touch(main, L.BACK, L.BACK_RADIUS, self.quit, glyph=chr(0xe166))
         glass.touch(main, L.TAB_TOUCH, L.TAB_RADIUS, self.liquid_open_panel)
 
-        white = lv.color_make(255, 255, 255)
+        white = lv.color_make(*glass.ink)       # the text on the panes (named for the dark look it started in)
 
         # The clock
         clock = glass.container(main, L.CLOCK, clickable=False)
@@ -788,7 +831,7 @@ class RinkhalsUiApp(BaseApp):
         self.home_badge.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
         badge_text = lv.label(self.home_badge)
         badge_text.set_text('1')
-        badge_text.set_style_text_color(white, lv.STATE.DEFAULT)
+        badge_text.set_style_text_color(lv.color_white(), lv.STATE.DEFAULT)   # on the red dot in both modes
         badge_text.center()
         self.home_badge.add_flag(lv.OBJ_FLAG.HIDDEN)
 
@@ -806,14 +849,14 @@ class RinkhalsUiApp(BaseApp):
 
     def layout_liquid_panel(self, glass, main):
         L = liquid_layout
-        panel = liquid_ui.DropPanel(glass, main, ASSETS_PATH + '/liquid-panel.bin',
+        panel = liquid_ui.DropPanel(glass, main, ASSETS_PATH + ('/liquid-panel-light.bin' if lvr.light() else '/liquid-panel.bin'),
                                     (L.PANEL[0], 0, L.PANEL[2], L.PANEL_VISIBLE_BOTTOM), L.PANEL_CLOSE,
                                     on_open=self.liquid_panel_refresh)
         self.liquid_panel = panel
         layer = panel.layer
 
         title = lvr.title(layer)
-        title.set_style_text_color(lv.color_make(255, 255, 255), lv.STATE.DEFAULT)
+        title.set_style_text_color(lv.color_make(*glass.ink), lv.STATE.DEFAULT)
         title.set_text('Quick settings')
         title.set_pos(*L.PANEL_TITLE)
 
@@ -1170,6 +1213,12 @@ class RinkhalsUiApp(BaseApp):
                     button_theme.set_width(lv.pct(100))
                     button_theme.set_text(f'Look: {home_tools.THEME_NAMES[self.home_theme]}')
                     button_theme.add_event_cb(lambda e: self.choose_theme(), lv.EVENT_CODE.CLICKED, None)
+
+                # Dark or light: every look has both, with its own wallpaper and colours
+                button_mode = lvr.button(panel_buttons)
+                button_mode.set_width(lv.pct(100))
+                button_mode.set_text(f'Mode: {home_tools.MODE_NAMES[self.ui_mode]}')
+                button_mode.add_event_cb(lambda e: self.choose_mode(), lv.EVENT_CODE.CLICKED, None)
 
                 button_previous = lvr.button(panel_buttons)
                 button_previous.set_width(lv.pct(100))
@@ -1705,10 +1754,10 @@ class RinkhalsUiApp(BaseApp):
         textarea.set_width(lv.pct(95))
         textarea.set_style_text_font(lvr.get_font_text(), lv.STATE.DEFAULT)
         # Add basic style to textarea to match the theme
-        textarea.set_style_bg_color(lv.color_lighten(lvr.COLOR_BACKGROUND, 16), lv.STATE.DEFAULT)
+        textarea.set_style_bg_color(lvr.surface_raised(), lv.STATE.DEFAULT)
         textarea.set_style_text_color(lvr.COLOR_TEXT, lv.STATE.DEFAULT)
         textarea.set_style_border_width(1, lv.STATE.DEFAULT)
-        textarea.set_style_border_color(lv.color_lighten(lvr.COLOR_BACKGROUND, 48), lv.STATE.DEFAULT)
+        textarea.set_style_border_color(lvr.surface_edge(), lv.STATE.DEFAULT)
         
         keyboard = lv.keyboard(self.modal_text_input.panel_content)
         keyboard.set_textarea(textarea)
@@ -1729,7 +1778,7 @@ class RinkhalsUiApp(BaseApp):
         keyboard.add_flag(lv.OBJ_FLAG.CLICKABLE)
 
         # Style keyboard to match dark theme better
-        keyboard.set_style_bg_color(lv.color_darken(lvr.COLOR_BACKGROUND, 16), lv.STATE.DEFAULT)
+        keyboard.set_style_bg_color(lvr.surface_sunken(), lv.STATE.DEFAULT)
         # Handle different LVGL part constants across versions
         part_items = getattr(lv.PART, 'ITEMS', 0x00030000)
         state_default = getattr(lv.STATE.DEFAULT, 'value', int(lv.STATE.DEFAULT)) if hasattr(lv.STATE, 'DEFAULT') else 0
@@ -3009,7 +3058,7 @@ class RinkhalsUiApp(BaseApp):
             panel_progress_background = lvr.panel(self.modal_store_install)
             panel_progress_background.set_size(lv.pct(100), lv.dpx(10))
             panel_progress_background.set_style_pad_all(0, lv.STATE.DEFAULT)
-            panel_progress_background.set_style_bg_color(lv.color_lighten(lvr.COLOR_BACKGROUND, 48), lv.STATE.DEFAULT)
+            panel_progress_background.set_style_bg_color(lvr.surface_track(), lv.STATE.DEFAULT)
             panel_progress_background.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
             panel_progress_background.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
 

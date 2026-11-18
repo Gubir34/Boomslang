@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Liquid Plastic UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #000; }
+  .ic { font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal; white-space: nowrap; font-feature-settings: 'liga'; }
+  #screen { width: 800px; height: 480px; position: relative; overflow: hidden; box-sizing: border-box; font-family: Inter, sans-serif; color: #fff; background: #05140b; }
+  svg.world { position: absolute; left: 0; top: 0; }
+  .lg { position: absolute; isolation: isolate;
+    background:
+      radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.34) 0%, rgba(255,255,255,0) 70%),
+      linear-gradient(160deg, rgba(255,255,255,.20) 0%, rgba(255,255,255,.05) 45%, rgba(255,255,255,.12) 100%);
+    /* no backdrop-filter: Firefox's headless screenshots, which made the pictures so far,
+       never applied it, and Chromium's saturate tinted the panes bright lime. The look is the
+       panes' own gradient over the wallpaper. */
+    box-shadow: 0 14px 28px rgba(0,0,0,.38), 0 2px 6px rgba(0,0,0,.25), inset 0 0 22px rgba(255,255,255,.10), inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -1.5px 1px rgba(255,255,255,.22); }
+  /* Panes inside the taskbar (the orbs and the clock) cast a small shadow. The big one of the
+     free panes fell 14 px down inside the bar and darkened the gap under them, so they looked
+     as if they sat on the bar's bottom edge although the gaps above and below are equal. */
+  .lg.inbar { box-shadow: 0 2px 5px rgba(0,0,0,.22), inset 0 0 22px rgba(255,255,255,.10), inset 0 1.5px 1px rgba(255,255,255,.55), inset 0 -1.5px 1px rgba(255,255,255,.22); }
+  .lg::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px; pointer-events: none;
+    background: conic-gradient(from 215deg, rgba(255,255,255,.95), rgba(255,255,255,.08) 22%, rgba(255,255,255,.55) 50%, rgba(255,255,255,.06) 72%, rgba(255,255,255,.95));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  .lg > * { position: relative; z-index: 1; }
+  .tint { background:
+      radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 70%),
+      linear-gradient(160deg, rgba(214,255,140,.95) 0%, rgba(150,225,100,.78) 100%) !important; }
+  .warm { background:
+      radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 70%),
+      linear-gradient(160deg, rgba(255,140,120,.85) 0%, rgba(235,70,55,.80) 100%) !important; }
+  .center { display: grid; place-items: center; }
+  .txt-shadow { text-shadow: 0 1px 5px rgba(0,0,0,.35); }
+  /* when the page is made into the printer's wallpaper, only the panes stay */
+  body.bake .txt, body.bake img, body.bake .slider { visibility: hidden; }
+  body.bake-home .ic { visibility: hidden; }
+  body.bake .pill, body.bake .badge { display: none; }
+  /* Light mode: a mint wallpaper and frosted white panes with a green rim; dark green ink */
+  body.light #screen { color: #18381e; background: #e6f2e8; }
+  body.light .lg { background:
+      radial-gradient(70% 55% at 22% 8%, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 70%),
+      linear-gradient(160deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.50) 45%, rgba(255,255,255,.62) 100%);
+    box-shadow: 0 12px 26px rgba(40,90,50,.20), 0 2px 6px rgba(40,90,50,.14), inset 0 0 22px rgba(255,255,255,.35), inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1.5px 1px rgba(120,170,130,.35); }
+  body.light .lg.inbar { box-shadow: 0 2px 5px rgba(40,90,50,.16), inset 0 0 22px rgba(255,255,255,.35), inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1.5px 1px rgba(120,170,130,.35); }
+  body.light .lg::before { background: conic-gradient(from 215deg, rgba(255,255,255,1), rgba(110,170,120,.35) 22%, rgba(255,255,255,.8) 50%, rgba(110,170,120,.30) 72%, rgba(255,255,255,1)); }
+  body.light .dim { background: rgba(30,70,40,.16) !important; }
+  body.light .handle { background: rgba(40,90,50,.45) !important; }
+  body.light .slider { background: rgba(40,90,50,.22) !important; }
+  body.light .txt-shadow { text-shadow: 0 1px 3px rgba(255,255,255,.6); }
+</style>
+</head>
+<body class=" light">
+<div id="screen">
+
+  <svg class="world" width="800" height="480" viewBox="0 0 800 480" aria-hidden="true">
+    <defs>
+      <radialGradient id="llime" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#e4fa9c"/><stop offset="1" stop-color="#e4fa9c" stop-opacity="0"/></radialGradient>
+      <radialGradient id="lleaf" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#9fe3a6"/><stop offset="1" stop-color="#9fe3a6" stop-opacity="0"/></radialGradient>
+      <radialGradient id="lteal" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#9eeadb"/><stop offset="1" stop-color="#9eeadb" stop-opacity="0"/></radialGradient>
+      <radialGradient id="lsun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+      <linearGradient id="lribbon" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4fb548" stop-opacity="0"/><stop offset=".5" stop-color="#4fb548" stop-opacity=".9"/><stop offset="1" stop-color="#4fb548" stop-opacity="0"/></linearGradient>
+    </defs>
+    <rect width="800" height="480" fill="#e2f0e4"/>
+    <circle cx="130" cy="90" r="220" fill="url(#lleaf)" opacity=".9"/>
+    <circle cx="640" cy="60" r="200" fill="url(#llime)" opacity=".9"/>
+    <circle cx="420" cy="300" r="240" fill="url(#lsun)" opacity=".9"/>
+    <circle cx="720" cy="400" r="200" fill="url(#lteal)" opacity=".8"/>
+    <circle cx="60" cy="420" r="170" fill="url(#llime)" opacity=".7"/>
+    <circle cx="330" cy="40" r="120" fill="url(#lteal)" opacity=".6"/>
+    <path d="M-40 380 C 150 260, 300 330, 470 230 S 720 70, 860 110" fill="none" stroke="url(#lribbon)" stroke-width="14" opacity=".25"/>
+    <path d="M-40 430 C 170 320, 320 380, 480 280 S 730 110, 860 150" fill="none" stroke="url(#lribbon)" stroke-width="4" opacity=".45"/>
+    <path d="M-40 460 C 190 390, 340 430, 500 330 S 740 170, 860 200" fill="none" stroke="url(#lribbon)" stroke-width="2" opacity=".35"/>
+  </svg>
+
+<div class="lg " style="left:8px;top:400px;width:784px;height:72px;border-radius:36px"></div>
+<div class="lg center inbar" style="left:16px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Settings">settings</span></div>
+<div class="lg center inbar" style="left:88px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="App Store">local_mall</span></div>
+<div class="lg center inbar" style="left:160px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Apps">widgets</span></div>
+<div class="lg center inbar" style="left:232px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Web portal">qr_code_2</span></div>
+<div class="lg center inbar" style="left:304px;top:407px;width:58px;height:58px;border-radius:29px"><svg class="ic txt-shadow" aria-label="LemSearch Lite" width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor"><path d="M8 4 V26 H20" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter"/><circle cx="19" cy="12" r="4.5" stroke-width="2.5"/><path d="M22.2 15.2 L25.8 18.8" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+<div class="lg warm center inbar" style="left:376px;top:407px;width:58px;height:58px;border-radius:29px"><span class="ic txt-shadow" style="font-size:29px" aria-label="Power">power_settings_new</span></div>
+<div class="lg center inbar" style="left:688px;top:407px;width:96px;height:58px;border-radius:29px"><div class="txt" style="text-align:center;line-height:1.05"><div class="txt-shadow" style="font-size:22px;font-weight:700">19:09</div><div style="font-size:11px;font-weight:500;opacity:.9">11/11/2026</div></div></div>
+<div class="lg center" style="left:14px;top:14px;width:60px;height:60px;border-radius:30px"><span class="ic txt-shadow" style="font-size:30px">undo</span></div>
+<div class="lg " style="left:236px;top:-34px;width:328px;height:124px;border-radius:0 0 44px 44px"><div style="position:absolute;left:0;right:0;top:44px;display:flex;justify-content:center;align-items:center;gap:10px"><img src="boomslang-logo.svg" alt="" style="width:32px;height:32px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))"><span class="txt-shadow" style="font-size:24px;font-weight:700">Boomslang</span></div><div style="position:absolute;left:0;right:0;top:83px;display:flex;justify-content:center;align-items:center;gap:10px"><span style="font-size:14px;opacity:.92">2611 6 Alpha</span><span class="lg tint pill center" style="position:relative;display:inline-grid;height:26px;padding:0 16px;border-radius:13px;font-size:13px;font-weight:700;color:#0e3d14;box-shadow:0 4px 10px rgba(0,0,0,.3),inset 0 1px 1px rgba(255,255,255,.7)">Update</span></div></div>
+<div class="lg " style="left:696px;top:14px;width:90px;height:90px;border-radius:34px"><span class="ic" style="position:absolute;left:15px;top:15px;font-size:24px">wifi</span><span class="ic" style="position:absolute;left:51px;top:15px;font-size:24px">swap_vert</span><span class="ic" style="position:absolute;left:15px;top:51px;font-size:24px">notifications</span><span class="ic" style="position:absolute;left:51px;top:51px;font-size:24px">print</span><span class="lg warm center badge" style="position:absolute;left:33px;top:47px;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:700">1</span></div>
+</div>
+</body>
+</html>

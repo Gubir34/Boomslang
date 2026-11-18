@@ -1097,7 +1097,7 @@ class BaseApp:
             panel_title = lvr.panel(panel_rinkhals)
             if panel_title:
                 panel_title.set_width(lv.pct(100))
-                panel_title.set_style_bg_color(lv.color_white(), lv.STATE.DEFAULT)
+                panel_title.set_style_bg_color(lv.color_white() if not lvr.light() else lv.color_black(), lv.STATE.DEFAULT)
                 panel_title.set_style_bg_opa(lv.OPA._10, lv.STATE.DEFAULT)
 
                 label_rinkhals = lvr.title(panel_title)
@@ -1158,7 +1158,7 @@ class BaseApp:
             panel_title = lvr.panel(panel_firmware)
             if panel_title:
                 panel_title.set_width(lv.pct(100))
-                panel_title.set_style_bg_color(lv.color_white(), lv.STATE.DEFAULT)
+                panel_title.set_style_bg_color(lv.color_white() if not lvr.light() else lv.color_black(), lv.STATE.DEFAULT)
                 panel_title.set_style_bg_opa(lv.OPA._10, lv.STATE.DEFAULT)
 
                 label_rinkhals = lvr.title(panel_title)
@@ -1309,7 +1309,7 @@ class BaseApp:
             panel_progress_background = lvr.panel(self.modal_ota_rinkhals.panel_progress)
             panel_progress_background.set_size(lv.pct(100), lv.dpx(10))
             panel_progress_background.set_style_pad_all(0, lv.STATE.DEFAULT)
-            panel_progress_background.set_style_bg_color(lv.color_lighten(lvr.COLOR_BACKGROUND, 48), lv.STATE.DEFAULT)
+            panel_progress_background.set_style_bg_color(lvr.surface_track(), lv.STATE.DEFAULT)
             panel_progress_background.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
             panel_progress_background.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
 
@@ -1405,7 +1405,7 @@ class BaseApp:
             panel_progress_background = lvr.panel(self.modal_ota_firmware.panel_progress)
             panel_progress_background.set_size(lv.pct(100), lv.dpx(10))
             panel_progress_background.set_style_pad_all(0, lv.STATE.DEFAULT)
-            panel_progress_background.set_style_bg_color(lv.color_lighten(lvr.COLOR_BACKGROUND, 48), lv.STATE.DEFAULT)
+            panel_progress_background.set_style_bg_color(lvr.surface_track(), lv.STATE.DEFAULT)
             panel_progress_background.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
             panel_progress_background.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
 

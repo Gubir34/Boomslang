@@ -82,9 +82,11 @@ def auto_update_value(on, previous):
 # --- widgets ---------------------------------------------------------------------------
 
 class Glass:
-    def __init__(self, lv, lvr):
+    def __init__(self, lv, lvr, ink=WHITE, light=False):
         self.lv = lv
         self.lvr = lvr
+        self.ink = ink          # icons and text on the panes: white on the dark glass, dark green on the light
+        self.light = light
 
     def color(self, rgb):
         return self.lv.color_make(*rgb)
@@ -129,12 +131,12 @@ class Glass:
         self.clear(button, radius)
         if glyph:
             button.set_style_pad_top(3, lv.STATE.DEFAULT)   # the icon font sits 1-2 px high in its line
-        button.set_style_bg_color(self.color(WHITE), lv.STATE.PRESSED)
+        button.set_style_bg_color(self.color(WHITE if not self.light else (40, 90, 50)), lv.STATE.PRESSED)
         button.set_style_bg_opa(70, lv.STATE.PRESSED)
-        button.set_style_text_color(self.color(WHITE), lv.STATE.DEFAULT)
+        button.set_style_text_color(self.color(self.ink), lv.STATE.DEFAULT)
         if glyph == self.lvr.LEMSEARCH_ICON:
             button.set_text('')
-            self.lvr.icon_image(button, self.color(WHITE))
+            self.lvr.icon_image(button, self.color(self.ink))
         elif glyph:
             button.set_text(glyph)
         else:
@@ -151,7 +153,7 @@ class Glass:
         label.set_text(text)
         if glyph:
             label.set_style_text_font(lvr.get_font_icon_small(), lv.STATE.DEFAULT)
-        label.set_style_text_color(self.color(WHITE), lv.STATE.DEFAULT)
+        label.set_style_text_color(self.color(self.ink), lv.STATE.DEFAULT)
         label.set_pos(x, y)
         return label
 
@@ -183,7 +185,7 @@ class Glass:
         slider.set_value(value, 0)
 
         main, indicator, knob = PART_MAIN, PART_INDICATOR, PART_KNOB   # ints: a part and a state combine as one number
-        slider.set_style_bg_color(self.color(WHITE), main)
+        slider.set_style_bg_color(self.color(WHITE if not self.light else (40, 90, 50)), main)
         slider.set_style_bg_opa(80, main)
         slider.set_style_radius(track // 2, main)
         slider.set_style_pad_all(0, main)

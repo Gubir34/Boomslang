@@ -221,9 +221,6 @@ class ThemeTests(unittest.TestCase):
 
 
 
-if __name__ == '__main__':
-    unittest.main()
-
 
 class ShortModelTests(unittest.TestCase):
     def test_the_brand_is_left_out(self):
@@ -231,3 +228,21 @@ class ShortModelTests(unittest.TestCase):
         self.assertEqual(home_tools.short_model('Anycubic Kobra 3 Max'), 'Kobra 3 Max')
         self.assertEqual(home_tools.short_model('Kobra X'), 'Kobra X')
         self.assertEqual(home_tools.short_model(None), '')
+
+
+class ModeTests(unittest.TestCase):
+    def test_dark_unless_light_was_chosen(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'ui-mode')
+            self.assertEqual(home_tools.mode(path), 'dark')                 # never chosen
+            home_tools.set_mode('light', path)
+            self.assertEqual(home_tools.mode(path), 'light')
+            Path(path).write_text('purple\n')
+            self.assertEqual(home_tools.mode(path), 'dark')                 # nonsense is the default
+            with self.assertRaises(ValueError):
+                home_tools.set_mode('purple', path)
+            self.assertEqual(set(home_tools.MODE_NAMES), set(home_tools.MODES))
+
+
+if __name__ == '__main__':
+    unittest.main()

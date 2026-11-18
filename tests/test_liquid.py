@@ -25,7 +25,7 @@ SOURCE = (UI / 'rinkhals-ui.py').read_text(encoding='utf-8')
 APP = next(n for n in ast.parse(SOURCE).body if isinstance(n, ast.ClassDef) and n.name == 'RinkhalsUiApp')
 METHODS = ('layout_liquid_home', 'layout_liquid_panel', 'liquid_open_panel', 'liquid_panel_refresh', 'liquid_brightness',
            'liquid_toggle_sounds', 'liquid_toggle_updates', 'liquid_read_updates', 'home_clear', 'home_glyph', 'home_tick_clock',
-           'home_refresh', 'home_show_update', 'home_show_link', 'home_power', 'aero_light')
+           'home_refresh', 'home_ink', 'home_ink_off', 'home_show_update', 'home_show_link', 'home_power', 'aero_light')
 ATTRIBUTES = ('MUTE_SOUNDS_FILE', 'WEB_APP')
 
 
@@ -129,36 +129,49 @@ class PicturesMatchTheLayout(unittest.TestCase):
     """The panes are drawn into the pictures. If the layout moves and the pictures are not made
     again, the live parts end up beside their panes: this is what catches it."""
 
+    SUFFIXES = ('', '-light')        # dark and light mode each have their own pictures
+
     def test_the_pictures_have_the_screens_size_and_format(self):
-        for name in ('liquid-home', 'liquid-panel'):
+        for name in ('liquid-home', 'liquid-panel', 'liquid-home-light', 'liquid-panel-light'):
             w, h, _ = read_bin(UI / 'assets' / f'{name}.bin')
             self.assertEqual((w, h), L.SCREEN)
 
-    def edge_x(self, pixel, x, y, search_from, search_to):
+    def edge_x(self, pixel, x, y, search_from, search_to, light=False):
         """Where a pane's left edge is in the picture: the first place along a row where it gets much
-        brighter than what is left of it."""
+        brighter than what is left of it. On the light wallpaper the white panes are hardly brighter
+        than the mint behind them, but their green rim is darker than both. Their soft shadow starts
+        darkening a pixel or two early, so there the edge may be up to 2 px off."""
         base = sum(average(pixel, (search_from - 4, y - 4, 4, 8)))
         for xx in range(search_from, search_to):
-            if sum(pixel(xx, y)) > base + 60:
+            value = sum(pixel(xx, y))
+            if (value < base - 25) if light else (value > base + 60):
                 return xx
         return None
 
     def test_every_pane_of_the_home_is_in_its_place(self):
-        _, _, pixel = read_bin(UI / 'assets/liquid-home.bin')
+        for suffix in self.SUFFIXES:
+            with self.subTest(suffix or 'dark'):
+                self.panes_in_place(suffix)
+
+    def panes_in_place(self, suffix):
+        _, _, pixel = read_bin(UI / f'assets/liquid-home{suffix}.bin')
+        light = bool(suffix)
+        near = 2 if light else 1
         # The edges of the panes in the picture are where the layout says (to a pixel or two),
         # so the live icons and touch areas sit on their panes
         for i in range(1, 6):
             x, y, w, h = L.orb_rect(i)
-            found = self.edge_x(pixel, x, y + h // 2, x - 6, x + 12)
+            found = self.edge_x(pixel, x, y + h // 2, x - 6, x + 12, light)
             self.assertIsNotNone(found, f'orb {i}: no edge found')
-            self.assertLessEqual(abs(found - x), 1, f'orb {i}: layout x {x}, picture x {found}')
+            self.assertLessEqual(abs(found - x), near, f'orb {i}: layout x {x}, picture x {found}')
         x, y, w, h = L.BACK
-        self.assertLessEqual(abs(self.edge_x(pixel, x, y + h // 2, x - 6, x + 12) - x), 1, 'the back button')
+        self.assertLessEqual(abs(self.edge_x(pixel, x, y + h // 2, x - 6, x + 12, light) - x), near, 'the back button')
         x, y, w, h = L.CLOCK
-        self.assertLessEqual(abs(self.edge_x(pixel, x, y + h // 2, x - 6, x + 12) - x), 1, 'the clock')
-        # the taskbar's top edge: the brightest row near it, in a place with no orb
+        self.assertLessEqual(abs(self.edge_x(pixel, x, y + h // 2, x - 6, x + 12, light) - x), near, 'the clock')
+        # the taskbar's top edge: the row near it that is most brighter than the one above (its lit
+        # rim), in a place with no orb
         column = 560
-        rim = max(range(L.BAR[1] - 8, L.BAR[1] + 8), key=lambda yy: sum(pixel(column, yy)))
+        rim = max(range(L.BAR[1] - 8, L.BAR[1] + 8), key=lambda yy: sum(pixel(column, yy)) - sum(pixel(column, yy - 1)))
         self.assertLessEqual(abs(rim - L.BAR[1]), 1, f'the bar: layout y {L.BAR[1]}, picture y {rim}')
         # the power orb is red
         x, y, w, h = L.orb_rect(L.POWER_ORB)
@@ -166,8 +179,13 @@ class PicturesMatchTheLayout(unittest.TestCase):
         self.assertGreater(r, g + 30)
 
     def test_the_open_panel_picture_has_the_panel_and_its_chips(self):
-        _, _, home = read_bin(UI / 'assets/liquid-home.bin')
-        _, _, panel = read_bin(UI / 'assets/liquid-panel.bin')
+        for suffix in self.SUFFIXES:
+            with self.subTest(suffix or 'dark'):
+                self.panel_picture(suffix)
+
+    def panel_picture(self, suffix):
+        _, _, home = read_bin(UI / f'assets/liquid-home{suffix}.bin')
+        _, _, panel = read_bin(UI / f'assets/liquid-panel{suffix}.bin')
         # the panel darkens the home: a place in the middle of the screen is darker than in the home picture
         middle = (60, 200, 30, 30)
         self.assertLess(sum(average(panel, middle)), sum(average(home, middle)))
@@ -309,6 +327,7 @@ class WidgetTests(unittest.TestCase):
 class LiquidHomeTests(unittest.TestCase):
     def setUp(self):
         self.lv, self.lvr = mock.MagicMock(name='lv'), mock.MagicMock(name='lvr')
+        self.lvr.light.return_value = getattr(self, 'LIGHT', False)
         self.App, self.names = load_class(self.lv, self.lvr)
         self.tmp = tempfile.TemporaryDirectory()
         self.App.MUTE_SOUNDS_FILE = os.path.join(self.tmp.name, 'mute-sounds')
@@ -337,6 +356,10 @@ class LiquidHomeTests(unittest.TestCase):
         sources = [c.args[0] for c in self.lvr.image.return_value.set_src.call_args_list]
         self.assertEqual(sources[0], '/assets/liquid-home.bin')
         self.assertIn('/assets/liquid-panel.bin', sources)
+
+    def test_the_panes_ink_is_white_on_the_dark_glass(self):
+        self.assertEqual(self.app.liquid_glass.ink, liquid_ui.WHITE)
+        self.assertFalse(self.app.liquid_glass.light)
 
     def test_the_touch_areas_are_where_the_panes_are(self):
         positions = [c.args for c in self.lvr.button_icon.return_value.set_pos.call_args_list]
@@ -438,9 +461,6 @@ class LiquidHomeTests(unittest.TestCase):
         self.assertIn(mock.call(self.lv.OBJ_FLAG.HIDDEN), self.app.home_pill.remove_flag.call_args_list)
 
 
-if __name__ == '__main__':
-    unittest.main()
-
 
 class AutoUpdateToggleTests(unittest.TestCase):
     def test_off_is_off(self):
@@ -471,3 +491,21 @@ class BindingPartsTests(unittest.TestCase):
         self.assertEqual(liquid_ui.PART_MAIN, values['MAIN'])
         self.assertEqual(liquid_ui.PART_INDICATOR, values['INDICATOR'])
         self.assertEqual(liquid_ui.PART_KNOB, values['KNOB'])
+
+
+class LightLiquidHomeTests(LiquidHomeTests):
+    """Light mode: its own pictures, and dark green ink on the white glass."""
+    LIGHT = True
+
+    def test_the_wallpaper_is_the_picture_with_the_panes_in_it(self):
+        sources = [c.args[0] for c in self.lvr.image.return_value.set_src.call_args_list]
+        self.assertEqual(sources[0], '/assets/liquid-home-light.bin')
+        self.assertIn('/assets/liquid-panel-light.bin', sources)
+
+    def test_the_panes_ink_is_white_on_the_dark_glass(self):
+        self.assertEqual(self.app.liquid_glass.ink, (24, 56, 30))
+        self.assertTrue(self.app.liquid_glass.light)
+
+
+if __name__ == '__main__':
+    unittest.main()

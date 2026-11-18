@@ -116,7 +116,7 @@ From the home screen you reach:
 - **App Store**: browse and install apps from [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) directly from the printer screen (see below)
 - **Updates**: Boomslang and Anycubic firmware updates, following your update channel
 - **Web portal**, **Mainsail** and **LemSearch Lite**, a search and reader-mode browser: results as cards, pages as text with links. It runs no JavaScript (the printer has about 200 MB of memory), but reads pages built for it from the data and preview they carry, follows AMP versions, and offers a QR code to open on your phone the sites that refuse simple browsers
-- **Settings**: sounds, the look, reboot and restart, system information
+- **Settings**: sounds, the look, dark or light mode, reboot and restart, system information
 
 ### Three looks
 
@@ -147,6 +147,21 @@ Pick one in **Settings > Look**. Aero and Liquid Plastic are made for the 800×4
     <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-settings.png" alt="Liquid Plastic app settings">
     <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-updates.png" alt="Liquid Plastic updates">
     <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-store.png" alt="Liquid Plastic App Store">
+</p>
+
+### Dark and light
+
+Every look comes in dark and light, in **Settings > Mode**. Light mode is not the dark one turned pale: it has its own wallpapers, glass and colours.
+
+<p align="center">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/classic-home-light.png" alt="Classic home screen, light">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/classic-apps-light.png" alt="Classic apps list, light">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/aero-home-light.png" alt="Aero home screen, light">
+</p>
+<p align="center">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-home-light.png" alt="Liquid Plastic home screen, light">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-panel-light.png" alt="Liquid Plastic quick settings, light">
+    <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-settings-light.png" alt="Liquid Plastic app settings, light">
 </p>
 
 ### App settings

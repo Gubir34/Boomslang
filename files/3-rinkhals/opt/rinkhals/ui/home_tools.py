@@ -259,6 +259,28 @@ def theme_for(width, height, path=None, legacy=None):
     return DEFAULT_THEME
 
 
+MODE_FILE = '/useremain/rinkhals/.ui-mode'
+MODES = ('dark', 'light')
+MODE_NAMES = {'dark': 'Dark', 'light': 'Light'}
+
+
+def mode(path=None):
+    """'dark' (what Boomslang always was, and what an unreadable choice means) or 'light'."""
+    try:
+        with open(path or MODE_FILE) as f:
+            chosen = f.read().strip().lower()
+        return chosen if chosen in MODES else 'dark'
+    except OSError:
+        return 'dark'
+
+
+def set_mode(name, path=None):
+    if name not in MODES:
+        raise ValueError(f'unknown mode {name!r}')
+    with open(path or MODE_FILE, 'w') as f:
+        f.write(name + '\n')
+
+
 def set_theme(name, path=None, legacy=None):
     if name not in THEMES:
         raise ValueError(f'unknown look {name!r}')
