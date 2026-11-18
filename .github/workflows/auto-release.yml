@@ -3,11 +3,24 @@ name: Auto release on tag
 # Release names are {YY}{M} {N} {Channel}, for example "2611 3 Alpha", with
 # the tag 2611-3-alpha (see build/release-name.sh).
 #
-#   - every push to master builds the next Alpha
-#   - Beta, Release Preview and Release are made by hand from master:
-#       gh workflow run auto-release.yml -f channel=release
-#     (or Actions > Auto release > Run workflow, and pick the channel)
+# Every update channel has its own branch, and a push to it builds the next
+# release of that channel:
+#
+#   branch            channel
+#   alpha             Alpha            (all new work lands here first)
+#   beta              Beta
+#   release-preview   Release Preview
+#   master            Release          (stable only)
+#
+# Promote by fast-forwarding the next branch to the one before it, for example
+#   git checkout beta && git merge --ff-only alpha && git push
+# The same commit then gets its own release in the new channel.
+#
+#   - a hand-started run (Actions > Auto release > Run workflow) can still
+#     build any channel from the branch it is started on
 #   - pushing a tag in that format builds exactly that release
+#   - to push to a channel branch WITHOUT building, put [skip ci] in the
+#     message of the last commit
 
 on:
   workflow_dispatch:
@@ -25,6 +38,9 @@ on:
   push:
     # Documentation, branding and local firmware copies do not trigger one.
     branches:
+      - alpha
+      - beta
+      - release-preview
       - master
     paths-ignore:
       - '**.md'
@@ -68,7 +84,8 @@ jobs:
       id: tag
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CHANNEL: ${{ inputs.channel || 'alpha' }}
+        # Empty on a push: the branch decides (below)
+        CHANNEL: ${{ inputs.channel }}
       run: |
         if [ "$GITHUB_REF_TYPE" = tag ]; then
           if ! sh build/release-name.sh check "$GITHUB_REF_NAME" && ! echo "$GITHUB_REF_NAME" | grep -Eq '^[0-9]{8}_[0-9]+'; then
@@ -85,13 +102,22 @@ jobs:
           echo "skip=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        # A push to master: skip when this commit already has a release tag
-        # (a tag pushed together with the branch builds it on its own). A
-        # hand-started run always builds: it may promote the same commit to
-        # another channel.
+        # The channel of a push is the one of its branch
+        if [ -z "$CHANNEL" ]; then
+          case "$GITHUB_REF_NAME" in
+            alpha|beta|release-preview) CHANNEL=$GITHUB_REF_NAME ;;
+            master) CHANNEL=release ;;
+            *) echo "Branch $GITHUB_REF_NAME has no update channel" >&2; exit 1 ;;
+          esac
+        fi
+        # A push to a channel branch: skip when this commit already has a
+        # release of this channel (a tag pushed together with the branch builds
+        # it on its own). A release of another channel does not count, so a
+        # commit promoted from alpha to beta still gets its Beta. A
+        # hand-started run always builds.
         if [ "$GITHUB_EVENT_NAME" = push ] &&
-            git ls-remote --tags origin | grep -E "^$GITHUB_SHA\s+refs/tags/[0-9]" > /dev/null; then
-          echo "This commit already has a release tag, skipping"
+            git ls-remote --tags origin | grep -E "^$GITHUB_SHA[[:space:]]+refs/tags/[0-9]+-[0-9]+-$CHANNEL(\^\{\})?$" > /dev/null; then
+          echo "This commit already has a $CHANNEL release, skipping"
           echo "skip=1" >> "$GITHUB_OUTPUT"
           exit 0
         fi

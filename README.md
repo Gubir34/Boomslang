@@ -165,6 +165,19 @@ To use it, open the Boomslang Touch UI and tap **App Store**. The store will fet
 > If you develop on Windows, don't forget to disable Git's autocrlf function, as this repo contains Linux scripts running on Linux machines.<br />
 > Run `git config core.autocrlf false` **BEFORE** cloning the repo
 
+### Branches and update channels
+
+Every update channel has its own branch. A push to a channel branch builds and publishes the next release of that channel:
+
+| Branch | Update channel | What goes there |
+| -- | -- | -- |
+| `alpha` | Alpha | All new work, first. Open pull requests against this branch |
+| `beta` | Beta | Alpha builds that have been tested on a printer |
+| `release-preview` | Release Preview | Beta builds with no known problems |
+| `master` | Release | Stable only. The default branch, so the README you read here is the stable one |
+
+A change moves up one step at a time, by fast-forwarding the next branch to the one before it (for example `git checkout beta && git merge --ff-only alpha && git push`). The same commit then gets its own release in the new channel. Printers only get a release when they use that channel (or a less stable one with test versions enabled).
+
 More and more contributors help this project move faster. Thank you everyone!
 If you want to help and contribute, whether it's code, documentation or sharing good ideas, the upstream Rinkhals community is on Discord!
 

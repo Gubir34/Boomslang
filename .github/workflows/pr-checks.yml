@@ -12,7 +12,9 @@ name: PR checks
 on:
   pull_request:
     branches:
-      - develop
+      - alpha
+      - beta
+      - release-preview
       - master
   workflow_dispatch:
 

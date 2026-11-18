@@ -2,14 +2,14 @@ version: 2
 
 # Dependabot had no config at all, so it fell back to the repository default
 # branch (master) and opened every update against it. master is release-only
-# here - everything lands on develop first - so those PRs all had to be
+# here - everything lands on alpha first - so those PRs all had to be
 # retargeted by hand before they could be merged. target-branch fixes that.
 updates:
   # Web portal frontend. Its build output is bundled into the firmware image
   # shipped to printers, so runtime dependency updates here reach real devices.
   - package-ecosystem: npm
     directory: /web-portal
-    target-branch: develop
+    target-branch: alpha
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -43,7 +43,7 @@ updates:
   # Go backend for the web portal.
   - package-ecosystem: gomod
     directory: /files/4-apps/home/rinkhals/apps/65-rinkhals-web
-    target-branch: develop
+    target-branch: alpha
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
@@ -51,7 +51,7 @@ updates:
   # Actions used by the release and docs workflows.
   - package-ecosystem: github-actions
     directory: /
-    target-branch: develop
+    target-branch: alpha
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
