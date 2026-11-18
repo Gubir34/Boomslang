@@ -19,6 +19,7 @@ Also the brightness of the screen, which the quick settings panel sets.
 import os
 
 from liquid_layout import CHIP_ICON_X, CHIP_ICON_Y, CHIP_TEXT_X, CHIP_TEXT_Y, SCREEN
+from lvgl_parts import PART_INDICATOR, PART_KNOB, PART_MAIN   # lv.PART is broken in the binding, see there
 
 WHITE = (255, 255, 255)
 LIME = (170, 235, 110)
@@ -26,13 +27,6 @@ LIME_LIGHT = (216, 255, 140)
 
 BACKLIGHT = '/sys/class/backlight/backlight'
 
-# Style parts of a widget, LVGL's values (lv_obj.h). lv.PART can't be used:
-# the generated binding defines class PART twice, and the second one (with
-# only TEXTAREA_PLACEHOLDER) replaces the first, so lv.PART.MAIN does not
-# exist on the printer. tests/test_liquid.py checks these against the binding.
-PART_MAIN = 0x000000
-PART_INDICATOR = 0x020000
-PART_KNOB = 0x030000
 MIN_BRIGHTNESS = 15          # percent. The screen is never set darker: black can't be undone by touch.
 
 

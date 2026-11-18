@@ -108,6 +108,9 @@ def get_style_panel():
     style_panel.set_border_width(1)
     style_panel.set_border_color(lv.color_lighten(COLOR_BACKGROUND, 32))
     style_panel.set_border_opa(lv.OPA.COVER)
+    if liquid():
+        style_panel.set_border_color(GLASS_WHITE)    # the grey line read as dark red on the green glass
+        style_panel.set_border_opa(50)
     return style_panel
 def get_style_panel_pressed():
     style_panel_pressed = lv.style()
@@ -412,6 +415,44 @@ def image(parent):
         result.set_scale(scaling)
     result.scale_to = scale_to
 
+    return result
+
+def switch(parent):
+    """An on/off switch, with get_checked()/set_checked() like checkbox().
+
+    It flips itself when tapped and sends VALUE_CHANGED; set_checked() does not.
+    """
+    from lvgl_parts import PART_INDICATOR, PART_KNOB, PART_MAIN
+    checked = lv.STATE.CHECKED.value
+    result = lv.switch(parent)
+    result.set_size(lv.dpx(80), lv.dpx(44))
+    result.set_style_bg_color(lv.color_lighten(COLOR_BACKGROUND, 56), PART_MAIN)
+    result.set_style_bg_opa(lv.OPA.COVER, PART_MAIN)
+    result.set_style_bg_color(lv.color_lighten(COLOR_BACKGROUND, 56), PART_INDICATOR)
+    result.set_style_bg_color(COLOR_PRIMARY, PART_INDICATOR | checked)
+    result.set_style_bg_opa(lv.OPA.COVER, PART_INDICATOR | checked)
+    result.set_style_bg_color(lv.color_white(), PART_KNOB)
+    result.set_style_bg_opa(lv.OPA.COVER, PART_KNOB)
+    result.set_style_pad_all(-lv.dpx(3), PART_KNOB)
+    if liquid():
+        result.set_style_bg_color(GLASS_WHITE, PART_MAIN)
+        result.set_style_bg_opa(60, PART_MAIN)
+        result.set_style_border_color(GLASS_WHITE, PART_MAIN)
+        result.set_style_border_opa(120, PART_MAIN)
+        result.set_style_border_width(1, PART_MAIN)
+        result.set_style_bg_opa(0, PART_INDICATOR)
+
+    def set_checked(on):
+        if on:
+            result.add_state(lv.STATE.CHECKED)
+        else:
+            result.remove_state(lv.STATE.CHECKED)
+
+    def get_checked():
+        return result.has_state(lv.STATE.CHECKED)
+
+    result.set_checked = set_checked
+    result.get_checked = get_checked
     return result
 
 def label(parent):

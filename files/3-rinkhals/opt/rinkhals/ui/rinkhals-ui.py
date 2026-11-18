@@ -29,6 +29,7 @@ import lvgl_rinkhals as lvr
 
 from common import *
 import reader
+import app_settings
 import home_tools
 import liquid_layout
 import liquid_ui
@@ -1218,73 +1219,107 @@ class RinkhalsUiApp(BaseApp):
         else:
             self.home_label_device.set_text(ellipsis(f'{KOBRA_MODEL} · {printer_ip() or "no network"}', 26))
     def show_apps(self):
-        def toggle_app(app, checked):
-            if checked:
-                logging.info(f'Enabling {app}...')
-                enable_app(app)
-                if get_app_status(app) != 'started':
-                    logging.info(f'Starting {app}...')
-                    start_app(app, 5)
-            else:
-                logging.info(f'Disabling {app}...')
-                disable_app(app)
-                if get_app_status(app) == 'started':
-                    logging.info(f'Stopping {app}...')
-                    stop_app(app)
-
-            self.app_checkboxes[app].set_checked(is_app_enabled(app) == '1')
-            
+        """Installed apps: name, whether it runs and its version, a switch, and its settings."""
         if self.screen_apps.panel_apps:
             self.screen_apps.panel_apps.delete()
         self.screen_apps.panel_apps = lvr.panel(self.screen_apps, flex_flow=lv.FLEX_FLOW.COLUMN)
         self.screen_apps.panel_apps.set_size(lv.pct(100), lv.pct(100))
+        self.screen_apps.panel_apps.set_style_pad_row(0, lv.STATE.DEFAULT)
+        panel_apps = self.screen_apps.panel_apps
+
+        self.apps_generation = getattr(self, 'apps_generation', 0) + 1
+        generation = self.apps_generation
+
+        def current():
+            return generation == self.apps_generation
 
         self.app_checkboxes = {}
+        self.app_status_labels = {}
 
-        def app_display_name(app):
-            # Show "Fluidd" rather than the folder name "26-fluidd"
+        def manifest_of(app):
             try:
                 with open(f'{get_app_root(app)}/app.json', 'r') as f:
-                    name = json.loads(f.read(), cls = JSONWithCommentsDecoder).get('name')
-                if name:
-                    return str(name)
+                    return json.loads(f.read(), cls = JSONWithCommentsDecoder)
             except Exception:
-                pass
-            return re.sub(r'^[0-9]+-', '', app)
+                return {}
+
+        def status_of(app, manifest):
+            enabled = is_app_enabled(app) == '1'
+            started = get_app_status(app) == 'started'
+            return enabled, app_settings.status_text(enabled, started, manifest.get('version'))
+
+        def toggle_app(app, on, manifest):
+            # enable/start can take seconds (start waits for the app): not on the screen's thread
+            def work():
+                try:
+                    if on:
+                        logging.info(f'Enabling {app}...')
+                        enable_app(app)
+                        if get_app_status(app) != 'started':
+                            logging.info(f'Starting {app}...')
+                            start_app(app, 5)
+                    else:
+                        logging.info(f'Disabling {app}...')
+                        disable_app(app)
+                        if get_app_status(app) == 'started':
+                            logging.info(f'Stopping {app}...')
+                            stop_app(app)
+                except Exception as e:
+                    logging.error(f'Could not change {app}: {e}')
+                enabled, status = status_of(app, manifest)
+                with lvr.lock():
+                    if current():
+                        self.app_checkboxes[app].set_checked(enabled)
+                        self.app_status_labels[app].set_text(status)
+            with lvr.lock():
+                self.app_status_labels[app].set_text('Starting...' if on else 'Stopping...')
+            run_async(work)
 
         def refresh_apps():
             apps = [ a for a in list_apps().split(' ') if a ]
-            apps_enabled = are_apps_enabled()
-            names = { app: app_display_name(app) for app in apps }
-
             for app in apps:
-                enabled = apps_enabled.get(app) == '1'
+                manifest = manifest_of(app)
+                name = str(manifest.get('name') or re.sub(r'^[0-9]+-', '', app))   # "Fluidd", not "26-fluidd"
+                enabled, status = status_of(app, manifest)
+                has_settings = any(row['kind'] in app_settings.EDITABLE
+                                   for row in app_settings.setting_rows(manifest.get('properties'), lambda k: ''))
 
                 with lvr.lock():
-                    panel_app = lvr.panel(self.screen_apps.panel_apps)
-                    panel_app.set_style_pad_all(0, lv.STATE.DEFAULT)
-                    panel_app.set_width(lv.pct(100))
+                    if not current():
+                        return
+                    line = lvr.panel(panel_apps)
+                    line.set_width(lv.pct(100))
+                    line.set_style_min_height(lv.dpx(80), lv.STATE.DEFAULT)
+                    line.set_style_border_side(lv.BORDER_SIDE.BOTTOM, lv.STATE.DEFAULT)
+                    line.set_flex_flow(lv.FLEX_FLOW.ROW)
+                    line.set_flex_align(lv.FLEX_ALIGN.SPACE_BETWEEN, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+                    line.set_style_pad_column(lvr.get_global_margin(), lv.STATE.DEFAULT)
+                    line.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+                    line.set_state(lv.STATE.DISABLED, False)
+                    line.add_event_cb(lambda e, app=app: self.show_app(app), lv.EVENT_CODE.CLICKED, None)
 
-                    button_app = lvr.button(panel_app)
-                    button_app.set_width(lv.pct(100))
-                    button_app.set_text(ellipsis(names[app], 26))
-                    button_app.set_style_pad_left(lv.dpx(15), lv.STATE.DEFAULT)
-                    button_app.set_style_pad_right(lv.dpx(4), lv.STATE.DEFAULT)
-                    button_app.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
-                    button_app.add_event_cb(lambda e, app=app: self.show_app(app), lv.EVENT_CODE.CLICKED, None)
+                    text = lvr.panel(line, flex_flow=lv.FLEX_FLOW.COLUMN)
+                    text.set_style_pad_all(0, lv.STATE.DEFAULT)
+                    text.set_style_pad_row(lv.dpx(2), lv.STATE.DEFAULT)
+                    text.set_flex_grow(1)
+                    text.remove_flag(lv.OBJ_FLAG.CLICKABLE)
+                    label_name = lvr.label(text)
+                    label_name.set_text(ellipsis(name, 30))
+                    label_status = lvr.subtitle(text)
+                    label_status.set_text(status)
+                    self.app_status_labels[app] = label_status
 
-                    checkbox_app = lvr.checkbox(panel_app)
-                    checkbox_app.align(lv.ALIGN.RIGHT_MID, -lv.dpx(5), 0)
-                    # Query ground truth on each click. The previous implementation
-                    # captured `enabled` via a keyword default, which only reflects
-                    # state at widget-creation time. After the first click flipped
-                    # the app, subsequent clicks kept sending the same command
-                    # (because the closure's `enabled` never updated), so users
-                    # saw the checkbox stay in whatever state the first click left
-                    # it in until they backed out and re-entered the Apps screen.
-                    checkbox_app.add_event_cb(lambda e, app=app: toggle_app(app, is_app_enabled(app) != '1'), lv.EVENT_CODE.CLICKED, None)
-                    checkbox_app.set_checked(enabled)
-                    self.app_checkboxes[app] = checkbox_app
+                    if has_settings:
+                        button_settings = lvr.button_icon(line)
+                        button_settings.set_text('\ue8b8')
+                        button_settings.set_size(lv.dpx(58), lv.dpx(58))
+                        button_settings.add_event_cb(lambda e, app=app: self.show_app_settings(app), lv.EVENT_CODE.CLICKED, None)
+
+                    switch_app = lvr.switch(line)
+                    switch_app.set_checked(enabled)
+                    switch_app.add_event_cb(lambda e, app=app, s=switch_app, m=manifest: toggle_app(app, s.get_checked(), m),
+                                            lv.EVENT_CODE.VALUE_CHANGED, None)
+                    self.app_checkboxes[app] = switch_app
 
         run_async(refresh_apps)
     def show_app(self, app):
@@ -1437,21 +1472,25 @@ class RinkhalsUiApp(BaseApp):
                     break
         run_async(update_loop)
     def show_app_settings(self, app):
+        """The settings of an app, from the properties in its app.json (see app_settings.py).
+
+        Every row can be tapped. On/off settings are switches, numbers have - and +,
+        choices and text open a list or a keyboard. Advanced settings are folded
+        away. A change to a running app offers to restart it, because apps read
+        their settings when they start.
+        """
         self.show_screen(self.screen_app_settings)
-        
-        app_root = get_app_root(app)
 
         app_manifest = None
-        if os.path.exists(f'{app_root}/app.json'):
-            try:
-                with open(f'{app_root}/app.json', 'r') as f:
-                    app_manifest = json.loads(f.read(), cls = JSONWithCommentsDecoder)
-            except Exception as e:
-                pass
+        try:
+            with open(f'{get_app_root(app)}/app.json', 'r') as f:
+                app_manifest = json.loads(f.read(), cls = JSONWithCommentsDecoder)
+        except Exception:
+            pass
 
-        app_name = app_manifest.get('name') if app_manifest else app
+        app_name = (app_manifest or {}).get('name') or app
         self.screen_app_settings.label_title.set_text(ellipsis(app_name, 24))
-            
+
         self.screen_app_settings.button_back.clear_event_cb()
         self.screen_app_settings.button_back.add_event_cb(lambda e, app=app: self.show_app(app), lv.EVENT_CODE.CLICKED, None)
 
@@ -1460,115 +1499,180 @@ class RinkhalsUiApp(BaseApp):
 
         if self.screen_app_settings.panel_properties:
             self.screen_app_settings.panel_properties.delete()
-        self.screen_app_settings.panel_properties = lvr.panel(self.screen_app_settings, flex_flow=lv.FLEX_FLOW.COLUMN)
-        self.screen_app_settings.panel_properties.set_size(lv.pct(100), lv.pct(100))
-        self.screen_app_settings.panel_properties.set_style_pad_row(0, lv.STATE.DEFAULT)
-        self.screen_app_settings.panel_properties.set_style_pad_all(0, lv.STATE.DEFAULT)
+        panel = lvr.panel(self.screen_app_settings, flex_flow=lv.FLEX_FLOW.COLUMN)
+        panel.set_size(lv.pct(100), lv.pct(100))
+        panel.set_style_pad_row(0, lv.STATE.DEFAULT)
+        panel.set_style_pad_all(0, lv.STATE.DEFAULT)
+        self.screen_app_settings.panel_properties = panel
 
-        app_properties = app_manifest.get('properties', []) if app_manifest else []
-        for p in app_properties:
-            display_name = app_properties[p].get('display')
-            type = app_properties[p].get('type')
-            default = app_properties[p].get('default')
-            value = get_app_property(app, p) or default
+        # Background work below must not touch this panel once it was rebuilt
+        self.app_settings_generation = getattr(self, 'app_settings_generation', 0) + 1
+        generation = self.app_settings_generation
 
-            panel_property = lvr.panel(self.screen_app_settings.panel_properties)
-            panel_property.set_width(lv.pct(100))
-            panel_property.set_style_min_height(lv.dpx(72), lv.STATE.DEFAULT)
-            panel_property.set_style_border_side(lv.BORDER_SIDE.BOTTOM, lv.STATE.DEFAULT)
-            panel_property.set_style_border_width(1, lv.STATE.DEFAULT)
-            panel_property.set_style_border_color(lv.color_lighten(lvr.COLOR_BACKGROUND, 32), lv.STATE.DEFAULT)
-            panel_property.set_flex_flow(lv.FLEX_FLOW.ROW_WRAP)
-            panel_property.set_flex_align(lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
-            panel_property.set_style_pad_row(lv.dpx(2), lv.STATE.DEFAULT)
+        def current():
+            return generation == self.app_settings_generation
 
-            label_property = lvr.label(panel_property)
-            label_property.set_text(display_name)
-            label_property.set_width(lv.pct(80))
-            label_property.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+        rows = app_settings.setting_rows((app_manifest or {}).get('properties'), lambda key: get_app_property(app, key))
+        basic, advanced = app_settings.split_advanced(rows)
 
-            label_value = lvr.label(panel_property)
-            label_value.set_style_text_color(lvr.COLOR_SUBTITLE, lv.STATE.DEFAULT)
-            label_value.set_text(str(value) if value is not None else '-')
-            label_value.set_width(lv.pct(80))
-            label_value.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+        # Shown when a setting changed while the app runs
+        button_restart = lvr.button(panel)
+        button_restart.set_width(lv.pct(100))
+        button_restart.set_style_margin_all(lvr.get_global_margin(), lv.STATE.DEFAULT)
+        button_restart.set_text('Restart the app to use the new settings')
+        button_restart.set_style_text_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        button_restart.add_flag(lv.OBJ_FLAG.HIDDEN)
 
-            if type in [ 'text', 'number', 'enum' ]:
-                button_edit = lvr.button(panel_property)
-                button_edit.set_align(lv.ALIGN.RIGHT_MID)
-                button_edit.set_icon('')
-                button_edit.add_flag(lv.OBJ_FLAG.IGNORE_LAYOUT)
-                button_edit.set_size(lv.dpx(55), lv.dpx(55))
-                button_edit.set_style_min_width(0, lv.STATE.DEFAULT)
+        def offer_restart():
+            def check():
+                running = get_app_status(app) != 'stopped'
+                with lvr.lock():
+                    if current() and running:
+                        button_restart.set_text('Restart the app to use the new settings')
+                        button_restart.remove_flag(lv.OBJ_FLAG.HIDDEN)
+            run_async(check)
 
-                if type in ['text', 'number']:
-                    # button_edit.set_state(lv.STATE.DISABLED, True)
-                    def update_text_value(new_value, app=app, property=p, label_value=label_value):
-                        set_app_property(app, property, new_value)
-                        label_value.set_text(str(new_value))
+        def restart():
+            button_restart.set_text('Restarting...')
+            def work():
+                try:
+                    stop_app(app)
+                    start_app(app, 5)
+                    text = 'Restarted with the new settings'
+                except Exception as e:
+                    logging.error(f'Could not restart {app}: {e}')
+                    text = 'The restart failed'
+                with lvr.lock():
+                    if current():
+                        button_restart.set_text(text)
+            run_async(work)
+        button_restart.add_event_cb(lambda e: restart(), lv.EVENT_CODE.CLICKED, None)
 
-                    is_number = (type == 'number')
-                    button_edit.add_event_cb(lambda e, t=display_name, v=value, num=is_number, cb=update_text_value: self.show_input_text_dialog(t, v, num, cb), lv.EVENT_CODE.CLICKED, None)
-                elif type == 'enum':
-                    options = app_properties[p].get('options')
-                    if len(options) == 2 and sorted(options)[0].lower() == 'false' and sorted(options)[1].lower() == 'true':
-                        value_bool = value and value.lower() == 'true'
-                        
-                        label_value.add_flag(lv.OBJ_FLAG.HIDDEN)
-                        button_edit.delete()
+        def save(key, value):
+            # tools.sh writes the setting: a shell, so not on the screen's thread
+            def work():
+                try:
+                    set_app_property(app, key, value)
+                except Exception as e:
+                    logging.error(f'Could not save {app} {key}: {e}')
+            run_async(work)
+            offer_restart()
 
-                        checkbox = lvr.checkbox(panel_property)
-                        checkbox.set_align(lv.ALIGN.RIGHT_MID)
-                        checkbox.add_flag(lv.OBJ_FLAG.IGNORE_LAYOUT)
-                        checkbox.set_checked(value_bool)
-                        
-                        def toggle_checkbox(e, app=app, property=p, checkbox=checkbox):
-                            default = app_properties[property].get('default')
-                            options = app_properties[property].get('options')
-                            value = get_app_property(app, property)
+        if not rows:
+            label_none = lvr.subtitle(panel)
+            label_none.set_text('This app has no settings.')
+            label_none.set_style_margin_all(lvr.get_global_margin(), lv.STATE.DEFAULT)
 
-                            value = (value or default or '').lower() == 'true'
-                            value = not value
-                            options_value = sorted(options)[0 if not value else 1]
+        for row in basic:
+            self.app_setting_row(panel, row, save)
 
-                            set_app_property(app, property, options_value)
-                            checkbox.set_checked(value)
+        if advanced:
+            button_advanced = lvr.button(panel)
+            button_advanced.set_width(lv.pct(100))
+            button_advanced.set_style_margin_all(lvr.get_global_margin(), lv.STATE.DEFAULT)
+            panel_advanced = lvr.panel(panel, flex_flow=lv.FLEX_FLOW.COLUMN)
+            panel_advanced.set_width(lv.pct(100))
+            panel_advanced.set_style_pad_all(0, lv.STATE.DEFAULT)
+            panel_advanced.set_style_pad_row(0, lv.STATE.DEFAULT)
+            panel_advanced.add_flag(lv.OBJ_FLAG.HIDDEN)
+            for row in advanced:
+                self.app_setting_row(panel_advanced, row, save)
 
-                        checkbox.add_event_cb(toggle_checkbox, lv.EVENT_CODE.CLICKED, None)
-                    else:
-                        def select_option(option, app=app, property=p, default=default, label_value=label_value):
-                            set_app_property(app, property, option)
-                            label_value.set_text(str(option or default))
+            def toggle_advanced():
+                hidden = panel_advanced.has_flag(lv.OBJ_FLAG.HIDDEN)
+                if hidden:
+                    panel_advanced.remove_flag(lv.OBJ_FLAG.HIDDEN)
+                else:
+                    panel_advanced.add_flag(lv.OBJ_FLAG.HIDDEN)
+                button_advanced.set_text(('Hide' if hidden else 'Show') + f' advanced settings ({len(advanced)})')
+            button_advanced.set_text(f'Show advanced settings ({len(advanced)})')
+            button_advanced.add_event_cb(lambda e: toggle_advanced(), lv.EVENT_CODE.CLICKED, None)
 
-                        button_edit.add_event_cb(lambda e, options=options, select_option=select_option: self.show_selection_dialog(options, select_option), lv.EVENT_CODE.CLICKED, None)
+        if any(row['kind'] in app_settings.EDITABLE for row in rows):
+            def reset_default(app=app):
+                clear_app_properties(app)
+                self.show_app_settings(app)
+                offer_restart()
 
-            if type == 'report':
-                if value:
-                    label_property.set_width(lv.pct(100))
-                    label_value.set_width(lv.pct(100))
-            elif type == 'qr':
-                if value:
-                    label_value.set_height(lvr.font_subtitle.get_line_height())
-                    label_value.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
+            button_reset = lvr.button(panel)
+            button_reset.set_style_margin_all(lvr.get_global_margin(), lv.STATE.DEFAULT)
+            button_reset.set_width(lv.pct(100))
+            button_reset.set_text('Reset to default')
+            button_reset.add_event_cb(lambda e: reset_default(), lv.EVENT_CODE.CLICKED, None)
 
-                    button_show = lvr.button(panel_property)
-                    button_show.align(lv.ALIGN.RIGHT_MID, -lv.dpx(5), 0)
-                    button_show.set_icon('')
-                    button_show.add_flag(lv.OBJ_FLAG.IGNORE_LAYOUT)
-                    button_show.set_size(lv.dpx(55), lv.dpx(55))
-                    button_show.set_style_min_width(0, lv.STATE.DEFAULT)
-                    button_show.add_event_cb(lambda e, display_name=display_name, value=value: self.show_qr_dialog(value, display_name), lv.EVENT_CODE.CLICKED, None)
+    def app_setting_row(self, parent, row, save):
+        """One setting: its name and value on the left, its control on the right."""
+        kind = row['kind']
 
-        def reset_default(app=app):
-            clear_app_properties(app)
-            self.show_app_settings(app)
+        line = lvr.panel(parent)
+        line.set_width(lv.pct(100))
+        line.set_style_min_height(lv.dpx(76), lv.STATE.DEFAULT)
+        line.set_style_border_side(lv.BORDER_SIDE.BOTTOM, lv.STATE.DEFAULT)
+        line.set_flex_flow(lv.FLEX_FLOW.ROW)
+        line.set_flex_align(lv.FLEX_ALIGN.SPACE_BETWEEN, lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.CENTER)
+        line.set_style_pad_column(lvr.get_global_margin(), lv.STATE.DEFAULT)
+        line.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
 
-        button_reset = lvr.button(self.screen_app_settings.panel_properties)
-        button_reset.set_style_margin_all(lvr.get_global_margin(), lv.STATE.DEFAULT)
-        button_reset.set_width(lv.pct(100))
-        button_reset.set_text('Reset to default')
-        button_reset.add_event_cb(lambda e: reset_default(), lv.EVENT_CODE.CLICKED, None)
-        
+        text = lvr.panel(line, flex_flow=lv.FLEX_FLOW.COLUMN)
+        text.set_style_pad_all(0, lv.STATE.DEFAULT)
+        text.set_style_pad_row(lv.dpx(2), lv.STATE.DEFAULT)
+        text.set_flex_grow(1)
+        text.remove_flag(lv.OBJ_FLAG.CLICKABLE)     # taps go to the row
+
+        label_title = lvr.label(text)
+        label_title.set_width(lv.pct(100))
+        label_title.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+        label_title.set_text(row['title'])
+
+        label_value = lvr.subtitle(text)
+        label_value.set_width(lv.pct(100))
+        label_value.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+        label_value.set_text(app_settings.value_text(row))
+
+        def set_value(value):
+            row['value'] = str(value)
+            label_value.set_text(app_settings.value_text(row))
+            save(row['key'], row['value'])
+
+        def tappable(action):
+            line.set_state(lv.STATE.DISABLED, False)
+            line.add_event_cb(lambda e: action(), lv.EVENT_CODE.CLICKED, None)
+
+        def small_button(glyph, action):
+            button = lvr.button_icon(line)
+            button.set_text(glyph)
+            button.set_size(lv.dpx(58), lv.dpx(58))
+            button.add_event_cb(lambda e: action(), lv.EVENT_CODE.CLICKED, None)
+            return button
+
+        if kind == 'switch':
+            label_value.add_flag(lv.OBJ_FLAG.HIDDEN)
+            control = lvr.switch(line)
+            control.set_checked(app_settings.is_on(row['value']))
+            changed = lambda on: set_value(app_settings.switch_value(row['options'], on))   # noqa: E731
+            control.add_event_cb(lambda e: changed(control.get_checked()), lv.EVENT_CODE.VALUE_CHANGED, None)
+
+            def flip():
+                control.set_checked(not control.get_checked())
+                changed(control.get_checked())
+            tappable(flip)
+        elif kind == 'choice':
+            small_button('\ue5cc', lambda: self.show_selection_dialog(row['options'], set_value))    # chevron
+            tappable(lambda: self.show_selection_dialog(row['options'], set_value))
+        elif kind == 'number':
+            small_button('\ue15b', lambda: set_value(app_settings.step_number(row['value'], -1)))  # remove
+            small_button('\ue145', lambda: set_value(app_settings.step_number(row['value'], 1)))   # add
+            tappable(lambda: self.show_input_text_dialog(row['title'], row['value'], True, set_value))
+        elif kind == 'text':
+            small_button('\ue3c9', lambda: self.show_input_text_dialog(row['title'], row['value'], False, set_value))  # edit
+            tappable(lambda: self.show_input_text_dialog(row['title'], row['value'], False, set_value))
+        elif kind == 'qr':
+            label_value.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
+            show = lambda: self.show_qr_dialog(row['value'], row['title'])   # noqa: E731
+            small_button('\uef6b', show)
+            tappable(show)
+        return line
+
     def show_input_text_dialog(self, title, initial_value, is_number, select_callback=None):
         if self.modal_text_input.panel_content:
             self.modal_text_input.panel_content.delete()
