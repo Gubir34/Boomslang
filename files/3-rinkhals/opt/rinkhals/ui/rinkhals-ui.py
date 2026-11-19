@@ -194,6 +194,7 @@ def printer_ip():
 
 
 class RinkhalsUiApp(BaseApp):
+    SHOW_AUTO_UPDATE = True
     app_update_loop_key = 0
     fullscreen = True
 

@@ -14,6 +14,7 @@
 	import { displayVersion, firmwareStatus } from "$lib/firmwareStatus";
 	import ReleaseNotesModal from "$lib/ReleaseNotesModal.svelte";
 	import InstallModal from "$lib/InstallModal.svelte";
+	import AutoUpdateCard from "$lib/AutoUpdateCard.svelte";
 
 	// ---- Wire-shape types (must match firmware.go) ---------------------------
 
@@ -305,6 +306,8 @@
 		</div>
 	{/if}
 </section>
+
+<AutoUpdateCard />
 
 <!-- Print-state banner: same shape and wording family as the Apps page so
      "installs are blocked right now" reads consistently across the portal. -->

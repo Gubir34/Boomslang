@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import lvgl as lv
 import lvgl_rinkhals as lvr
 
+import auto_update_report
 from release_assets import channel_of, display_version, find_update_asset, is_newer_release, offered_in_channel, switch_warning_text
 
 
@@ -736,6 +737,7 @@ appsRepositories = [
 
 
 class BaseApp:
+    SHOW_AUTO_UPDATE = False        # the Updates page's automatic update rows (Boomslang, not the installer)
     screen_info: ScreenInfo = None
     printer_info: PrinterInfo = None
 
@@ -1130,7 +1132,30 @@ class BaseApp:
                 self.screen_ota.label_rinkhals_latest_value.set_text('?')
                 self.screen_ota.label_rinkhals_latest_value.align(lv.ALIGN.RIGHT_MID, -lvr.get_global_margin(), 0)
                 self.screen_ota.label_rinkhals_latest_value.set_style_text_color(lvr.COLOR_DISABLED, lv.STATE.DEFAULT)
-            
+
+            # What the automatic updater did (Boomslang only: the installer has no updater).
+            # A tap shows the last check and the installs in full.
+            if self.SHOW_AUTO_UPDATE:
+                def report_row(text):
+                    row = lvr.panel(panel_rinkhals)
+                    row.set_width(lv.pct(100))
+                    row.set_style_pad_hor(0, lv.STATE.DEFAULT)
+                    row.add_flag(lv.OBJ_FLAG.CLICKABLE)
+                    row.add_event_cb(lambda e: self.show_auto_update_report(), lv.EVENT_CODE.CLICKED, None)
+                    label = lvr.label(row)
+                    label.set_text(text)
+                    label.align(lv.ALIGN.LEFT_MID, lvr.get_global_margin(), 0)
+                    value = lvr.label(row)
+                    value.set_text('-')
+                    value.set_width(lv.pct(58))
+                    value.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
+                    value.set_style_text_align(lv.TEXT_ALIGN.RIGHT, lv.STATE.DEFAULT)
+                    value.align(lv.ALIGN.RIGHT_MID, -lvr.get_global_margin(), 0)
+                    value.set_style_text_color(lvr.COLOR_DISABLED, lv.STATE.DEFAULT)
+                    return value
+                self.screen_ota.label_auto_update_status = report_row('Automatic updates')
+                self.screen_ota.label_auto_update_last = report_row('Last auto update')
+
             panel_actions = lvr.panel(panel_rinkhals, lv.FLEX_FLOW.ROW)
             if panel_actions:
                 self.screen_ota.button_rinkhals_manage = lvr.button(panel_actions)
@@ -1520,10 +1545,24 @@ class BaseApp:
         self.screen_ota.button_rinkhals_refresh.clear_event_cb()
         self.screen_ota.button_rinkhals_refresh.add_event_cb(lambda e: run_async(lambda: refresh_rinkhals(True)), lv.EVENT_CODE.CLICKED, None)
         run_async(lambda: refresh_rinkhals(force))
+        if self.SHOW_AUTO_UPDATE:
+            self.refresh_auto_update_report()
 
         self.screen_ota.button_firmware_refresh.clear_event_cb()
         self.screen_ota.button_firmware_refresh.add_event_cb(lambda e: run_async(lambda: refresh_firmware(True)), lv.EVENT_CODE.CLICKED, None)
         run_async(lambda: refresh_firmware(force))
+    def refresh_auto_update_report(self):
+        status, history = auto_update_report.read_status(), auto_update_report.read_history()
+        self.screen_ota.label_auto_update_status.set_text(auto_update_report.status_line(status))
+        self.screen_ota.label_auto_update_last.set_text(auto_update_report.last_update_line(history))
+        failed = bool(history) and history[-1].get('result') != 'installed'
+        self.screen_ota.label_auto_update_last.set_style_text_color(
+            lvr.COLOR_DANGER if failed else lvr.COLOR_DISABLED, lv.STATE.DEFAULT)
+
+    def show_auto_update_report(self):
+        self.show_text_dialog(auto_update_report.details(auto_update_report.read_status(),
+                                                         auto_update_report.read_history()))
+
     def show_ota_rinkhals(self, force=False):
         def refresh_available(force):
             lv.lock()

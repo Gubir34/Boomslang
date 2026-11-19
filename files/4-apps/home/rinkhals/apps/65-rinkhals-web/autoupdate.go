@@ -77,11 +77,15 @@ var (
 )
 
 func startAutoUpdater() {
+	// How the install before the last restart ended (autoupdate_report.go)
+	settleAutoUpdate("")
 	go func() {
 		autoUpdateSleep(autoUpdateFirstCheck)
 		for {
 			delay := autoUpdateInterval
-			if err := autoUpdateOnce(); err != nil {
+			err := autoUpdateOnce()
+			writeAutoUpdateStatus(describeAutoUpdateCheck(autoUpdateMode(), err))
+			if err != nil {
 				log.Printf("Auto update: %v", err)
 				// Waiting for the update hours: come back when they start
 				var wait *autoUpdateWait
@@ -121,6 +125,18 @@ type autoUpdateWait struct {
 	tag   string
 	hours string
 	until time.Duration
+}
+
+// autoUpdateFailed is an install that started and ended without the reboot.
+type autoUpdateFailed struct {
+	tag, state, message string
+}
+
+func (f *autoUpdateFailed) Error() string {
+	if f.message == "" {
+		return fmt.Sprintf("Installing %s stopped (%s)", f.tag, f.state)
+	}
+	return fmt.Sprintf("Installing %s stopped (%s): %s", f.tag, f.state, f.message)
 }
 
 func (w *autoUpdateWait) Error() string {
@@ -298,12 +314,14 @@ func autoUpdateOnce() error {
 
 	// Idle now and still idle a little later: don't start right as a print
 	// is being sent
+	waitIdle := &autoUpdateHeld{state: "waiting-idle", tag: release.Tag,
+		message: fmt.Sprintf("%s is available, waiting for the printer to be idle", release.Tag)}
 	if !autoUpdatePrinterIdle() {
-		return fmt.Errorf("%s is available, waiting for the printer to be idle", release.Tag)
+		return waitIdle
 	}
 	autoUpdateSleep(autoUpdateIdleRecheck)
 	if !autoUpdatePrinterIdle() {
-		return fmt.Errorf("%s is available, waiting for the printer to be idle", release.Tag)
+		return waitIdle
 	}
 
 	tag := release.Tag
@@ -324,7 +342,13 @@ func autoUpdateOnce() error {
 			if err := writeUpdateNotice(current, tag); err != nil {
 				log.Printf("Auto update: could not leave the notice for the touch screen: %v", err)
 			}
+			if err := writeAutoUpdatePending(current, tag); err != nil {
+				log.Printf("Auto update: could not record the install for its result: %v", err)
+			}
 			appendInstallLog(fmt.Sprintf("Automatic update from %s to %s", current, tag))
+			autoUpdateNotify(fmt.Sprintf("Installing Boomslang %s", releaseDisplayName(tag)),
+				fmt.Sprintf("Automatic update from %s. The printer restarts by itself; you will be told how it went.",
+					releaseDisplayName(current)), "arrows_counterclockwise", false)
 			return nil
 		},
 	}
@@ -332,7 +356,7 @@ func autoUpdateOnce() error {
 	firmwareInstallMu.Lock()
 	if installInProgressLocked() {
 		firmwareInstallMu.Unlock()
-		return fmt.Errorf("%s is available, another install is running", tag)
+		return &autoUpdateHeld{state: "waiting-install", tag: tag, message: fmt.Sprintf("%s is available, another install is running", tag)}
 	}
 	beginInstallLocked(token, "auto-"+randomToken(), false)
 	firmwareInstallMu.Unlock()
@@ -347,5 +371,7 @@ func autoUpdateOnce() error {
 		state, message = installCurrent.State, installCurrent.Error
 	}
 	firmwareInstallMu.Unlock()
-	return fmt.Errorf("installing %s ended in state %q: %s", tag, state, message)
+	failed := &autoUpdateFailed{tag: tag, state: state, message: message}
+	settleAutoUpdate(failed.Error()) // only if update.sh had started (BeforeApply left the pending file)
+	return failed
 }

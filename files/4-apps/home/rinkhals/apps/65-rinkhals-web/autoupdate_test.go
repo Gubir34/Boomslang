@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -105,6 +107,17 @@ func stubAutoUpdate(t *testing.T, idle []bool, releases []RinkhalsRelease) (inst
 	autoUpdateNoticePath = filepath.Join(dir, "notice")
 	autoUpdateHours = func() string { return "any" }
 	t.Cleanup(func() { autoUpdateNoticePath, autoUpdateNow, autoUpdateHours = savedNotice, savedNow, savedHours })
+	savedStatus, savedPending, savedHistory, savedNotify := autoUpdateStatusPath, autoUpdatePendingPath, autoUpdateHistoryPath, autoUpdateNotify
+	autoUpdateStatusPath = filepath.Join(dir, "status")
+	autoUpdatePendingPath = filepath.Join(dir, "pending")
+	autoUpdateHistoryPath = filepath.Join(dir, "history")
+	sentNotifications = nil
+	autoUpdateNotify = func(title, body, tags string, urgent bool) {
+		sentNotifications = append(sentNotifications, sentNotification{title, body, urgent})
+	}
+	t.Cleanup(func() {
+		autoUpdateStatusPath, autoUpdatePendingPath, autoUpdateHistoryPath, autoUpdateNotify = savedStatus, savedPending, savedHistory, savedNotify
+	})
 	t.Cleanup(func() {
 		autoUpdateSleep = saved[0].(func(time.Duration))
 		autoUpdatePrinterIdle = saved[1].(func() bool)
@@ -146,6 +159,13 @@ func stubAutoUpdate(t *testing.T, idle []bool, releases []RinkhalsRelease) (inst
 	}
 	return installs, tried
 }
+
+type sentNotification struct {
+	title, body string
+	urgent      bool
+}
+
+var sentNotifications []sentNotification
 
 var newerStable = []RinkhalsRelease{{Tag: "20261112_02", AssetURL: testAsset}}
 
@@ -296,5 +316,142 @@ func TestAcceptsGzipQuality(t *testing.T) {
 		if got := acceptsGzip(r); got != want {
 			t.Errorf("Accept-Encoding %q: got %v, want %v", header, got, want)
 		}
+	}
+}
+
+// --- did it update itself? (autoupdate_report.go) ---------------------------------------
+
+func TestAnAutomaticInstallIsReportedAfterTheRestart(t *testing.T) {
+	stubAutoUpdate(t, []bool{true}, newerStable)
+	autoUpdateRunInstall = func(token *preflightToken, dryRun bool) {
+		if err := token.BeforeApply(); err != nil {
+			t.Fatal(err)
+		}
+		// update.sh ran and the printer reboots: this process ends here
+		runtime.Goexit()
+	}
+	done := make(chan struct{})
+	go func() { defer close(done); autoUpdateOnce() }()
+	<-done
+	if len(sentNotifications) != 1 || !strings.Contains(sentNotifications[0].title, "Installing Boomslang 20261112_02") {
+		t.Fatalf("expected the phone to be told the install starts, got %+v", sentNotifications)
+	}
+	if _, err := os.Stat(autoUpdatePendingPath); err != nil {
+		t.Fatalf("the install must wait for the restart to be judged: %v", err)
+	}
+
+	// the printer comes back on the new version
+	autoUpdateCurrent = func() string { return "20261112_02" }
+	sentNotifications = nil
+	entry := settleAutoUpdate("")
+	if entry == nil || entry.Result != "installed" || entry.From != "20261110_01" {
+		t.Fatalf("unexpected result %+v", entry)
+	}
+	if len(sentNotifications) != 1 || !strings.Contains(sentNotifications[0].title, "updated to 20261112_02") || sentNotifications[0].urgent {
+		t.Fatalf("unexpected notification %+v", sentNotifications)
+	}
+	if history := readAutoUpdateHistory(); len(history) != 1 || history[0].Result != "installed" {
+		t.Fatalf("unexpected history %+v", history)
+	}
+	// once only
+	if settleAutoUpdate("") != nil || len(sentNotifications) != 1 {
+		t.Fatal("a result must be reported once")
+	}
+}
+
+func TestAnInstallThatBootsBackIntoTheOldVersionIsAFailure(t *testing.T) {
+	stubAutoUpdate(t, []bool{true}, nil)
+	if err := writeAutoUpdatePending("2611-1-alpha", "2611-2-alpha"); err != nil {
+		t.Fatal(err)
+	}
+	autoUpdateCurrent = func() string { return "2611-1-alpha" }
+	entry := settleAutoUpdate("")
+	if entry == nil || entry.Result != "failed" || !strings.Contains(entry.Message, "2611 1 Alpha") {
+		t.Fatalf("unexpected result %+v", entry)
+	}
+	if len(sentNotifications) != 1 || !sentNotifications[0].urgent || !strings.Contains(sentNotifications[0].title, "2611 2 Alpha did not complete") {
+		t.Fatalf("unexpected notification %+v", sentNotifications)
+	}
+}
+
+func TestAnInstallThatFailsWithoutARebootIsSettledAtOnce(t *testing.T) {
+	stubAutoUpdate(t, []bool{true}, newerStable) // the stub install runs BeforeApply and then fails
+	err := autoUpdateOnce()
+	status := describeAutoUpdateCheck("release", err)
+	if status.State != "failed" || status.Available != "20261112_02" {
+		t.Fatalf("unexpected status %+v", status)
+	}
+	history := readAutoUpdateHistory()
+	if len(history) != 1 || history[0].Result != "failed" || !strings.Contains(history[0].Message, "stopped") {
+		t.Fatalf("unexpected history %+v", history)
+	}
+	if _, err := os.Stat(autoUpdatePendingPath); err == nil {
+		t.Fatal("the pending file must be gone")
+	}
+}
+
+func TestAnInstallStoppedBeforeUpdateShIsNotInTheHistory(t *testing.T) {
+	stubAutoUpdate(t, []bool{true, true, false}, newerStable) // busy right before update.sh
+	autoUpdateOnce()
+	if history := readAutoUpdateHistory(); len(history) != 0 {
+		t.Fatalf("nothing was installed, history %+v", history)
+	}
+	if len(sentNotifications) != 0 {
+		t.Fatalf("nothing to tell, sent %+v", sentNotifications)
+	}
+}
+
+func TestTheStatusSaysWhatTheUpdaterIsWaitingFor(t *testing.T) {
+	stubAutoUpdate(t, []bool{false}, newerStable)
+	if s := describeAutoUpdateCheck("release", autoUpdateOnce()); s.State != "waiting-idle" || s.Available != "20261112_02" {
+		t.Fatalf("busy printer: %+v", s)
+	}
+	autoUpdateHours = func() string { return "02-06" }
+	autoUpdateNow = func() time.Time { return at(14, 0) }
+	if s := describeAutoUpdateCheck("release", autoUpdateOnce()); s.State != "waiting-hours" || !strings.Contains(s.Message, "02-06") {
+		t.Fatalf("outside the hours: %+v", s)
+	}
+	if s := describeAutoUpdateCheck("release", nil); s.State != "up-to-date" {
+		t.Fatalf("nothing newer: %+v", s)
+	}
+	if s := describeAutoUpdateCheck("off", nil); s.State != "off" {
+		t.Fatalf("off: %+v", s)
+	}
+	if s := describeAutoUpdateCheck("release", errors.New("could not read the releases: offline")); s.State != "error" {
+		t.Fatalf("offline: %+v", s)
+	}
+	writeAutoUpdateStatus(describeAutoUpdateCheck("release", nil))
+	if got := readAutoUpdateStatus(); got == nil || got.State != "up-to-date" {
+		t.Fatalf("status not kept: %+v", got)
+	}
+}
+
+func TestTheHistoryKeepsTheLastTwenty(t *testing.T) {
+	stubAutoUpdate(t, []bool{true}, nil)
+	autoUpdateCurrent = func() string { return "new" }
+	for i := 0; i < 25; i++ {
+		writeAutoUpdatePending("old", "new")
+		settleAutoUpdate("")
+	}
+	if history := readAutoUpdateHistory(); len(history) != autoUpdateHistoryMax {
+		t.Fatalf("history has %d entries", len(history))
+	}
+}
+
+func TestTheReportEndpoint(t *testing.T) {
+	stubAutoUpdate(t, []bool{true}, nil)
+	writeAutoUpdateStatus(autoUpdateStatus{Mode: "beta", State: "waiting-hours", Available: "2611-9-beta"})
+	rec := httptest.NewRecorder()
+	handleAutoUpdateReport(rec, httptest.NewRequest("GET", "/api/firmware/autoupdate", nil))
+	var body struct {
+		Hours   string            `json:"hours"`
+		Status  *autoUpdateStatus `json:"status"`
+		History []autoUpdateEntry `json:"history"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err, rec.Body.String())
+	}
+	if body.Hours != "any" || body.Status == nil || body.Status.Available != "2611-9-beta" || body.History == nil {
+		t.Fatalf("unexpected report %s", rec.Body.String())
 	}
 }

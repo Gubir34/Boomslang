@@ -495,6 +495,7 @@ func startWebServer() {
 	mux.HandleFunc("/api/firmware/upstream", handleFirmwareUpstream)
 	mux.HandleFunc("/api/firmware/install/state", handleInstallState)
 	mux.HandleFunc("/api/firmware/install/progress", handleInstallProgress)
+	mux.HandleFunc("/api/firmware/autoupdate", handleAutoUpdateReport)
 
 	mux.Handle("/", newStaticHandler(uiFS))
 

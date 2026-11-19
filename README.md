@@ -114,7 +114,7 @@ After installation, Boomslang provides a touch UI accessible from the printer sc
 From the home screen you reach:
 - **Apps**: turn apps on and off, see whether they are running, and change their settings
 - **App Store**: browse and install apps from [Boomslang.Apps](https://github.com/Gubir34/Boomslang.Apps) directly from the printer screen (see below)
-- **Updates**: Boomslang and Anycubic firmware updates, following your update channel
+- **Updates**: Boomslang and Anycubic firmware updates, following your update channel. It also shows what the automatic updater did: its last check (up to date, or what a new release is waiting for) and whether the last automatic update installed. The web portal's Firmware page shows the same with the full history, and with phone notifications on (ntfy) you are told when an automatic update starts and how it ended
 - **Web portal**, **Mainsail** and **LemSearch Lite**, a search and reader-mode browser: results as cards, pages as text with links. It runs no JavaScript (the printer has about 200 MB of memory), but reads pages built for it from the data and preview they carry, follows AMP versions, and offers a QR code to open on your phone the sites that refuse simple browsers
 - **Settings**: sounds, the look, dark or light mode, reboot and restart, system information
 
