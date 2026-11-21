@@ -164,6 +164,12 @@ Every look comes in dark and light, in **Settings > Mode**. Light mode is not th
     <img width="240" src="./docs/docs/assets/boomslang-ui/liquid-settings-light.png" alt="Liquid Plastic app settings, light">
 </p>
 
+### Print screens and the stock screen's look (both off by default)
+
+**Settings > Print screens** lets you print from Boomslang instead of the stock screen. Tap the status line on the home screen to see the printer's files, start a print, follow its progress, layer and time left, pause, resume or cancel it, and preheat or cool down. Everything goes through Moonraker. A print only starts when the printer is idle and not heating.
+
+**Settings > Stock screen look** (experimental) recolours Anycubic's own screen in Liquid Plastic's greens. It changes the stock screen's colours and corners, but not its icons and pictures, which are built into the program. If the stock screen does not stay up after turning it on, Boomslang turns it off again by itself and restarts. To turn it off by hand over SSH: `rm /useremain/rinkhals/.stock-ui-look`, then restart.
+
 ### App settings
 
 Every app with settings has a gear in the Apps list. On/off settings are switches, numbers have − and + buttons, choices open a list and text opens a keyboard. Advanced settings are folded away, and when you change a running app, Boomslang offers to restart it so the new settings are used.

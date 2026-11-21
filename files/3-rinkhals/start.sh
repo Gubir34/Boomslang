@@ -311,7 +311,9 @@ chrt -p 89 $(get_by_name ksoftirqd/0)
 sleep 2
 
 ./gkapi >> $RINKHALS_LOGS/gkapi.log 2>&1 &
-./K3SysUi >> $RINKHALS_LOGS/K3SysUi.log 2>&1 &
+# K3SysUi, recoloured when Settings > Stock screen look is on (scripts/stock-look.sh)
+. /opt/rinkhals/scripts/stock-look.sh
+start_stock_screen
 
 # On the kobra 2 pro this sleep causes that filement extrude does not work and auto leveling crashes. (https://github.com/rinkhals-community/Rinkhals/issues/155)
 if [ "$KOBRA_MODEL_CODE" != "K2P" ]; then

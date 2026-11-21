@@ -1,0 +1,12 @@
+/* K3SysUi asks for these two with the Qt_5 version, so they are given that version */
+Qt_5 {
+    global:
+        _ZN7QWidget13setStyleSheetERK7QString;
+        _ZN12QApplication13setStyleSheetERK7QString;
+};
+BOOMSLANG {
+    global:
+        boomslang_stock_look_swap;
+    local:
+        *;
+};
