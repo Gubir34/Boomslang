@@ -715,6 +715,34 @@ appsRepositories = [
 ]
 
 
+def printing_now(fetch=None):
+    """Why an install must not run now ("" when it may): a print, a heater with a target
+    or a file being read. Only clear signs count: without Moonraker (the installer, or
+    Moonraker stopped) the person at the screen decides, as before."""
+    if fetch is None:
+        def fetch():
+            import urllib.request
+            url = 'http://127.0.0.1:7125/printer/objects/query?print_stats&extruder&heater_bed&virtual_sdcard'
+            with urllib.request.urlopen(url, timeout=2) as r:
+                return json.loads(r.read(65536))
+    try:
+        status = fetch()['result']['status']
+    except Exception:
+        return ''
+    state = str((status.get('print_stats') or {}).get('state') or '').lower()
+    if state in ('printing', 'paused', 'pausing', 'cancelling', 'heating', 'leveling', 'resonance', 'onpause'):
+        return f'the printer is {state}'
+    for name, key in (('nozzle', 'extruder'), ('bed', 'heater_bed')):
+        try:
+            if float((status.get(key) or {}).get('target') or 0) > 0:
+                return f'the {name} is heating'
+        except (TypeError, ValueError):
+            pass
+    if (status.get('virtual_sdcard') or {}).get('is_active'):
+        return 'a file is being printed'
+    return ''
+
+
 class BaseApp:
     screen_info: ScreenInfo = None
     printer_info: PrinterInfo = None
@@ -2109,6 +2137,14 @@ class BaseApp:
 
         return True
     def install_swu(self, params=''):
+        # Never in the middle of a print: update.sh stops the printer's services
+        # and the printer reboots after it (a download can take minutes, so this is
+        # checked here, right before anything changes)
+        reason = printing_now()
+        if reason:
+            logging.error(f'Not installing: {reason}')
+            return False
+
         # Patch the update script
         with open('/useremain/update_swu/update.sh', 'r+') as f:
             update_script = f.read()

@@ -310,6 +310,10 @@ func handleInstallPreflight(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Printer is busy: %s", state.Reason), http.StatusConflict)
 		return
 	}
+	if reason := manualInstallBlocker(); reason != "" {
+		http.Error(w, "Printer is busy: "+reason, http.StatusConflict)
+		return
+	}
 
 	token := &preflightToken{
 		Source:    req.Source,
@@ -324,6 +328,13 @@ func handleInstallPreflight(w http.ResponseWriter, r *http.Request) {
 			Warnings: []string{"This replaces Boomslang with the original Rinkhals."}}
 	} else {
 		token.Compat = &compatibilityReport{Compatible: true}
+	}
+	// The download can take minutes: look again right before update.sh
+	token.BeforeApply = func() error {
+		if reason := manualInstallBlocker(); reason != "" {
+			return fmt.Errorf("stopped before changing anything: %s", reason)
+		}
+		return nil
 	}
 
 	id := randomToken()
