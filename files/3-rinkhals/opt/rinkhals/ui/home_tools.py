@@ -281,6 +281,50 @@ def set_mode(name, path=None):
         f.write(name + '\n')
 
 
+# --- print screens and the stock screen's look (both off by default) ---------------
+
+PRINT_SCREENS_FILE = '/useremain/rinkhals/.ui-print-screens'
+STOCK_LOOK_FILE = '/useremain/rinkhals/.stock-ui-look'      # read by start.sh before the stock screen starts
+STOCK_LOOKS = ('off', 'liquid')
+STOCK_LOOK_NAMES = {'off': 'Off', 'liquid': 'Liquid Plastic'}
+
+
+def _read_word(path):
+    try:
+        with open(path) as f:
+            return f.read().strip().lower()
+    except OSError:
+        return ''
+
+
+def _write_word(path, word):
+    temporary = path + '.tmp'
+    with open(temporary, 'w') as f:
+        f.write(word + '\n')
+    os.replace(temporary, path)
+
+
+def print_screens(path=None):
+    """Whether Boomslang's own print screens are on. Off unless turned on."""
+    return _read_word(path or PRINT_SCREENS_FILE) == 'on'
+
+
+def set_print_screens(on, path=None):
+    _write_word(path or PRINT_SCREENS_FILE, 'on' if on else 'off')
+
+
+def stock_look(path=None):
+    """The stock screen's look: 'off' (Anycubic's own, the default) or 'liquid'."""
+    word = _read_word(path or STOCK_LOOK_FILE)
+    return word if word in STOCK_LOOKS else 'off'
+
+
+def set_stock_look(name, path=None):
+    if name not in STOCK_LOOKS:
+        raise ValueError(f'unknown look {name!r}')
+    _write_word(path or STOCK_LOOK_FILE, name)
+
+
 def set_theme(name, path=None, legacy=None):
     if name not in THEMES:
         raise ValueError(f'unknown look {name!r}')

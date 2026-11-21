@@ -27,7 +27,7 @@ APP = next(n for n in TREE.body if isinstance(n, ast.ClassDef) and n.name == 'Ri
 
 WANTED = ('layout', 'layout_aero_home', 'home_show_link', 'home_show_update', 'home_power', 'home_tick_clock',
           'home_refresh', 'choose_theme', 'choose_mode', 'home_clear', 'aero_glass', 'aero_light', 'aero_orb',
-          'home_glyph', 'home_ink', 'home_ink_off')
+          'home_glyph', 'home_ink', 'home_ink_off', 'print_entry')
 
 
 def load_class(lv, lvr):
@@ -275,6 +275,21 @@ class AeroHomeTests(unittest.TestCase):
         self.app.choose_theme()
         self.app.show_selection_dialog.assert_not_called()
         self.assertIn('loading', self.app.show_text_dialog.call_args.args[0])
+
+    # --- print screens (off by default) ---------------------------------------------------
+
+    def test_the_status_line_opens_the_print_screen_only_when_turned_on(self):
+        self.app.layout_aero_home()
+        self.lvr.subtitle.return_value.add_flag.assert_not_called()
+        self.app.print_screens = True
+        self.app.screen_print = object()
+        self.lvr.reset_mock()
+        self.app.layout_aero_home()
+        status = self.lvr.subtitle.return_value
+        status.add_flag.assert_any_call(self.lv.OBJ_FLAG.CLICKABLE)
+        tap = status.add_event_cb.call_args.args[0]
+        tap(None)
+        self.app.show_screen.assert_called_with(self.app.screen_print)
 
     # --- dark or light -----------------------------------------------------------------
 

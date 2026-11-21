@@ -244,5 +244,23 @@ class ModeTests(unittest.TestCase):
             self.assertEqual(set(home_tools.MODE_NAMES), set(home_tools.MODES))
 
 
+class PrintScreensAndStockLookTests(unittest.TestCase):
+    def test_both_are_off_unless_turned_on(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            screens, look = os.path.join(tmp, 'p'), os.path.join(tmp, 'l')
+            self.assertFalse(home_tools.print_screens(screens))
+            self.assertEqual(home_tools.stock_look(look), 'off')
+            home_tools.set_print_screens(True, screens)
+            home_tools.set_stock_look('liquid', look)
+            self.assertTrue(home_tools.print_screens(screens))
+            self.assertEqual(home_tools.stock_look(look), 'liquid')
+            home_tools.set_print_screens(False, screens)
+            self.assertFalse(home_tools.print_screens(screens))
+            Path(look).write_text('neon\n')
+            self.assertEqual(home_tools.stock_look(look), 'off')                 # nonsense is off
+            with self.assertRaises(ValueError):
+                home_tools.set_stock_look('neon', look)
+
+
 if __name__ == '__main__':
     unittest.main()

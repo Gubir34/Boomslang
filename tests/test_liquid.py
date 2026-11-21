@@ -25,7 +25,7 @@ SOURCE = (UI / 'rinkhals-ui.py').read_text(encoding='utf-8')
 APP = next(n for n in ast.parse(SOURCE).body if isinstance(n, ast.ClassDef) and n.name == 'RinkhalsUiApp')
 METHODS = ('layout_liquid_home', 'layout_liquid_panel', 'liquid_open_panel', 'liquid_panel_refresh', 'liquid_brightness',
            'liquid_toggle_sounds', 'liquid_toggle_updates', 'liquid_read_updates', 'home_clear', 'home_glyph', 'home_tick_clock',
-           'home_refresh', 'home_ink', 'home_ink_off', 'home_show_update', 'home_show_link', 'home_power', 'aero_light')
+           'home_refresh', 'home_ink', 'home_ink_off', 'print_entry', 'home_show_update', 'home_show_link', 'home_power', 'aero_light')
 ATTRIBUTES = ('MUTE_SOUNDS_FILE', 'WEB_APP')
 
 

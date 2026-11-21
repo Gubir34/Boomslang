@@ -33,6 +33,7 @@ import app_settings
 import browser_tools
 import model_files
 import slicer
+import print_control
 import home_tools
 import liquid_layout
 import liquid_ui
@@ -255,6 +256,8 @@ class RinkhalsUiApp(BaseApp):
         # The look of every screen follows the home's: the shared styles are
         # built in super().layout(), so they are told first
         self.ui_mode = home_tools.mode()                  # light or dark: its own backgrounds and colours
+        self.print_screens = home_tools.print_screens()   # off by default (Settings)
+        self.screen_print = None
         lvr.set_mode(self.ui_mode)
         reader.reader_css.set_screen(self.ui_mode)       # page colours must read on that background
         if self.screen_info:
@@ -419,6 +422,7 @@ class RinkhalsUiApp(BaseApp):
         self.home_label_status = lvr.subtitle(self.screen_main)
         self.home_label_status.set_width(lv.pct(100))
         self.home_label_status.set_text('')
+        self.print_entry(self.home_label_status)
 
         row = row_of(self.screen_main)
         row.set_flex_grow(1)
@@ -662,6 +666,7 @@ class RinkhalsUiApp(BaseApp):
         self.home_label_status.set_style_text_align(lv.TEXT_ALIGN.CENTER, lv.STATE.DEFAULT)
         self.home_label_status.set_pos(190, 250)
         self.home_label_status.set_text('')
+        self.print_entry(self.home_label_status)
         self.home_refresh()
 
     def home_tick_clock(self):
@@ -713,6 +718,276 @@ class RinkhalsUiApp(BaseApp):
                 return
             self.show_text_dialog(f'The {option} look is used\nthe next time Boomslang opens.\n\nBoomslang closes now.',
                                   callback=self.quit)
+        self.show_selection_dialog(options, chosen)
+
+    # --- Print screens (Settings > Print screens, off by default) -----------------------
+    # Printing from Boomslang instead of the stock screen: the printer's files, start a
+    # print, follow it, pause, resume or cancel it, and preheat or cool down. All through
+    # Moonraker (print_control.py). The home's status line opens it.
+    PRINT_REFRESH_SECONDS = 2
+
+    def print_entry(self, label):
+        if not getattr(self, 'print_screens', False):
+            return
+        label.add_flag(lv.OBJ_FLAG.CLICKABLE)
+        label.set_ext_click_area(lv.dpx(16))
+        label.add_event_cb(lambda e: self.show_screen(self.screen_print), lv.EVENT_CODE.CLICKED, None)
+
+    def layout_print(self):
+        # A plain panel like the other screens (a flex layout would move the title bar down),
+        # with the content in a column under the title bar
+        screen = self.screen_print = lvr.panel(self.root_screen, tag='screen_print')
+        screen.add_flag(lv.OBJ_FLAG.HIDDEN)
+        screen.set_size(lv.pct(100), lv.pct(100))
+        screen.set_style_pad_all(0, lv.STATE.DEFAULT)
+        screen.set_style_pad_top(lvr.get_title_bar_height(), lv.STATE.DEFAULT)
+        body = lvr.panel(screen, flex_flow=lv.FLEX_FLOW.COLUMN)
+        body.set_size(lv.pct(100), lv.pct(100))
+        body.set_style_pad_all(0, lv.STATE.DEFAULT)
+        body.set_style_pad_row(lv.dpx(6), lv.STATE.DEFAULT)
+        body.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+
+        title_bar = lvr.title_bar(screen)
+        title_bar.set_y(-lvr.get_title_bar_height())
+        title = lvr.title(title_bar)
+        title.set_text('Print')
+        title.center()
+        back = lvr.button_icon(title_bar)
+        back.set_align(lv.ALIGN.LEFT_MID)
+        back.set_text('\ue314')
+        back.add_event_cb(lambda e: self.show_screen(self.screen_main), lv.EVENT_CODE.CLICKED, None)
+        refresh = lvr.button_icon(title_bar)
+        refresh.set_align(lv.ALIGN.RIGHT_MID)
+        refresh.set_text('\ue5d5')
+        refresh.add_event_cb(lambda e: self.show_print(), lv.EVENT_CODE.CLICKED, None)
+
+        margin = lvr.get_global_margin()
+        card = lvr.panel(body, flex_flow=lv.FLEX_FLOW.COLUMN)
+        card.set_width(lv.pct(100))
+        card.set_style_pad_hor(margin, lv.STATE.DEFAULT)
+        card.set_style_pad_row(lv.dpx(4), lv.STATE.DEFAULT)
+        screen.label_state = lvr.title(card)
+        screen.label_state.set_width(lv.pct(100))
+        screen.label_state.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
+        track = screen.track = lvr.panel(card)
+        track.set_size(lv.pct(100), lv.dpx(10))
+        track.set_style_pad_all(0, lv.STATE.DEFAULT)
+        track.set_style_radius(lv.dpx(5), lv.STATE.DEFAULT)
+        track.set_style_bg_color(lvr.surface_track(), lv.STATE.DEFAULT)
+        track.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+        track.remove_flag(lv.OBJ_FLAG.SCROLLABLE)
+        screen.bar = lvr.panel(track)
+        screen.bar.set_align(lv.ALIGN.LEFT_MID)
+        screen.bar.set_size(0, lv.pct(100))
+        screen.bar.set_style_radius(lv.dpx(5), lv.STATE.DEFAULT)
+        screen.bar.set_style_bg_color(lvr.COLOR_PRIMARY, lv.STATE.DEFAULT)
+        screen.bar.set_style_bg_opa(lv.OPA.COVER, lv.STATE.DEFAULT)
+        screen.label_info = lvr.subtitle(card)
+        screen.label_temps = lvr.label(card)
+
+        # Pause / resume and cancel while printing; presets while idle
+        screen.row_print = lvr.panel(body, flex_flow=lv.FLEX_FLOW.ROW)
+        screen.row_idle = lvr.panel(body, flex_flow=lv.FLEX_FLOW.ROW)
+        for row in (screen.row_print, screen.row_idle):
+            row.set_width(lv.pct(100))
+            row.set_height(lv.SIZE_CONTENT)
+            row.set_style_pad_hor(margin, lv.STATE.DEFAULT)
+            row.set_style_pad_column(lv.dpx(8), lv.STATE.DEFAULT)
+
+        def row_button(row, text, callback, color=None):
+            button = lvr.button(row)
+            button.set_flex_grow(1)
+            button.set_text(text)
+            if color is not None:
+                button.set_style_text_color(color, lv.STATE.DEFAULT)
+            button.add_event_cb(lambda e: callback(), lv.EVENT_CODE.CLICKED, None)
+            return button
+        screen.button_pause = row_button(screen.row_print, 'Pause', self.print_pause_or_resume)
+        row_button(screen.row_print, 'Cancel', self.print_cancel, lvr.COLOR_DANGER)
+        for name in print_control.PRESETS:
+            row_button(screen.row_idle, name, lambda n=name: self.print_preheat(n))
+        row_button(screen.row_idle, 'Cool down', lambda: self.print_temperatures(0, 0))
+
+        # The printer's files, newest first (while idle)
+        screen.files = lvr.panel(body, flex_flow=lv.FLEX_FLOW.COLUMN)
+        screen.files.set_width(lv.pct(100))
+        screen.files.set_flex_grow(1)
+        screen.files.set_style_min_height(0, lv.STATE.DEFAULT)
+        screen.files.set_style_pad_row(0, lv.STATE.DEFAULT)
+        screen.last_status = None
+
+    def show_print(self):
+        self.print_generation = getattr(self, 'print_generation', 0) + 1
+        generation = self.print_generation
+        screen = self.screen_print
+
+        def visible():
+            return generation == self.print_generation and self.screen_current == screen
+
+        def files():
+            try:
+                found, problem = print_control.list_files(), ''
+            except print_control.PrintError as e:
+                found, problem = [], str(e)
+            with lvr.lock():
+                if generation == self.print_generation:
+                    self.print_fill_files(found, problem)
+
+        def loop():
+            while True:
+                status = print_control.read_status()
+                with lvr.lock():
+                    if not visible():
+                        return
+                    self.print_fill_status(status)
+                time.sleep(self.PRINT_REFRESH_SECONDS)
+
+        self.print_fill_status(screen.last_status)
+        run_async(files)
+        import threading
+        threading.Thread(target=loop, daemon=True).start()
+
+    def print_fill_status(self, status):
+        screen = self.screen_print
+        screen.last_status = status
+        if status is None:
+            screen.label_state.set_text('The printer can\'t be reached')
+            screen.label_info.set_text('Moonraker is not answering. Is it on in Apps?')
+            screen.label_temps.set_text('')
+            screen.bar.set_width(0)
+            screen.row_print.add_flag(lv.OBJ_FLAG.HIDDEN)
+            screen.row_idle.add_flag(lv.OBJ_FLAG.HIDDEN)
+            return
+        busy = print_control.busy(status)
+        name = home_tools.STATE_NAMES.get(status['state'], status['state'].capitalize() or 'Idle')
+        file = status['file'].rsplit('/', 1)[-1]
+        screen.label_state.set_text(f'{name} · {file}' if busy and file else name)
+        progress = status['progress'] if busy and status['progress'] is not None else 0
+        screen.bar.set_width(lv.pct(round(progress * 100)))
+        info = []
+        if busy:
+            info.append(f'{round(progress * 100)}%')
+            if status['layer'] and status['layers']:
+                info.append(f'Layer {status["layer"]}/{status["layers"]}')
+            if status['elapsed']:
+                info.append(f'{print_control.duration_text(status["elapsed"])} printed')
+            left = print_control.remaining(status)
+            if left:
+                info.append(f'about {print_control.duration_text(left)} left')
+        else:
+            info.append('Choose a file to print')
+        screen.label_info.set_text(' · '.join(info))
+        screen.label_temps.set_text(
+            f'Nozzle {print_control.temperature_text(status["nozzle"], status["nozzle_target"])}   '
+            f'Bed {print_control.temperature_text(status["bed"], status["bed_target"])}')
+        screen.button_pause.set_text('Resume' if status['state'] == 'paused' else 'Pause')
+        for row, show in ((screen.row_print, busy), (screen.row_idle, not busy), (screen.files, not busy), (screen.track, busy)):
+            if show:
+                row.remove_flag(lv.OBJ_FLAG.HIDDEN)
+            else:
+                row.add_flag(lv.OBJ_FLAG.HIDDEN)
+
+    def print_fill_files(self, files, problem=''):
+        screen = self.screen_print
+        screen.files.clean()
+        if problem or not files:
+            label = lvr.subtitle(screen.files)
+            label.set_style_pad_hor(lvr.get_global_margin(), lv.STATE.DEFAULT)
+            label.set_text(problem or 'There are no print files yet. Slice one in LemSearch, or send one from your slicer.')
+            label.set_width(lv.pct(100))
+            label.set_long_mode(lv.LABEL_LONG_MODE.WRAP)
+            return
+        for path, size, modified in files:
+            row = lvr.button(screen.files)
+            row.set_width(lv.pct(100))
+            row.set_flex_flow(lv.FLEX_FLOW.COLUMN)
+            row.set_flex_align(lv.FLEX_ALIGN.CENTER, lv.FLEX_ALIGN.START, lv.FLEX_ALIGN.START)
+            row.set_style_text_align(lv.TEXT_ALIGN.LEFT, lv.STATE.DEFAULT)
+            row.set_style_pad_row(0, lv.STATE.DEFAULT)
+            name = lvr.label(row)
+            name.set_text(path.rsplit('/', 1)[-1])
+            name.set_width(lv.pct(100))
+            name.set_long_mode(lv.LABEL_LONG_MODE.DOTS)
+            detail = lvr.subtitle(row)
+            stamp = time.strftime('%d %b %H:%M', time.localtime(modified)) if modified else ''
+            detail.set_text(f'{size / 1048576:.1f} MB · {stamp}' if stamp else f'{size / 1048576:.1f} MB')
+            row.add_event_cb(lambda e, p=path: self.print_ask_start(p), lv.EVENT_CODE.CLICKED, None)
+
+    def print_ask_start(self, path):
+        def go():
+            def work():
+                try:
+                    print_control.start(path, printer_busy=browser_tools.printer_busy)
+                    message = None
+                except print_control.PrintError as e:
+                    message = str(e)
+                if message:
+                    with lvr.lock():
+                        self.show_text_dialog(message)
+            run_async(work)
+        self.show_text_dialog(f'Print {path.rsplit("/", 1)[-1]}?', action='Print', action_color=lvr.COLOR_PRIMARY, callback=go)
+
+    def print_request(self, work):
+        def run():
+            try:
+                work()
+            except print_control.PrintError as e:
+                with lvr.lock():
+                    self.show_text_dialog(str(e))
+        run_async(run)
+
+    def print_pause_or_resume(self):
+        status = self.screen_print.last_status
+        action = 'resume' if status and status['state'] == 'paused' else 'pause'
+        self.print_request(lambda: print_control.command(action))
+
+    def print_cancel(self):
+        self.show_text_dialog('Cancel the print?\nThis can\'t be undone.', action='Cancel print', action_color=lvr.COLOR_DANGER,
+                              callback=lambda: self.print_request(lambda: print_control.command('cancel')))
+
+    def print_preheat(self, name):
+        if print_control.busy(self.screen_print.last_status):
+            return
+        nozzle, bed = print_control.PRESETS[name]
+        self.print_temperatures(nozzle, bed)
+
+    def print_temperatures(self, nozzle, bed):
+        self.print_request(lambda: print_control.set_temperatures(nozzle, bed))
+
+    def choose_print_screens(self):
+        on = not self.print_screens
+        try:
+            home_tools.set_print_screens(on)
+        except OSError as e:
+            logging.error(f'Could not save the print screens choice: {e}')
+            self.show_text_dialog('Could not save the choice.\nNothing was changed.')
+            return
+        what = ('Print screens are on: tap the status\nline on the home screen to print.' if on else 'Print screens are off.')
+        self.show_text_dialog(f'{what}\n\nUsed the next time Boomslang opens.\nBoomslang closes now.', callback=self.quit)
+
+    def choose_stock_look(self):
+        names = home_tools.STOCK_LOOK_NAMES
+        options = [names[look] for look in home_tools.STOCK_LOOKS]
+        if not getattr(self, 'modal_selection', None):
+            self.show_text_dialog('Still loading,\ntry again in a moment.')
+            return
+
+        def chosen(option):
+            look = next(l for l in home_tools.STOCK_LOOKS if names[l] == option)
+            if look == home_tools.stock_look():
+                return
+            try:
+                home_tools.set_stock_look(look)
+            except OSError as e:
+                logging.error(f'Could not save the stock screen look: {e}')
+                self.show_text_dialog('Could not save the choice.\nNothing was changed.')
+                return
+            if look == 'off':
+                text = 'The stock screen gets its own\nlook back after a restart.'
+            else:
+                text = ('Experimental: the stock screen is\nrecoloured after a restart. If it\nfails to start, '
+                        'Boomslang turns\nthis off again by itself.')
+            self.show_text_dialog(f'{text}\n\nRestart Boomslang now?', action='Restart', callback=self.restart_rinkhals)
         self.show_selection_dialog(options, chosen)
 
     def choose_mode(self):
@@ -843,6 +1118,7 @@ class RinkhalsUiApp(BaseApp):
         self.home_label_status.set_style_text_color(white, lv.STATE.DEFAULT)
         self.home_label_status.set_pos(190, 250)
         self.home_label_status.set_text('')
+        self.print_entry(self.home_label_status)
 
         # The quick settings panel, last: it opens over everything above
         self.layout_liquid_panel(glass, main)
@@ -1221,6 +1497,18 @@ class RinkhalsUiApp(BaseApp):
                 button_mode.set_text(f'Mode: {home_tools.MODE_NAMES[self.ui_mode]}')
                 button_mode.add_event_cb(lambda e: self.choose_mode(), lv.EVENT_CODE.CLICKED, None)
 
+                # Print screens (off by default): printing from Boomslang instead of the stock screen
+                button_print = lvr.button(panel_buttons)
+                button_print.set_width(lv.pct(100))
+                button_print.set_text(f'Print screens: {"on" if self.print_screens else "off"}')
+                button_print.add_event_cb(lambda e: self.choose_print_screens(), lv.EVENT_CODE.CLICKED, None)
+
+                # The stock screen's look (off by default, experimental)
+                button_stock = lvr.button(panel_buttons)
+                button_stock.set_width(lv.pct(100))
+                button_stock.set_text(f'Stock screen look: {home_tools.STOCK_LOOK_NAMES[home_tools.stock_look()]}')
+                button_stock.add_event_cb(lambda e: self.choose_stock_look(), lv.EVENT_CODE.CLICKED, None)
+
                 button_previous = lvr.button(panel_buttons)
                 button_previous.set_width(lv.pct(100))
                 button_previous.set_text('Go back to previous version')
@@ -1242,6 +1530,9 @@ class RinkhalsUiApp(BaseApp):
             self.layout_app_store()
         with self.build_step():
             self.layout_browser()
+        if self.print_screens:
+            with self.build_step():
+                self.layout_print()
 
         with self.build_step():
             self.modal_selection = lvr.modal(self.root_modal)
@@ -1272,6 +1563,7 @@ class RinkhalsUiApp(BaseApp):
         if screen == self.screen_main: self.show_main()
         elif screen == self.screen_apps: self.show_apps()
         elif screen == self.screen_store: self.show_app_store()
+        elif screen is not None and screen == self.screen_print: self.show_print()
     def show_main(self):
         # The address can change while the UI is open (Wi-Fi reconnects)
         if self.home_theme != 'classic':
