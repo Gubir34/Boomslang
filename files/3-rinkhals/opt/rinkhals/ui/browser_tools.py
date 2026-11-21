@@ -238,15 +238,17 @@ def print_file_name(url, existing=()):
     return candidate
 
 
-MOONRAKER_PRINT_STATE = 'http://127.0.0.1:7125/printer/objects/query?print_stats'
+MOONRAKER_PRINT_STATE = 'http://127.0.0.1:7125/printer/objects/query?print_stats&extruder&heater_bed&virtual_sdcard'
 
 
 def printer_busy(fetch=None):
-    """True while printing or paused, and also when that can't be told.
+    """True while printing, paused or heating, and also when that can't be told.
 
-    A download writes megabytes to the printer's disk and keeps its single
-    weak CPU busy; during a print that risks the print. When Moonraker does
-    not answer, nobody can say the printer is idle, so the download waits.
+    A download or a slice writes megabytes to the printer's disk and keeps its
+    single weak CPU busy; during a print that risks the print. The state alone is
+    not enough: GoKlipper can say standby while a print still runs, so a heater
+    with a target, or a file being read, also counts as busy. When Moonraker does
+    not answer, nobody can say the printer is idle, so the work waits.
     fetch() returns Moonraker's JSON answer (tests pass their own).
     """
     if fetch is None:
@@ -255,10 +257,18 @@ def printer_busy(fetch=None):
             with urllib.request.urlopen(MOONRAKER_PRINT_STATE, timeout=2) as r:
                 return json.loads(r.read(65536))
     try:
-        state = fetch()['result']['status']['print_stats']['state']
+        status = fetch()['result']['status']
+        state = str(status['print_stats']['state']).lower()
+        heaters = [status['extruder']['target'], status['heater_bed']['target']]
+        reading = bool((status.get('virtual_sdcard') or {}).get('is_active'))
     except Exception:
         return True
-    return str(state).lower() in ('printing', 'paused')
+    if state not in ('standby', 'complete', 'cancelled', 'error'):
+        return True
+    try:
+        return reading or any(float(t) > 0 for t in heaters)
+    except (TypeError, ValueError):
+        return True
 
 
 def free_bytes(path):

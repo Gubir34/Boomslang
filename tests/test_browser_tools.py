@@ -204,8 +204,20 @@ class PrintFileTests(unittest.TestCase):
 
 
 class PrinterBusyTests(unittest.TestCase):
-    def answer(self, state):
-        return lambda: {'result': {'status': {'print_stats': {'state': state}}}}
+    def answer(self, state, nozzle=0, bed=0, reading=False):
+        return lambda: {'result': {'status': {'print_stats': {'state': state},
+                                              'extruder': {'temperature': 25, 'target': nozzle},
+                                              'heater_bed': {'temperature': 25, 'target': bed},
+                                              'virtual_sdcard': {'is_active': reading}}}}
+
+    def test_standby_with_a_heater_on_or_a_file_being_read_is_busy(self):
+        # GoKlipper can say standby mid-print: the heaters tell the truth
+        self.assertTrue(bt.printer_busy(self.answer('standby', nozzle=220)))
+        self.assertTrue(bt.printer_busy(self.answer('standby', bed=60)))
+        self.assertTrue(bt.printer_busy(self.answer('complete', reading=True)))
+        self.assertTrue(bt.printer_busy(self.answer('')))                      # no state
+        self.assertTrue(bt.printer_busy(self.answer('leveling')))              # not translated
+        self.assertTrue(bt.printer_busy(lambda: {'result': {'status': {'print_stats': {'state': 'standby'}}}}))
 
     def test_printing_or_paused_is_busy_idle_states_are_not(self):
         for state in ('printing', 'paused', 'PRINTING'):

@@ -107,3 +107,51 @@ func printerIdleForAutoUpdate() bool {
 	}
 	return printerIdleFromQuery(body) == ""
 }
+
+// manualInstallBlocker is the check for installs someone started from the portal
+// (which may be used from far away, through Tailscale). Moonraker not answering
+// is left to that person, as before; but a print, a heater with a target or a
+// file being read always stops the install, at the start and again right before
+// update.sh. A nozzle that is still hot after a print is fine.
+func manualInstallBlocker() string {
+	body, err := autoUpdateQueryPrinter()
+	if err != nil {
+		return ""
+	}
+	var parsed struct {
+		Result struct {
+			Status struct {
+				PrintStats *struct {
+					State string `json:"state"`
+				} `json:"print_stats"`
+				Extruder      *idleHeater `json:"extruder"`
+				HeaterBed     *idleHeater `json:"heater_bed"`
+				VirtualSdcard *struct {
+					IsActive *bool `json:"is_active"`
+				} `json:"virtual_sdcard"`
+			} `json:"status"`
+		} `json:"result"`
+	}
+	if json.Unmarshal(body, &parsed) != nil {
+		return ""
+	}
+	status := parsed.Result.Status
+	if status.PrintStats != nil {
+		switch status.PrintStats.State {
+		case "printing", "paused", "pausing", "cancelling", "heating", "leveling", "resonance", "onpause":
+			return fmt.Sprintf("the printer is %s", status.PrintStats.State)
+		}
+	}
+	for _, h := range []struct {
+		name   string
+		heater *idleHeater
+	}{{"nozzle", status.Extruder}, {"bed", status.HeaterBed}} {
+		if h.heater != nil && h.heater.Target != nil && *h.heater.Target > 0 {
+			return fmt.Sprintf("the %s is heating (target %.0f °C)", h.name, *h.heater.Target)
+		}
+	}
+	if sd := status.VirtualSdcard; sd != nil && sd.IsActive != nil && *sd.IsActive {
+		return "a file is being printed"
+	}
+	return ""
+}
