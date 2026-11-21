@@ -93,3 +93,30 @@ func TestNoAnswerFromMoonrakerIsNotIdle(t *testing.T) {
 		t.Fatal("a hot nozzle must mean busy")
 	}
 }
+
+func TestManualInstallsStopForAPrintOrAHeaterButNotForAHotNozzle(t *testing.T) {
+	saved := autoUpdateQueryPrinter
+	t.Cleanup(func() { autoUpdateQueryPrinter = saved })
+	answer := func(body []byte, err error) { autoUpdateQueryPrinter = func() ([]byte, error) { return body, err } }
+
+	answer(nil, errors.New("connection refused"))
+	if r := manualInstallBlocker(); r != "" {
+		t.Errorf("Moonraker down is the user's call: %s", r)
+	}
+	answer(idleQuery(`{"state":"complete"}`, `{"temperature":190,"target":0}`, coolBed, notReading), nil)
+	if r := manualInstallBlocker(); r != "" {
+		t.Errorf("a print just finished: %s", r)
+	}
+	for name, body := range map[string][]byte{
+		"printing":          idleQuery(`{"state":"printing"}`, coolNozzle, coolBed, notReading),
+		"standby but hot":   idleQuery(`{"state":"standby"}`, `{"temperature":219,"target":220}`, coolBed, notReading),
+		"empty but heating": idleQuery(`{"state":""}`, coolNozzle, `{"temperature":50,"target":60}`, notReading),
+		"reading a file":    idleQuery(`{"state":"standby"}`, coolNozzle, coolBed, `{"is_active":true}`),
+		"untranslated":      idleQuery(`{"state":"leveling"}`, coolNozzle, coolBed, notReading),
+	} {
+		answer(body, nil)
+		if manualInstallBlocker() == "" {
+			t.Errorf("%s: install allowed", name)
+		}
+	}
+}
