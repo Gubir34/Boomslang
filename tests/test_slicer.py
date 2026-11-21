@@ -145,6 +145,7 @@ class SliceTests(unittest.TestCase):
                 key, _, value = command[i + 1].partition('=')
                 settings[key] = value
         self.command = command
+        self.kwargs = kwargs
         out = command[command.index('-o') + 1]
         Path(out).write_text(gcode(settings['startCode'], settings['endCode'], self.body))
 
@@ -168,6 +169,8 @@ class SliceTests(unittest.TestCase):
         self.assertTrue(text.startswith('G9111'))
         self.assertIn('M104 S205 ; printing temperature', text)              # after the first layer
         self.assertIn('-v', self.command)
+        # low CPU priority and first for the out of memory killer, never the printer's services
+        self.assertIs(self.kwargs['preexec_fn'], slicer._engine_priority)
 
     def test_refused_while_printing_without_a_profile_or_when_too_big(self):
         big = os.path.join(self.dir, 'Big.stl')

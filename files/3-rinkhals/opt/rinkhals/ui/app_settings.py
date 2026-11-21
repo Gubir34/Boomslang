@@ -93,6 +93,8 @@ def step_number(value, delta):
         number = float(str(value).strip())
     except (TypeError, ValueError):
         number = 0.0
+    if number != number or number in (float('inf'), float('-inf')):
+        number = 0.0                      # "nan" and "inf" parse, but are not numbers to step
     result = number + delta
     if result == int(result) and '.' not in str(value or '').strip():
         return str(int(result))

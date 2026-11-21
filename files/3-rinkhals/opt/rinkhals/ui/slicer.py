@@ -280,6 +280,18 @@ def print_time(output):
     return int(found.group(1)) if found else None
 
 
+def _engine_priority():
+    """Run in the engine's process before it starts. Lowest CPU priority, so the screen
+    and Klipper's helpers keep the CPU first; and first in line for the kernel's out of
+    memory killer, so a big model costs the slice, never the printer's own services."""
+    os.nice(19)
+    try:
+        with open('/proc/self/oom_score_adj', 'w') as f:
+            f.write('1000')
+    except OSError:
+        pass
+
+
 def slice_model(model_path, model_code, folder=None, printing=lambda: False, run=subprocess.run,
                 engine=None, free=browser_tools.free_bytes, available_kb=memory_available_kb):
     """Slice a model for this printer into its files. Returns (path, seconds or None).
@@ -326,9 +338,8 @@ def slice_model(model_path, model_code, folder=None, printing=lambda: False, run
         command += ['-s', 'startCode=' + start_gcode(code, profile), '-s', 'endCode=' + end_gcode(code),
                     '-o', out, stl]
         try:
-            # lowest priority: the screen and Klipper's helpers keep the CPU first
             result = run(command, capture_output=True, text=True, timeout=SLICE_TIMEOUT,
-                         preexec_fn=lambda: os.nice(19))
+                         preexec_fn=_engine_priority)
         except subprocess.TimeoutExpired:
             raise SliceError('Slicing took too long and was stopped.')
         except OSError as e:
