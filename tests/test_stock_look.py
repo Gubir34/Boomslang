@@ -15,7 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build/stock-look/build.sh'
-PRINTER_LIB = ROOT / 'files/3-rinkhals/opt/rinkhals/lib/libboomslang-stock-look.so'
+LOOKS = ('liquid', 'liquid-light', 'aero', 'aero-light')
+PRINTER_LIBS = [ROOT / f'files/3-rinkhals/opt/rinkhals/lib/libboomslang-stock-look-{look}.so' for look in LOOKS]
 
 # Qt is loaded into the global scope, as it is for the stock screen (which links it
 # directly); Python's own RTLD_LOCAL would hide it from dlsym(RTLD_NEXT)
@@ -37,18 +38,21 @@ class StockLookTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
-        cls.lib = os.path.join(cls.tmp.name, 'stock-look.so')
-        subprocess.run(['sh', str(BUILD), 'host', cls.lib], check=True)
-        cls.swap_fn = ctypes.CDLL(cls.lib).boomslang_stock_look_swap
+        cls.libs = {}
+        for look in LOOKS:
+            cls.libs[look] = os.path.join(cls.tmp.name, f'stock-look-{look}.so')
+            subprocess.run(['sh', str(BUILD), 'host', look, cls.libs[look]], check=True)
+        cls.lib = cls.libs['liquid']
+        cls.swap_fns = {look: ctypes.CDLL(path).boomslang_stock_look_swap for look, path in cls.libs.items()}
 
     @classmethod
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
-    def swap(self, text):
+    def swap(self, text, look='liquid'):
         units = text.encode('utf-16-le')
         buf = (ctypes.c_ushort * (len(units) // 2)).from_buffer_copy(units)
-        count = self.swap_fn(buf, len(buf))
+        count = self.swap_fns[look](buf, len(buf))
         return bytes(buf).decode('utf-16-le'), count
 
     def test_stock_colours_become_liquid_plastic_whatever_the_case(self):
@@ -63,7 +67,25 @@ class StockLookTests(unittest.TestCase):
             self.assertEqual(self.swap(text), (text, 0), text)
         self.assertEqual(self.swap('color:#999;')[0], 'color:#ace;')
 
-    def test_the_printer_build_is_arm_and_needs_only_dlsym(self):
+    def test_each_look_has_its_own_colours(self):
+        sheet = 'QPushButton { background-color: #3D3D3D; color: #FFFFFF } QLabel { color: #999999 }'
+        seen = {look: self.swap(sheet, look)[0] for look in LOOKS}
+        self.assertEqual(len(set(seen.values())), 4)
+        for look in LOOKS:
+            self.assertEqual(len(seen[look]), len(sheet))
+        # dark looks keep white text; light looks make it dark and the buttons light
+        self.assertIn('#FFFFFF', seen['liquid'])
+        self.assertIn('#FFFFFF', seen['aero'])
+        self.assertIn('background-color: #ffffff; color: #18381e', seen['liquid-light'])
+        self.assertIn('background-color: #f4faf0; color: #143a18', seen['aero-light'])
+        self.assertIn('#7ec44e', self.swap('border: 1px solid #438dff', 'aero')[0])
+
+    def test_the_printer_builds_are_arm_and_need_only_dlsym(self):
+        for lib in PRINTER_LIBS:
+            with self.subTest(lib.name):
+                self.check_printer_lib(lib)
+
+    def check_printer_lib(self, PRINTER_LIB):
         data = PRINTER_LIB.read_bytes()
         self.assertEqual(data[:4], b'\x7fELF')
         self.assertEqual(data[4], 1)                                  # 32 bit
@@ -108,13 +130,14 @@ class StartTests(unittest.TestCase):
             (tmp / 'K3SysUi').chmod(0o755)
             (tmp / 'start.sh').write_text('#!/bin/sh\ntouch "$(dirname "$0")/restarted"\n')
             (tmp / 'start.sh').chmod(0o755)
-            lib = tmp / 'look.so'
             if library:
-                lib.write_text('')
+                for look in LOOKS:
+                    (tmp / f'libboomslang-stock-look-{look}.so').write_text('')
             if choice is not None:
                 (tmp / 'choice').write_text(choice + '\n')
             script = SCRIPT.read_text().replace('/useremain/rinkhals/.stock-ui-look', str(tmp / 'choice')) \
-                .replace('/opt/rinkhals/lib/libboomslang-stock-look.so', str(lib)).replace('STOCK_LOOK_TRIAL=60', 'STOCK_LOOK_TRIAL=6')
+                .replace('STOCK_LOOK_LIB_DIR=/opt/rinkhals/lib', f'STOCK_LOOK_LIB_DIR={tmp}') \
+                .replace('STOCK_LOOK_TRIAL=60', 'STOCK_LOOK_TRIAL=6')
             (tmp / 'stock-look.sh').write_text(script)
             driver = (f'cd {tmp}; RINKHALS_LOGS={tmp}; RINKHALS_ROOT={tmp}; log() {{ echo "$@" >> {tmp}/log; }}\n'
                       f'. ./stock-look.sh\nstart_stock_screen\nsleep 8\n')
@@ -130,15 +153,16 @@ class StartTests(unittest.TestCase):
             self.assertFalse(restarted)
 
     def test_on_preloads_the_library(self):
-        started, choice, restarted, log = self.run_start('liquid', screen_lives=True)
-        self.assertTrue(started.strip().endswith('look.so'))
-        self.assertEqual(choice.strip(), 'liquid')
-        self.assertFalse(restarted)
-        self.assertIn('Liquid Plastic', log)
+        for look in ('liquid', 'aero-light'):
+            started, choice, restarted, log = self.run_start(look, screen_lives=True)
+            self.assertTrue(started.strip().endswith(f'libboomslang-stock-look-{look}.so'), started)
+            self.assertEqual(choice.strip(), look)
+            self.assertFalse(restarted)
+            self.assertIn(look, log)
 
     def test_a_screen_that_does_not_stay_up_turns_the_look_off_and_restarts(self):
-        started, choice, restarted, log = self.run_start('liquid', screen_lives=False)
-        self.assertTrue(started.strip().endswith('look.so'))
+        started, choice, restarted, log = self.run_start('aero', screen_lives=False)
+        self.assertTrue(started.strip().endswith('libboomslang-stock-look-aero.so'))
         self.assertEqual(choice.strip(), 'off')
         self.assertTrue(restarted)
         self.assertIn('look is off again', log)

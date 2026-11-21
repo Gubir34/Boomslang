@@ -285,8 +285,9 @@ def set_mode(name, path=None):
 
 PRINT_SCREENS_FILE = '/useremain/rinkhals/.ui-print-screens'
 STOCK_LOOK_FILE = '/useremain/rinkhals/.stock-ui-look'      # read by start.sh before the stock screen starts
-STOCK_LOOKS = ('off', 'liquid')
-STOCK_LOOK_NAMES = {'off': 'Off', 'liquid': 'Liquid Plastic'}
+STOCK_LOOKS = ('off', 'liquid', 'liquid-light', 'aero', 'aero-light')
+STOCK_LOOK_NAMES = {'off': 'Off', 'liquid': 'Liquid Plastic Dark', 'liquid-light': 'Liquid Plastic Light',
+                    'aero': 'Aero Dark', 'aero-light': 'Aero Light'}
 
 
 def _read_word(path):
@@ -314,7 +315,7 @@ def set_print_screens(on, path=None):
 
 
 def stock_look(path=None):
-    """The stock screen's look: 'off' (Anycubic's own, the default) or 'liquid'."""
+    """The stock screen's look: 'off' (Anycubic's own, the default) or one of the looks."""
     word = _read_word(path or STOCK_LOOK_FILE)
     return word if word in STOCK_LOOKS else 'off'
 

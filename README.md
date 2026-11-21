@@ -168,7 +168,7 @@ Every look comes in dark and light, in **Settings > Mode**. Light mode is not th
 
 **Settings > Print screens** lets you print from Boomslang instead of the stock screen. Tap the status line on the home screen to see the printer's files, start a print, follow its progress, layer and time left, pause, resume or cancel it, and preheat or cool down. Everything goes through Moonraker. A print only starts when the printer is idle and not heating.
 
-**Settings > Stock screen look** (experimental) recolours Anycubic's own screen in Liquid Plastic's greens. It changes the stock screen's colours and corners, but not its icons and pictures, which are built into the program. If the stock screen does not stay up after turning it on, Boomslang turns it off again by itself and restarts. To turn it off by hand over SSH: `rm /useremain/rinkhals/.stock-ui-look`, then restart.
+**Settings > Stock screen look** (experimental) recolours Anycubic's own screen: Liquid Plastic Dark or Light, Aero Dark or Light. It changes the stock screen's colours and corners, but not its icons and pictures, which are built into the program and stay white, so on the light looks some icons are hard to see. If the stock screen does not stay up after turning it on, Boomslang turns it off again by itself and restarts. To turn it off by hand over SSH: `rm /useremain/rinkhals/.stock-ui-look`, then restart.
 
 ### App settings
 

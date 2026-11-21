@@ -987,6 +987,8 @@ class RinkhalsUiApp(BaseApp):
             else:
                 text = ('Experimental: the stock screen is\nrecoloured after a restart. If it\nfails to start, '
                         'Boomslang turns\nthis off again by itself.')
+                if look.endswith('-light'):
+                    text += '\n\nIts icons stay white, so some\nare hard to see on a light look.'
             self.show_text_dialog(f'{text}\n\nRestart Boomslang now?', action='Restart', callback=self.restart_rinkhals)
         self.show_selection_dialog(options, chosen)
 

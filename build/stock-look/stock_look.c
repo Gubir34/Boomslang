@@ -6,7 +6,8 @@
  * "QPushButton { background-color: #3D3D3D; border-radius: 10px }". Loaded with
  * LD_PRELOAD (start.sh, only when Settings > Stock screen look is on), this library
  * stands in front of those two functions, swaps the stock colours in the text for
- * Liquid Plastic's and calls Qt's own function with the result.
+ * those of a Boomslang look (Liquid Plastic or Aero, dark or light) and calls Qt's
+ * own function with the result.
  *
  * Kept deliberately small and careful, because it runs inside the printer's screen:
  *   - every swap keeps the length, so a style sheet never grows; a style sheet longer
@@ -46,31 +47,57 @@ typedef void (*deallocate_fn)(QArrayData *data, unsigned int object_size, unsign
 #define DEALLOCATE "_ZN10QArrayData10deallocateEPS_jj"
 #endif
 
-/* Stock colour -> Liquid Plastic colour. Same length on both sides, longest first,
-   matched without regard to case. */
+/* Stock colour -> the look's colour. Same length on both sides, longest first, matched
+   without regard to case. One look per build (build.sh): LOOK_LIQUID (dark),
+   LOOK_LIQUID_LIGHT, LOOK_AERO (dark) or LOOK_AERO_LIGHT. The stock screen is dark
+   grey with white text and blue accents; the light looks also turn the white text
+   dark (so their accents are light greens, for dark text to read on them), but its
+   icons and pictures stay as they are (white). */
+#define CORNERS(big, small) \
+    {"border-radius: 10px", "border-radius: " big "px"}, \
+    {"border-radius:10px", "border-radius:" big "px"}, \
+    {"border-radius: 8px", "border-radius:" small "px"}
+
 static const char *const SWAPS[][2] = {
-    /* the dark greys of the background and the buttons become deep greens */
+#if defined(LOOK_LIQUID)
+    /* Liquid Plastic, dark: deep greens, Boomslang green accents, round corners */
     {"rgb(28, 28, 28)", "rgb(11, 36, 20)"},
-    {"#1c1c1c", "#0b2414"},
-    {"#292929", "#10301c"},
-    {"#333333", "#163a24"},
-    {"#3d3d3d", "#1d4a2e"},
-    {"#424242", "#215234"},
-    {"#4b4b4b", "#275c3b"},
-    {"#4d4d4d", "#295e3d"},
-    /* Anycubic's blue accents become Boomslang's greens */
-    {"#438dff", "#4fb548"},
-    {"#2f97ff", "#3fa83a"},
-    {"#43f8ff", "#9be86a"},
-    {"#b4f3ff", "#d6f7b8"},
-    /* grey text, a little green */
-    {"#999999", "#a9c4ae"},
-    {"#818799", "#8aa892"},
-    {"#999", "#ace"},
-    /* rounder corners */
-    {"border-radius: 10px", "border-radius: 18px"},
-    {"border-radius:10px", "border-radius:18px"},
-    {"border-radius: 8px", "border-radius:14px"},
+    {"#1c1c1c", "#0b2414"}, {"#292929", "#10301c"}, {"#333333", "#163a24"}, {"#3d3d3d", "#1d4a2e"},
+    {"#424242", "#215234"}, {"#4b4b4b", "#275c3b"}, {"#4d4d4d", "#295e3d"},
+    {"#438dff", "#4fb548"}, {"#2f97ff", "#3fa83a"}, {"#43f8ff", "#9be86a"}, {"#b4f3ff", "#d6f7b8"},
+    {"#999999", "#a9c4ae"}, {"#818799", "#8aa892"}, {"#999", "#ace"},
+    CORNERS("18", "14"),
+#elif defined(LOOK_LIQUID_LIGHT)
+    /* Liquid Plastic, light: mint and white panes, dark green text */
+    {"rgb(28, 28, 28)", "#e6f2e8        "},
+    {"rgb(255,255, 255)", "rgb( 24, 56,  30)"},
+    {"#1c1c1c", "#e6f2e8"}, {"#292929", "#dcebdf"}, {"#333333", "#d2e6d6"}, {"#3d3d3d", "#ffffff"},
+    {"#424242", "#f4faf5"}, {"#4b4b4b", "#eaf4ec"}, {"#4d4d4d", "#e4f0e6"},
+    {"#438dff", "#74cc6e"}, {"#2f97ff", "#62bd5c"}, {"#43f8ff", "#3fa83a"}, {"#b4f3ff", "#2f6b35"},
+    {"#ffffff", "#18381e"}, {"#fafafa", "#1c3a22"}, {"#dadada", "#3c5a42"},
+    {"#999999", "#5c685e"}, {"#818799", "#5f7064"}, {"#999", "#565"}, {"#fff", "#132"},
+    CORNERS("18", "14"),
+#elif defined(LOOK_AERO)
+    /* Aero, dark: blue-green glass greys and lime accents, softer corners */
+    {"rgb(28, 28, 28)", "rgb(12, 30, 26)"},
+    {"#1c1c1c", "#0c1e1a"}, {"#292929", "#12302a"}, {"#333333", "#173831"}, {"#3d3d3d", "#21463d"},
+    {"#424242", "#254d43"}, {"#4b4b4b", "#2c584d"}, {"#4d4d4d", "#2e5a4f"},
+    {"#438dff", "#7ec44e"}, {"#2f97ff", "#6cb442"}, {"#43f8ff", "#c9ea7f"}, {"#b4f3ff", "#e2f5c0"},
+    {"#999999", "#a8c2b9"}, {"#818799", "#8ba79d"}, {"#999", "#acb"},
+    CORNERS("14", "12"),
+#elif defined(LOOK_AERO_LIGHT)
+    /* Aero, light: pale green glass, lime accents, dark green text */
+    {"rgb(28, 28, 28)", "#dcebd6        "},
+    {"rgb(255,255, 255)", "rgb( 20, 58,  24)"},
+    {"#1c1c1c", "#dcebd6"}, {"#292929", "#d0e4c9"}, {"#333333", "#c6ddbe"}, {"#3d3d3d", "#f4faf0"},
+    {"#424242", "#eef7e8"}, {"#4b4b4b", "#e4f1dd"}, {"#4d4d4d", "#deeed6"},
+    {"#438dff", "#a8d86a"}, {"#2f97ff", "#96cc58"}, {"#43f8ff", "#7ec44e"}, {"#b4f3ff", "#3e7a22"},
+    {"#ffffff", "#143a18"}, {"#fafafa", "#183e1c"}, {"#dadada", "#3a5c3e"},
+    {"#999999", "#5a6e5c"}, {"#818799", "#5d7262"}, {"#999", "#565"}, {"#fff", "#131"},
+    CORNERS("14", "12"),
+#else
+#error "build with -DLOOK_LIQUID, -DLOOK_LIQUID_LIGHT, -DLOOK_AERO or -DLOOK_AERO_LIGHT"
+#endif
 };
 #define SWAP_COUNT (sizeof(SWAPS) / sizeof(SWAPS[0]))
 #define MAX_UNITS 16384
