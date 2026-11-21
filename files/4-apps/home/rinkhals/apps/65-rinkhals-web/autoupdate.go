@@ -44,9 +44,10 @@ import (
 // left in autoUpdateNoticePath for the touch UI (rinkhals-ui.py).
 //
 // It never interrupts a print:
-//   - the printer must report "standby" through Moonraker, twice, a couple of
-//     minutes apart (no answer from Moonraker counts as busy here, unlike the
-//     manual install, where the user is looking at the printer)
+//   - the printer must be idle through Moonraker, twice, a couple of minutes
+//     apart: standby, no heater with a target or still hot, no file being read
+//     (autoupdate_idle.go). No answer from Moonraker counts as busy here, unlike
+//     the manual install, where the user is looking at the printer
 //   - it checks again after the download, right before update.sh runs
 //
 // Each release is tried once. Its tag is written to autoUpdateTriedPath just
@@ -236,10 +237,6 @@ func releaseRank(r *RinkhalsRelease) int {
 		return channelRank("alpha")
 	}
 	return channelRank("release")
-}
-
-func printerIdleForAutoUpdate() bool {
-	return fetchPrinterState().State == "standby"
 }
 
 func readTriedTag() string {
